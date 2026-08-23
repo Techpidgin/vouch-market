@@ -66,6 +66,8 @@
 - [x] Reduce the market-price guidance panel and remove public-facing human-review language while retaining accurate essential terms.
 - [x] Validate the compact marketplace at desktop and mobile widths, then publish the refinement.
 - [x] Remove the remaining public-facing review wording from completion messages and wallet activity while preserving clear payout terms.
-- [ ] Save and publish the compact-market refinement, then verify the published market view at desktop and mobile widths.
+- [x] Save and publish the compact-market refinement, then verify the published market view at desktop and mobile widths.
+- [x] Verify the live custom-domain market at a mobile viewport after the compact-market publication.
+- [x] Capture inspectable loaded mobile evidence of the published compact market, including the live seller rows and reduced midpoint panel.
 - [x] Replace internal review-status labels with neutral public wallet-activity language and revalidate the activity display.
 - [x] Push the compact marketplace refinement and public-copy cleanup to the private GitHub repository.
