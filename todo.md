@@ -47,5 +47,5 @@
 - [x] Replace the deferred Supabase migration with an Upstash-backed compact state adapter for serverless Vercel deployments.
 - [x] Keep durable payment and payout evidence, including signature-reuse protection, in the existing secure data store while using Upstash only for compact, short-lived public-board cache state.
 - [x] Document required Upstash environment values, Vercel configuration, data-retention limits, and the no-cron operating model.
-- [ ] Push the Upstash compact-state adapter and updated Vercel handoff documentation to the private GitHub repository.
+- [x] Push the Upstash compact-state adapter and updated Vercel handoff documentation to the private GitHub repository.
 - [x] Push the Vercel-compatible, no-cron update and Supabase handoff documentation to the private GitHub repository.
