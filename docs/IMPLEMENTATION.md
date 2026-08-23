@@ -38,15 +38,15 @@ The administrator should review evidence after all completion marks are present.
 
 Unpaid requests can be cancelled by the originating wallet using a signed confirmation. Funded listings cannot be cancelled through the public interface. This deliberately avoids public exposure of the internal review process and makes the distinction between an unfunded draft and an active payment-backed request clear.
 
-## 24-hour archival
+## Compact archival without scheduled work
 
-The data model carries `archiveEligibleAt`, `archivedAt`, and archive-summary fields, calculated 24 hours after a request, open seller offer, or fill is created. The protected `/api/scheduled/archive-market` callback writes each eligible item into a private S3 JSON snapshot and then marks it archived. Snapshots contain only market-facing fields, timestamps, and status; they intentionally exclude wallet addresses and payment signatures. The existing public-board queries exclude archived entries.
+The data model carries `archiveEligibleAt`, `archivedAt`, and archive-summary fields, calculated 24 hours after a request, open seller offer, or fill is created. The private review desk exposes **Compact eligible records** as an administrator action. It writes each eligible item into a private sanitized JSON snapshot and then marks it archived. Snapshots contain only market-facing fields, timestamps, and status; they intentionally exclude wallet addresses and payment signatures. The existing public-board queries exclude archived entries.
 
-The callback is ready, but the job itself must be activated only after publication because scheduled callbacks target the published site. Once the site is published, create a project-level hourly job for `/api/scheduled/archive-market`. The archival output is a structured snapshot rather than a browser screenshot so the exact public ID, status, timestamps, and record data remain reviewable.
+There is no recurring scheduler, cron endpoint, or background worker. The compact action is request-scoped and therefore remains compatible with Vercel serverless deployments. The archival output is a structured snapshot rather than a browser screenshot so the exact public ID, status, timestamps, and record data remain reviewable.
 
 ## Verification performed
 
-The project currently passes TypeScript validation and 11 Vitest assertions. Coverage includes the configured Solana RPC and recipient wallet, the 0.50-USDC under-1k floor, six-decimal USDC conversion, overfill prevention, wallet ownership checks, payment-signature reuse prevention, completion-review transitions, payout-resolution transitions, administrator access denial, and the existing logout behavior.
+The project passes TypeScript validation, a Vercel static build, and 19 Vitest assertions. Coverage includes the configured Solana RPC and recipient wallet, the 0.50-USDC under-1k floor, six-decimal USDC conversion, overfill prevention, wallet ownership checks, payment-signature reuse prevention, direct-purchase completion progression, seller-delisting authorization, archive sanitization and visibility, administrator access denial, and optional Upstash configuration.
 
 ## References
 

@@ -11,6 +11,7 @@ import { getDb } from "../db";
 import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, type VouchBandValue } from "./constants";
 import { assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, transitionDirectPurchase } from "./rules";
 import { removeArchiveMetadata } from "./visibility";
+import { getCachedPublicBoard, invalidatePublicBoardCache } from "./compactState";
 
 async function dbOrThrow() {
   const db = await getDb();
@@ -28,6 +29,7 @@ export async function logActivity(input: {
 }) {
   const db = await dbOrThrow();
   await db.insert(activityLogs).values(input);
+  await invalidatePublicBoardCache();
 }
 
 async function ensureDefaultProject() {
@@ -44,9 +46,10 @@ export async function createMarketProject(input: { slug: string; name: string; d
 }
 
 export async function getPublicMarket() {
-  const db = await dbOrThrow();
-  await ensureDefaultProject();
-  const [projects, requests, sellerOffers] = await Promise.all([
+  return getCachedPublicBoard(async () => {
+    const db = await dbOrThrow();
+    await ensureDefaultProject();
+    const [projects, requests, sellerOffers] = await Promise.all([
     db.select({ slug: marketProjects.slug, name: marketProjects.name, description: marketProjects.description }).from(marketProjects).where(eq(marketProjects.isActive, 1)).orderBy(marketProjects.name),
     db
       .select({
@@ -82,14 +85,15 @@ export async function getPublicMarket() {
       .orderBy(desc(sellerCommitments.createdAt)),
   ]);
 
-  const visibleRequests = removeArchiveMetadata(requests);
-  const visibleSellerOffers = removeArchiveMetadata(sellerOffers);
-  const prices = [...visibleRequests, ...visibleSellerOffers]
-    .map(entry => Number(entry.pricePerVouch))
-    .filter(price => Number.isFinite(price) && price > 0)
-    .sort((a, b) => a - b);
-  const midpoint = prices.length ? prices[Math.floor(prices.length / 2)] : null;
-  return { projects, requests: visibleRequests, sellerOffers: visibleSellerOffers, suggestedPricePerVouch: midpoint?.toFixed(4) ?? null };
+    const visibleRequests = removeArchiveMetadata(requests);
+    const visibleSellerOffers = removeArchiveMetadata(sellerOffers);
+    const prices = [...visibleRequests, ...visibleSellerOffers]
+      .map(entry => Number(entry.pricePerVouch))
+      .filter(price => Number.isFinite(price) && price > 0)
+      .sort((a, b) => a - b);
+    const midpoint = prices.length ? prices[Math.floor(prices.length / 2)] : null;
+    return { projects, requests: visibleRequests, sellerOffers: visibleSellerOffers, suggestedPricePerVouch: midpoint?.toFixed(4) ?? null };
+  });
 }
 
 export async function createRequest(input: {
