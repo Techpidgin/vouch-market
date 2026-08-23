@@ -45,4 +45,4 @@
 - [x] Remove the registered recurring archive job and all Vercel Cron configuration.
 - [x] Replace automatic 24-hour archival with a compact, administrator-initiated archive action that retains only minimal operational summaries.
 - [ ] Complete the Supabase Postgres data-access migration after the user enables the integration and provides server connection values.
-- [ ] Push the Vercel-compatible, no-cron update and Supabase handoff documentation to the private GitHub repository.
+- [x] Push the Vercel-compatible, no-cron update and Supabase handoff documentation to the private GitHub repository.
