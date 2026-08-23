@@ -9,6 +9,7 @@ import {
 import { getDb } from "../db";
 import { ARCHIVE_AFTER_MS } from "./constants";
 import { assertUnusedPaymentSignature, enforceAvailableFill, enforceWalletOwnership, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts } from "./rules";
+import { removeArchiveMetadata } from "./visibility";
 
 async function dbOrThrow() {
   const db = await getDb();
@@ -41,6 +42,7 @@ export async function getPublicMarket() {
         pricePerVouch: marketRequests.pricePerVouch,
         totalUsdc: marketRequests.totalUsdc,
         status: marketRequests.status,
+        archivedAt: marketRequests.archivedAt,
         createdAt: marketRequests.createdAt,
       })
       .from(marketRequests)
@@ -54,6 +56,7 @@ export async function getPublicMarket() {
         quantity: sellerCommitments.quantity,
         pricePerVouch: sellerCommitments.pricePerVouch,
         status: sellerCommitments.status,
+        archivedAt: sellerCommitments.archivedAt,
         createdAt: sellerCommitments.createdAt,
       })
       .from(sellerCommitments)
@@ -61,12 +64,14 @@ export async function getPublicMarket() {
       .orderBy(desc(sellerCommitments.createdAt)),
   ]);
 
-  const prices = [...requests, ...sellerOffers]
+  const visibleRequests = removeArchiveMetadata(requests);
+  const visibleSellerOffers = removeArchiveMetadata(sellerOffers);
+  const prices = [...visibleRequests, ...visibleSellerOffers]
     .map(entry => Number(entry.pricePerVouch))
     .filter(price => Number.isFinite(price) && price > 0)
     .sort((a, b) => a - b);
   const midpoint = prices.length ? prices[Math.floor(prices.length / 2)] : null;
-  return { requests, sellerOffers, suggestedPricePerVouch: midpoint?.toFixed(4) ?? null };
+  return { requests: visibleRequests, sellerOffers: visibleSellerOffers, suggestedPricePerVouch: midpoint?.toFixed(4) ?? null };
 }
 
 export async function createRequest(input: {

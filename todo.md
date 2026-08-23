@@ -9,7 +9,7 @@
 - [x] Implement server-side Solana transaction verification for recipient, sender wallet, signature uniqueness, finalized status, and confirmed amount.
 - [x] Add order state history, plain-language status messages, failure/dispute flows, and no-guarantee notices.
 - [x] Build private role-gated operations views for evidence review, completion claims, manual decisions, and audit logs.
-- [ ] Add a safe 24-hour archival job that creates protected snapshot records and removes public exposure without storing sensitive transaction information in the public interface.
+- [x] Add a safe 24-hour archival job that creates protected snapshot records and removes public exposure without storing sensitive transaction information in the public interface.
 - [x] Create an implementation-plan document explaining the architecture, operating process, safeguards, and deployment steps.
 - [x] Write and run Vitest coverage for validation, state transitions, ownership gates, and transaction-reuse prevention.
 - [x] Validate the responsive UI on desktop and mobile, resolve build/runtime issues, and record results.
@@ -21,3 +21,7 @@
 - [x] Add Vitest coverage for wallet ownership enforcement and administrator-only operations access.
 - [x] Add Vitest coverage for the request and seller completion state transitions through manual payout resolution.
 - [x] Implement a wallet-confirmed cancellation path and plain-language cancelled-state message for unpaid buyer requests.
+- [x] Sanitize private archive snapshots to exclude wallet addresses and payment signatures while retaining the operational record needed for review.
+- [x] Add Vitest coverage for archive payload sanitization and the archived-record visibility rule.
+- [x] Add a Vitest test that confirms archived records are excluded from public market visibility.
+- [ ] After publication, create the protected recurring archive job for `/api/scheduled/archive-market`.

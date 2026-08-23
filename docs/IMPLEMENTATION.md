@@ -40,9 +40,9 @@ Unpaid requests can be cancelled by the originating wallet using a signed confir
 
 ## 24-hour archival
 
-The data model carries `archiveEligibleAt`, `archivedAt`, and archive-summary fields, calculated 24 hours after a request, open seller offer, or fill is created. This provides the durable lifecycle anchor for a future scheduled archive job.
+The data model carries `archiveEligibleAt`, `archivedAt`, and archive-summary fields, calculated 24 hours after a request, open seller offer, or fill is created. The protected `/api/scheduled/archive-market` callback writes each eligible item into a private S3 JSON snapshot and then marks it archived. Snapshots contain only market-facing fields, timestamps, and status; they intentionally exclude wallet addresses and payment signatures. The existing public-board queries exclude archived entries.
 
-The simplified build intentionally does **not** activate that background job before publication. A scheduled site callback must target an already-published endpoint and be authenticated as a cron invocation; it cannot operate reliably from the preview environment. After the site is published, add the protected archive callback and schedule it to write a compact, private S3 snapshot before removing mature entries from the public board. This should use a structured archive export rather than a browser screenshot so that the exact public ID, status history, and review record can be retained and verified.
+The callback is ready, but the job itself must be activated only after publication because scheduled callbacks target the published site. Once the site is published, create a project-level hourly job for `/api/scheduled/archive-market`. The archival output is a structured snapshot rather than a browser screenshot so the exact public ID, status, timestamps, and record data remain reviewable.
 
 ## Verification performed
 
