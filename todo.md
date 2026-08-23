@@ -61,3 +61,11 @@
 - [x] Enforce payment-signature uniqueness across both buyer requests and direct seller-offer purchases, not only within each table.
 - [x] Add Upstash-backed, server-side rate limiting for public marketplace mutations when the configured Redis service is available.
 - [x] Bind payment finalization updates to the original buyer wallet and awaiting-payment state to prevent stale verification from activating a changed record.
+- [x] Reduce the marketplace hero height and visual dominance to prioritize active listings.
+- [x] Convert market cards into slimmer, denser professional list rows that show more listings in the initial viewport.
+- [x] Reduce the market-price guidance panel and remove public-facing human-review language while retaining accurate essential terms.
+- [x] Validate the compact marketplace at desktop and mobile widths, then publish the refinement.
+- [x] Remove the remaining public-facing review wording from completion messages and wallet activity while preserving clear payout terms.
+- [ ] Save and publish the compact-market refinement, then verify the published market view at desktop and mobile widths.
+- [x] Replace internal review-status labels with neutral public wallet-activity language and revalidate the activity display.
+- [ ] Push the compact marketplace refinement and public-copy cleanup to the private GitHub repository.
