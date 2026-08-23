@@ -44,3 +44,33 @@ export function nextRequestStatusAfterPayouts(statuses: Array<"paid" | "disputed
   if (statuses.length > 0 && statuses.every(status => status === "paid")) return "completed";
   return "awaiting_review";
 }
+
+export function nextDirectPurchaseStatus(buyerMarkedDone: boolean, sellerMarkedDone: boolean) {
+  return buyerMarkedDone && sellerMarkedDone ? "under_review" : "matched";
+}
+
+export function enforceDelistableOffer(input: { status: string; requestId: number | null; sellerWallet: string; wallet: string }) {
+  enforceWalletOwnership(input.sellerWallet, input.wallet);
+  if (input.status !== "open" || input.requestId !== null) {
+    throw new Error("Only an uncommitted open seller offer can be delisted");
+  }
+}
+
+export type DirectPurchaseProgress = { status: "open" | "awaiting_payment" | "matched" | "done" | "under_review"; buyerMarkedDone: boolean; sellerMarkedDone: boolean };
+
+export function transitionDirectPurchase(progress: DirectPurchaseProgress, event: "reserve" | "payment_verified" | "buyer_confirmed" | "seller_completed") {
+  if (event === "reserve") {
+    if (progress.status !== "open") throw new Error("This seller offer is no longer available");
+    return { ...progress, status: "awaiting_payment" as const };
+  }
+  if (event === "payment_verified") {
+    if (progress.status !== "awaiting_payment") throw new Error("This offer purchase cannot be activated");
+    return { ...progress, status: "matched" as const };
+  }
+  if (event === "buyer_confirmed") {
+    if (!["matched", "done"].includes(progress.status)) throw new Error("This purchase cannot be confirmed yet");
+    return { ...progress, buyerMarkedDone: true, status: nextDirectPurchaseStatus(true, progress.sellerMarkedDone) };
+  }
+  if (progress.status !== "matched") throw new Error("This fill cannot be marked complete yet");
+  return { ...progress, sellerMarkedDone: true, status: nextDirectPurchaseStatus(progress.buyerMarkedDone, true) };
+}

@@ -1,98 +1,50 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
-import { Check, ExternalLink, ShieldAlert } from "lucide-react";
+import { connectWallet, signWalletMessage } from "@/lib/solanaWallet";
+import { Check, ExternalLink, Loader2, Plus, ShieldAlert, WalletCards } from "lucide-react";
+import { FormEvent, useState } from "react";
 import { Link } from "wouter";
+import { toast } from "sonner";
 
-const money = (value: string) => `${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} USDC`;
+const money = (value: string | number | null | undefined) => `${Number(value ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })} USDC`;
+const shortWallet = (wallet: string) => `${wallet.slice(0, 4)}…${wallet.slice(-4)}`;
 
 export default function Operations() {
   const { user, loading } = useAuth();
   const isAdmin = user?.role === "admin";
-  const operations = trpc.admin.operations.useQuery(undefined, { enabled: isAdmin });
-  const utils = trpc.useUtils();
-  const payout = trpc.admin.recordPayout.useMutation({ onSuccess: () => operations.refetch() });
+  const [wallet, setWallet] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [projectSlug, setProjectSlug] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
+  const challenge = trpc.market.walletChallenge.useMutation();
+  const operations = trpc.admin.operations.useMutation();
+  const payout = trpc.admin.recordPayout.useMutation({ onSuccess: () => loadOperations() });
+  const createProject = trpc.admin.createProject.useMutation({ onSuccess: () => { toast.success("Compatible project saved."); setProjectName(""); setProjectSlug(""); setProjectDescription(""); loadOperations(); } });
+  const archive = trpc.admin.archiveEligible.useMutation({ onSuccess: result => { toast.success(`${result.archivedRequests + result.archivedSellerCommitments} eligible records compacted.`); loadOperations(); } });
 
-  return (
-    <DashboardLayout>
-      <div className="mx-auto max-w-6xl space-y-8 px-1 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-5 border-b border-[#1c1c1a]/15 pb-7">
-          <div>
-            <p className="eyebrow">Private operations</p>
-            <h1 className="mt-2 font-display text-4xl tracking-[-0.05em]">Review desk.</h1>
-          </div>
-          <Link href="/" className="inline-flex items-center gap-2 text-sm underline underline-offset-4">
-            Public market <ExternalLink size={14} />
-          </Link>
-        </div>
+  async function proof() {
+    if (!wallet) throw new Error("Connect the configured administrator wallet first");
+    const issued = await challenge.mutateAsync({ wallet, action: "admin_access" });
+    return { challengeId: issued.id, signature: await signWalletMessage(issued.message) };
+  }
+  async function connectAdminWallet() { try { setWallet(await connectWallet()); toast.success("Wallet connected. Verify access to open the review desk."); } catch (error) { toast.error(error instanceof Error ? error.message : "Wallet connection failed"); } }
+  async function loadOperations() { try { const signed = await proof(); await operations.mutateAsync({ wallet, proof: signed }); } catch (error) { toast.error(error instanceof Error ? error.message : "Administrator wallet verification failed"); } }
+  async function submitProject(event: FormEvent) { event.preventDefault(); try { const signed = await proof(); await createProject.mutateAsync({ wallet, proof: signed, name: projectName, slug: projectSlug, description: projectDescription || undefined }); } catch (error) { toast.error(error instanceof Error ? error.message : "Project could not be saved"); } }
+  async function decidePayout(publicId: string, status: "sent" | "withheld") { try { const signed = await proof(); await payout.mutateAsync({ commitmentPublicId: publicId, status, wallet, proof: signed, externalReference: status === "sent" ? "Manual USDC payout" : undefined, adminNote: status === "withheld" ? "Held for follow-up" : undefined }); } catch (error) { toast.error(error instanceof Error ? error.message : "Payout record could not be saved"); } }
+  async function archiveEligible() { try { const signed = await proof(); await archive.mutateAsync({ wallet, proof: signed }); } catch (error) { toast.error(error instanceof Error ? error.message : "Eligible records could not be compacted"); } }
 
-        {loading ? <p className="text-sm text-muted-foreground">Checking access…</p> : !isAdmin ? (
-          <div className="border border-[#1c1c1a] bg-[#f1eee5] p-7">
-            <ShieldAlert className="mb-3 text-[#ae4d31]" />
-            <h2 className="font-display text-2xl">Administrator access required.</h2>
-            <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">This area is limited to the site owner. Public market participants cannot view review notes, payment evidence, or payout records.</p>
-          </div>
-        ) : operations.isLoading ? <p className="text-sm text-muted-foreground">Loading review queue…</p> : (
-          <>
-            <section className="grid gap-4 sm:grid-cols-3">
-              <Metric label="Buyer requests" value={operations.data?.requests.length ?? 0} />
-              <Metric label="Seller commitments" value={operations.data?.commitments.length ?? 0} />
-              <Metric label="Recorded payouts" value={operations.data?.payouts.length ?? 0} />
-            </section>
-
-            <section className="grid gap-7 lg:grid-cols-[1.3fr_.7fr]">
-              <div className="border border-[#1c1c1a]/20 bg-white">
-                <div className="flex items-center justify-between border-b border-[#1c1c1a]/15 px-5 py-4">
-                  <h2 className="font-display text-2xl">Completion queue</h2>
-                  <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">manual review</span>
-                </div>
-                <div className="divide-y divide-[#1c1c1a]/10">
-                  {operations.data?.commitments.filter(item => item.status === "under_review").length ? operations.data.commitments.filter(item => item.status === "under_review").map(item => (
-                    <div key={item.publicId} className="flex flex-wrap items-center justify-between gap-4 px-5 py-5">
-                      <div>
-                        <p className="text-sm font-semibold">{item.publicId} · @{item.profileHandle}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{item.quantity.toLocaleString()} vouches · {money(item.pricePerVouch)} each</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => payout.mutate({ commitmentPublicId: item.publicId, status: "sent", externalReference: "Manual USDC payout" })} disabled={payout.isPending}>
-                          <Check size={14} className="mr-1.5" /> Record sent
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => payout.mutate({ commitmentPublicId: item.publicId, status: "withheld", adminNote: "Held for follow-up" })} disabled={payout.isPending}>Hold</Button>
-                      </div>
-                    </div>
-                  )) : <p className="px-5 py-8 text-sm text-muted-foreground">No fully confirmed completions are waiting for review.</p>}
-                </div>
-              </div>
-
-              <div className="border border-[#1c1c1a]/20 bg-[#1b1b19] p-5 text-[#f4f0e6]">
-                <p className="eyebrow text-[#c9c2b2]">Audit trail</p>
-                <div className="mt-5 space-y-4">
-                  {operations.data?.logs.slice(0, 8).map(log => <div key={log.id} className="border-b border-white/15 pb-3 last:border-0">
-                    <p className="text-sm font-medium">{log.eventType.replaceAll("_", " ")}</p>
-                    <p className="mt-1 text-xs text-[#c9c2b2]">{log.entityPublicId} · {new Date(log.createdAt).toLocaleString()}</p>
-                  </div>)}
-                </div>
-              </div>
-            </section>
-
-            <section className="border border-[#1c1c1a]/20 bg-white">
-              <div className="border-b border-[#1c1c1a]/15 px-5 py-4"><h2 className="font-display text-2xl">Payment evidence</h2></div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-[#f1eee5] text-xs uppercase tracking-[0.12em] text-muted-foreground"><tr><th className="px-5 py-3">Request</th><th className="px-5 py-3">State</th><th className="px-5 py-3">USDC</th><th className="px-5 py-3">Signature</th></tr></thead>
-                  <tbody>{operations.data?.requests.map(request => <tr key={request.publicId} className="border-t border-[#1c1c1a]/10"><td className="px-5 py-4 font-medium">{request.publicId}</td><td className="px-5 py-4"><Badge variant="outline">{request.status.replaceAll("_", " ")}</Badge></td><td className="px-5 py-4">{money(request.totalUsdc)}</td><td className="max-w-[210px] truncate px-5 py-4 font-mono text-xs">{request.paymentSignature ?? "—"}</td></tr>)}</tbody>
-                </table>
-              </div>
-            </section>
-          </>
-        )}
-      </div>
-    </DashboardLayout>
-  );
+  const data = operations.data;
+  return <DashboardLayout><div className="mx-auto max-w-6xl space-y-8 px-1 py-4"><div className="flex flex-wrap items-start justify-between gap-5 border-b border-[#1c1c1a]/15 pb-7"><div><p className="eyebrow">Private operations</p><h1 className="mt-2 font-display text-4xl tracking-[-.05em]">Review desk.</h1></div><Link href="/market" className="inline-flex items-center gap-2 text-sm underline underline-offset-4">Public market <ExternalLink size={14} /></Link></div>
+    {loading ? <p className="text-sm text-muted-foreground">Checking access…</p> : !isAdmin ? <AccessNotice /> : !wallet ? <div className="border border-[#1c1c1a] bg-[#f1eee5] p-7"><p className="eyebrow">Second factor</p><h2 className="mt-2 font-display text-3xl">Connect the administrator wallet.</h2><p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">The site owner role and the configured Solana recipient wallet are both required before payment evidence, buyer confirmation, and payout records can be viewed.</p><Button className="mt-6 bg-[#1b1b19] text-[#f4f0e6]" onClick={connectAdminWallet}><WalletCards className="mr-2 size-4" />Connect administrator wallet</Button></div> : !data ? <div className="border border-[#1c1c1a]/20 bg-white p-7"><h2 className="font-display text-3xl">Verify review access.</h2><p className="mt-2 text-sm text-muted-foreground">Connected: {shortWallet(wallet)}. Sign a verification message to open the review desk.</p><Button className="mt-5 bg-[#1b1b19] text-[#f4f0e6]" onClick={loadOperations} disabled={operations.isPending}>{operations.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" />Verifying…</> : "Sign & open review desk"}</Button></div> : <>
+      <section className="grid gap-4 sm:grid-cols-4"><Metric label="Buyer requests" value={data.requests.length} /><Metric label="Seller commitments" value={data.commitments.length} /><Metric label="Recorded payouts" value={data.payouts.length} /><Metric label="Fee total" value={money(data.payouts.reduce((sum, item) => sum + Number(item.platformFeeUsdc ?? 0), 0))} text /></section><div className="flex justify-end"><Button variant="outline" onClick={archiveEligible} disabled={archive.isPending}>{archive.isPending ? <><Loader2 className="mr-2 size-4 animate-spin" />Compacting…</> : "Compact eligible records"}</Button></div>
+      <section className="grid gap-7 lg:grid-cols-[1.3fr_.7fr]"><div className="border border-[#1c1c1a]/20 bg-white"><div className="flex items-center justify-between border-b border-[#1c1c1a]/15 px-5 py-4"><h2 className="font-display text-2xl">Completion queue</h2><span className="text-xs uppercase tracking-[.14em] text-muted-foreground">manual review</span></div><div className="divide-y divide-[#1c1c1a]/10">{data.commitments.filter(item => item.status === "under_review").length ? data.commitments.filter(item => item.status === "under_review").map(item => <div key={item.publicId} className="flex flex-wrap items-center justify-between gap-4 px-5 py-5"><div><p className="text-sm font-semibold">{item.publicId} · @{item.profileHandle}</p><p className="mt-1 text-sm text-muted-foreground">Gross {money(item.grossUsdc ?? Number(item.pricePerVouch) * item.quantity)} · Fee {money(item.platformFeeUsdc)} · Seller net {money(item.sellerNetUsdc)}</p><p className="mt-1 text-xs text-muted-foreground">Seller marked: {item.sellerMarkedDoneAt ? "yes" : "no"} · Buyer confirmed: {item.buyerMarkedDoneAt ? "yes" : item.requestId ? "via linked request" : "no"}</p></div><div className="flex gap-2"><Button size="sm" onClick={() => decidePayout(item.publicId, "sent")} disabled={payout.isPending}><Check size={14} className="mr-1.5" />Record sent</Button><Button variant="outline" size="sm" onClick={() => decidePayout(item.publicId, "withheld")} disabled={payout.isPending}>Hold</Button></div></div>) : <p className="px-5 py-8 text-sm text-muted-foreground">No fully confirmed completions are waiting for review.</p>}</div></div><div className="border border-[#1c1c1a]/20 bg-[#1b1b19] p-5 text-[#f4f0e6]"><p className="eyebrow text-[#c9c2b2]">Audit trail</p><div className="mt-5 space-y-4">{data.logs.slice(0, 8).map(log => <div key={log.id} className="border-b border-white/15 pb-3 last:border-0"><p className="text-sm font-medium">{log.eventType.replaceAll("_", " ")}</p><p className="mt-1 text-xs text-[#c9c2b2]">{log.entityPublicId} · {new Date(log.createdAt).toLocaleString()}</p></div>)}</div></div></section>
+      <section className="grid gap-7 lg:grid-cols-[.9fr_1.1fr]"><form className="border border-[#1c1c1a]/20 bg-white p-5" onSubmit={submitProject}><p className="eyebrow">Compatible projects</p><h2 className="mt-2 font-display text-2xl">Add a project.</h2><div className="mt-5 grid gap-3"><Input value={projectName} onChange={event => setProjectName(event.target.value)} placeholder="Project name" required /><Input value={projectSlug} onChange={event => setProjectSlug(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))} placeholder="project-slug" required /><Input value={projectDescription} onChange={event => setProjectDescription(event.target.value)} placeholder="Short description (optional)" /><Button type="submit" className="mt-1 bg-[#1b1b19] text-[#f4f0e6]" disabled={createProject.isPending}><Plus className="mr-2 size-4" />Save project</Button></div></form><section className="border border-[#1c1c1a]/20 bg-white"><div className="border-b border-[#1c1c1a]/15 px-5 py-4"><h2 className="font-display text-2xl">Payment evidence</h2></div><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-[#f1eee5] text-xs uppercase tracking-[.12em] text-muted-foreground"><tr><th className="px-5 py-3">Record</th><th className="px-5 py-3">State</th><th className="px-5 py-3">Gross</th><th className="px-5 py-3">Signature</th></tr></thead><tbody>{[...data.requests, ...data.commitments.filter(item => item.paymentSignature)].map((record: any) => <tr key={record.publicId} className="border-t border-[#1c1c1a]/10"><td className="px-5 py-4 font-medium">{record.publicId}</td><td className="px-5 py-4"><Badge variant="outline">{record.status.replaceAll("_", " ")}</Badge></td><td className="px-5 py-4">{money(record.grossUsdc ?? record.totalUsdc)}</td><td className="max-w-[180px] truncate px-5 py-4 font-mono text-xs">{record.paymentSignature ?? "—"}</td></tr>)}</tbody></table></div></section></section>
+    </>}</div></DashboardLayout>;
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
-  return <div className="border border-[#1c1c1a]/20 bg-white p-5"><p className="eyebrow">{label}</p><p className="mt-2 font-display text-4xl tracking-[-0.05em]">{value}</p></div>;
-}
+function AccessNotice() { return <div className="border border-[#1c1c1a] bg-[#f1eee5] p-7"><ShieldAlert className="mb-3 text-[#ae4d31]" /><h2 className="font-display text-2xl">Administrator access required.</h2><p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">This area is limited to the site owner. Public market participants cannot view review notes, payment evidence, or payout records.</p></div>; }
+function Metric({ label, value, text }: { label: string; value: number | string; text?: boolean }) { return <div className="border border-[#1c1c1a]/20 bg-white p-5"><p className="eyebrow">{label}</p><p className={`mt-2 font-display tracking-[-.05em] ${text ? "text-2xl" : "text-4xl"}`}>{value}</p></div>; }

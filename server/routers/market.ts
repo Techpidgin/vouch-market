@@ -3,15 +3,21 @@ import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc";
 import {
   activatePaidRequest,
+  activateOfferPurchase,
   cancelUnpaidRequest,
   createRequest,
   createSellerOffer,
+  delistSellerOffer,
   fillRequest,
   getParticipantActivity,
+  getOfferPaymentDetails,
   getPaymentDetails,
   getPublicMarket,
+  initiateOfferPurchase,
   markBuyerDone,
+  markOfferBuyerDone,
   markSellerDone,
+  recordVerifiedOfferPurchase,
   recordVerifiedPayment,
 } from "../market/db";
 import { verifyUsdcPayment } from "../market/solana";
@@ -20,7 +26,7 @@ import { createWalletChallenge, verifyWalletChallenge } from "../market/walletPr
 import { enforceUnder1kMinimum } from "../market/rules";
 
 const wallet = z.string().trim().min(32).max(64);
-const band = z.enum(["under_1k", "1k_5k", "5k_25k", "25k_plus"]);
+const band = z.enum(["under_1k", "1k_5k", "5k_10k", "10k_25k", "25k_50k", "50k_plus"]);
 const proof = z.object({ challengeId: z.string().min(8), signature: z.string().min(20) });
 
 function marketError(error: unknown): never {
@@ -31,7 +37,7 @@ export const marketRouter = router({
   board: publicProcedure.query(async () => getPublicMarket()),
   activity: publicProcedure.input(z.object({ wallet })).query(async ({ input }) => getParticipantActivity(input.wallet)),
   walletChallenge: publicProcedure
-    .input(z.object({ wallet, action: z.enum(["seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request"]) }))
+    .input(z.object({ wallet, action: z.enum(["seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "admin_access"]) }))
     .mutation(async ({ input }) => {
       try {
         return await createWalletChallenge(input.wallet, input.action);
@@ -40,11 +46,11 @@ export const marketRouter = router({
       }
     }),
   createRequest: publicProcedure
-    .input(z.object({ wallet, targetHandle: z.string().trim().min(1).max(80), vouchBand: band, quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000) }))
+    .input(z.object({ wallet, targetHandle: z.string().trim().min(1).max(80), projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), vouchBand: band, quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000) }))
     .mutation(async ({ input }) => {
       try {
         enforceUnder1kMinimum(input.vouchBand, input.pricePerVouch);
-        const created = await createRequest({ buyerWallet: input.wallet, targetHandle: input.targetHandle.replace(/^@/, ""), vouchBand: input.vouchBand, requestedQuantity: input.quantity, pricePerVouch: input.pricePerVouch, totalUsdc: input.quantity * input.pricePerVouch });
+        const created = await createRequest({ buyerWallet: input.wallet, targetHandle: input.targetHandle.replace(/^@/, ""), projectSlug: input.projectSlug, vouchBand: input.vouchBand, requestedQuantity: input.quantity, pricePerVouch: input.pricePerVouch, totalUsdc: input.quantity * input.pricePerVouch });
         return { ...created, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
       } catch (error) {
         marketError(error);
@@ -73,11 +79,11 @@ export const marketRouter = router({
       }
     }),
   createSellerOffer: publicProcedure
-    .input(z.object({ wallet, profileHandle: z.string().trim().min(1).max(80), vouchBand: band, quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, profileHandle: z.string().trim().min(1).max(80), projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), vouchBand: band, quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-        return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), vouchBand: input.vouchBand, quantity: input.quantity, pricePerVouch: input.pricePerVouch });
+        return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, vouchBand: input.vouchBand, quantity: input.quantity, pricePerVouch: input.pricePerVouch });
       } catch (error) {
         marketError(error);
       }
@@ -91,6 +97,42 @@ export const marketRouter = router({
       } catch (error) {
         marketError(error);
       }
+    }),
+  initiateOfferPurchase: publicProcedure
+    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, proof }))
+    .mutation(async ({ input }) => {
+      try {
+        await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "offer_buy" });
+        const created = await initiateOfferPurchase({ offerPublicId: input.publicId, buyerWallet: input.wallet });
+        return { ...created, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
+      } catch (error) { marketError(error); }
+    }),
+  offerPaymentDetails: publicProcedure
+    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet }))
+    .query(async ({ input }) => {
+      try {
+        const details = await getOfferPaymentDetails(input.publicId, input.wallet);
+        return { ...details, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
+      } catch (error) { marketError(error); }
+    }),
+  verifyOfferPayment: publicProcedure
+    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, signature: z.string().min(64).max(128) }))
+    .mutation(async ({ input }) => {
+      try {
+        const offer = await activateOfferPurchase({ publicId: input.publicId, signature: input.signature, buyerWallet: input.wallet });
+        await verifyUsdcPayment({ signature: input.signature, buyerWallet: input.wallet, expectedUsdc: offer.grossUsdc!, earliestAllowedAt: offer.createdAt });
+        await recordVerifiedOfferPurchase(input.publicId, input.signature);
+        return { ok: true };
+      } catch (error) { marketError(error); }
+    }),
+  delistSellerOffer: publicProcedure
+    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, proof }))
+    .mutation(async ({ input }) => {
+      try {
+        await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_delist" });
+        await delistSellerOffer(input.publicId, input.wallet);
+        return { ok: true };
+      } catch (error) { marketError(error); }
     }),
   markBuyerDone: publicProcedure
     .input(z.object({ publicId: z.string().startsWith("REQ-"), wallet, proof }))
@@ -113,6 +155,15 @@ export const marketRouter = router({
       } catch (error) {
         marketError(error);
       }
+    }),
+  markOfferBuyerDone: publicProcedure
+    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, proof }))
+    .mutation(async ({ input }) => {
+      try {
+        await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "offer_buyer_done" });
+        await markOfferBuyerDone(input.publicId, input.wallet);
+        return { ok: true };
+      } catch (error) { marketError(error); }
     }),
   cancelRequest: publicProcedure
     .input(z.object({ publicId: z.string().startsWith("REQ-"), wallet, proof }))

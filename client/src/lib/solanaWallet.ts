@@ -40,6 +40,17 @@ function toBase64(bytes: Uint8Array) {
   return window.btoa(binary);
 }
 
+function usdcStringToMicro(amountUsdc: string) {
+  const normalized = String(amountUsdc ?? "").trim();
+  if (!/^\d+(?:\.\d{1,6})?$/.test(normalized)) {
+    throw new Error("Enter a valid USDC amount with up to six decimal places");
+  }
+  const [whole, fraction = ""] = normalized.split(".");
+  const micro = Number(whole) * 1_000_000 + Number(fraction.padEnd(6, "0"));
+  if (!Number.isSafeInteger(micro) || micro <= 0) throw new Error("The USDC amount is invalid");
+  return micro;
+}
+
 export async function connectWallet() {
   const provider = providerOrThrow();
   const result = await provider.connect();
@@ -70,11 +81,7 @@ export async function sendUsdcPayment(input: {
   const recipient = new PublicKey(input.recipientWallet);
   const senderUsdc = await getAssociatedTokenAddress(mint, sender);
   const recipientUsdc = await getAssociatedTokenAddress(mint, recipient);
-  const amount = Math.round(Number(input.amountUsdc) * 1_000_000);
-
-  if (!Number.isSafeInteger(amount) || amount <= 0) {
-    throw new Error("The USDC amount is invalid");
-  }
+  const amount = usdcStringToMicro(input.amountUsdc);
 
   const transaction = new Transaction();
   const recipientAccount = await connection.getAccountInfo(recipientUsdc, "confirmed");

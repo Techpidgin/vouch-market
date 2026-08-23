@@ -48,9 +48,27 @@ export const requestStatus = mysqlEnum("requestStatus", [
 export const vouchBand = mysqlEnum("vouchBand", [
   "under_1k",
   "1k_5k",
+  "5k_10k",
+  "10k_25k",
   "5k_25k",
+  "25k_50k",
+  "50k_plus",
   "25k_plus",
 ]);
+
+export const marketProjects = mysqlTable(
+  "marketProjects",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    slug: varchar("slug", { length: 64 }).notNull(),
+    name: varchar("name", { length: 120 }).notNull(),
+    description: text("description"),
+    isActive: int("isActive").notNull().default(1),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [uniqueIndex("marketProjects_slug_unique").on(table.slug)],
+);
 
 export const marketRequests = mysqlTable(
   "marketRequests",
@@ -59,11 +77,14 @@ export const marketRequests = mysqlTable(
     publicId: varchar("publicId", { length: 24 }).notNull(),
     buyerWallet: varchar("buyerWallet", { length: 64 }).notNull(),
     targetHandle: varchar("targetHandle", { length: 80 }).notNull(),
+    projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
     vouchBand: vouchBand.notNull(),
     requestedQuantity: int("requestedQuantity").notNull(),
     filledQuantity: int("filledQuantity").notNull().default(0),
     pricePerVouch: decimal("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
     totalUsdc: decimal("totalUsdc", { precision: 16, scale: 6 }).notNull(),
+    platformFeeUsdc: decimal("platformFeeUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
+    sellerNetUsdc: decimal("sellerNetUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
     paymentSignature: varchar("paymentSignature", { length: 128 }).unique(),
     paymentVerifiedAt: timestamp("paymentVerifiedAt"),
     status: requestStatus.notNull().default("awaiting_payment"),
@@ -83,6 +104,7 @@ export const marketRequests = mysqlTable(
 
 export const sellerCommitmentStatus = mysqlEnum("sellerCommitmentStatus", [
   "open",
+  "awaiting_payment",
   "matched",
   "done",
   "under_review",
@@ -100,9 +122,17 @@ export const sellerCommitments = mysqlTable(
     requestId: int("requestId"),
     sellerWallet: varchar("sellerWallet", { length: 64 }).notNull(),
     profileHandle: varchar("profileHandle", { length: 80 }).notNull(),
+    projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
     vouchBand: vouchBand.notNull(),
     quantity: int("quantity").notNull(),
     pricePerVouch: decimal("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
+    grossUsdc: decimal("grossUsdc", { precision: 16, scale: 6 }),
+    platformFeeUsdc: decimal("platformFeeUsdc", { precision: 16, scale: 6 }),
+    sellerNetUsdc: decimal("sellerNetUsdc", { precision: 16, scale: 6 }),
+    buyerWallet: varchar("buyerWallet", { length: 64 }),
+    paymentSignature: varchar("paymentSignature", { length: 128 }).unique(),
+    paymentVerifiedAt: timestamp("paymentVerifiedAt"),
+    buyerMarkedDoneAt: timestamp("buyerMarkedDoneAt"),
     status: sellerCommitmentStatus.notNull().default("open"),
     sellerMarkedDoneAt: timestamp("sellerMarkedDoneAt"),
     archiveEligibleAt: timestamp("archiveEligibleAt").notNull(),
@@ -155,6 +185,8 @@ export const payoutRecords = mysqlTable(
     sellerCommitmentId: int("sellerCommitmentId").notNull(),
     recipientWallet: varchar("recipientWallet", { length: 64 }).notNull(),
     amountUsdc: decimal("amountUsdc", { precision: 16, scale: 6 }).notNull(),
+    grossAmountUsdc: decimal("grossAmountUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
+    platformFeeUsdc: decimal("platformFeeUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
     status: payoutStatus.notNull().default("queued"),
     externalReference: varchar("externalReference", { length: 160 }),
     adminNote: text("adminNote"),

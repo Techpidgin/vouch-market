@@ -24,4 +24,25 @@
 - [x] Sanitize private archive snapshots to exclude wallet addresses and payment signatures while retaining the operational record needed for review.
 - [x] Add Vitest coverage for archive payload sanitization and the archived-record visibility rule.
 - [x] Add a Vitest test that confirms archived records are excluded from public market visibility.
-- [ ] After publication, create the protected recurring archive job for `/api/scheduled/archive-market`.
+- [x] After publication, create the protected recurring archive job for `/api/scheduled/archive-market`.
+- [x] Move public listings to a dedicated market route with a concise entry page that leads users into the app.
+- [x] Support CommonsMade as the default project and allow additional compatible projects to be added and selected for point listings.
+- [x] Expand point bands through 50,000+ points and correct the 0.50-USDC validation path.
+- [x] Repair the wallet payment trigger so buyer USDC transactions reliably open the connected wallet for approval.
+- [x] Add buyer-initiated purchases of seller listings with a payment-backed commitment flow.
+- [x] Allow a seller to delist an uncommitted open offer using a wallet-signed action.
+- [x] Calculate a transparent 5% platform fee and show administrators gross amount, platform fee, and seller net payout without exposing private operations publicly.
+- [x] Update administrator access so the configured administrative wallet holder can review payment evidence, buyer confirmation, seller completion claims, and manual payout status.
+- [x] Document a practical Vercel-compatible backend and storage configuration without weakening existing payment verification safeguards.
+- [x] Add automated tests for fee calculation, new point bands, delisting authorization, and buyer purchase state transitions.
+- [x] Add Vitest coverage for seller-delisting authorization, including non-owner and non-open listing rejection.
+- [x] Add Vitest coverage for buyer purchase reservation, payment verification, buyer confirmation, seller completion, and review progression.
+- [x] Add a Vercel-compatible build and serverless deployment configuration that does not depend on the managed development runtime.
+- [x] Keep secrets, Solana verification, relational data, private archives, and administrator controls server-side in the Vercel deployment design.
+- [x] Superseded: no recurring scheduler requested; removed Vercel Cron configuration and the active scheduled job.
+- [x] Validate the production build and document the Vercel environment variables, database/storage provider requirements, and deployment limitations.
+- [x] Superseded: no Cron callback remains, so no Vercel Cron authorization test is required.
+- [x] Remove the registered recurring archive job and all Vercel Cron configuration.
+- [x] Replace automatic 24-hour archival with a compact, administrator-initiated archive action that retains only minimal operational summaries.
+- [ ] Complete the Supabase Postgres data-access migration after the user enables the integration and provides server connection values.
+- [ ] Push the Vercel-compatible, no-cron update and Supabase handoff documentation to the private GitHub repository.
