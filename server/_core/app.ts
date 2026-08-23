@@ -8,6 +8,7 @@ import { runMarketArchive } from "../market/archive";
 
 export function createVouchApp() {
   const app = express();
+  app.set("trust proxy", 1);
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
   registerStorageProxy(app);

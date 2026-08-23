@@ -1,9 +1,11 @@
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { lt } from "drizzle-orm";
 import {
   activityLogs,
   marketProjects,
   marketRequests,
+  paymentSignatureClaims,
   payoutRecords,
   sellerCommitments,
 } from "../../drizzle/schema";
@@ -12,6 +14,8 @@ import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, type VouchBa
 import { assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, transitionDirectPurchase } from "./rules";
 import { removeArchiveMetadata } from "./visibility";
 import { getCachedPublicBoard, invalidatePublicBoardCache } from "./compactState";
+
+const DIRECT_PURCHASE_HOLD_MS = 15 * 60 * 1000;
 
 async function dbOrThrow() {
   const db = await getDb();
@@ -37,6 +41,27 @@ async function ensureDefaultProject() {
   await db.insert(marketProjects).values(DEFAULT_PROJECT).onDuplicateKeyUpdate({ set: { name: DEFAULT_PROJECT.name } });
 }
 
+async function releaseStaleDirectPurchaseReservations(now = new Date()) {
+  const db = await dbOrThrow();
+  const cutoff = new Date(now.getTime() - DIRECT_PURCHASE_HOLD_MS);
+  const [result] = await db
+    .update(sellerCommitments)
+    .set({
+      status: "open",
+      buyerWallet: null,
+      grossUsdc: null,
+      platformFeeUsdc: null,
+      sellerNetUsdc: null,
+    })
+    .where(and(
+      eq(sellerCommitments.status, "awaiting_payment"),
+      isNull(sellerCommitments.paymentSignature),
+      lt(sellerCommitments.updatedAt, cutoff),
+    ));
+  if (result.affectedRows) await invalidatePublicBoardCache();
+  return result.affectedRows ?? 0;
+}
+
 export async function createMarketProject(input: { slug: string; name: string; description?: string }) {
   const db = await dbOrThrow();
   await db.insert(marketProjects).values({ slug: input.slug, name: input.name, description: input.description }).onDuplicateKeyUpdate({
@@ -49,6 +74,7 @@ export async function getPublicMarket() {
   return getCachedPublicBoard(async () => {
     const db = await dbOrThrow();
     await ensureDefaultProject();
+    await releaseStaleDirectPurchaseReservations();
     const [projects, requests, sellerOffers] = await Promise.all([
     db.select({ slug: marketProjects.slug, name: marketProjects.name, description: marketProjects.description }).from(marketProjects).where(eq(marketProjects.isActive, 1)).orderBy(marketProjects.name),
     db
@@ -142,12 +168,21 @@ export async function getPaymentDetails(publicId: string, buyerWallet: string) {
   return { publicId: request.publicId, totalUsdc: request.totalUsdc, targetHandle: request.targetHandle };
 }
 
-export async function recordVerifiedPayment(publicId: string, signature: string) {
+export async function recordVerifiedPayment(publicId: string, signature: string, buyerWallet: string) {
   const db = await dbOrThrow();
-  await db
-    .update(marketRequests)
-    .set({ paymentSignature: signature, paymentVerifiedAt: new Date(), status: "open" })
-    .where(eq(marketRequests.publicId, publicId));
+  try {
+    await db.transaction(async tx => {
+      await tx.insert(paymentSignatureClaims).values({ signature, entityType: "request", entityPublicId: publicId });
+      const [result] = await tx
+        .update(marketRequests)
+        .set({ paymentSignature: signature, paymentVerifiedAt: new Date(), status: "open" })
+        .where(and(eq(marketRequests.publicId, publicId), eq(marketRequests.buyerWallet, buyerWallet), eq(marketRequests.status, "awaiting_payment")));
+      if (!result.affectedRows) throw new Error("This request is no longer awaiting this wallet's payment");
+    });
+  } catch (error) {
+    if ((error as { code?: string }).code === "ER_DUP_ENTRY") throw new Error("This payment signature has already been used");
+    throw error;
+  }
   await logActivity({ entityType: "request", entityPublicId: publicId, eventType: "payment_verified" });
 }
 
@@ -215,6 +250,7 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
 
 export async function initiateOfferPurchase(input: { offerPublicId: string; buyerWallet: string }) {
   const db = await dbOrThrow();
+  await releaseStaleDirectPurchaseReservations();
   const offer = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, input.offerPublicId)).limit(1))[0];
   if (!offer || offer.requestId || transitionDirectPurchase({ status: offer.status as "open", buyerMarkedDone: false, sellerMarkedDone: false }, "reserve").status !== "awaiting_payment") throw new Error("This seller offer is no longer available");
   const amounts = calculateMarketAmounts(offer.quantity, Number(offer.pricePerVouch));
@@ -240,9 +276,18 @@ export async function activateOfferPurchase(input: { publicId: string; signature
   return offer;
 }
 
-export async function recordVerifiedOfferPurchase(publicId: string, signature: string) {
+export async function recordVerifiedOfferPurchase(publicId: string, signature: string, buyerWallet: string) {
   const db = await dbOrThrow();
-  await db.update(sellerCommitments).set({ paymentSignature: signature, paymentVerifiedAt: new Date(), status: "matched" }).where(eq(sellerCommitments.publicId, publicId));
+  try {
+    await db.transaction(async tx => {
+      await tx.insert(paymentSignatureClaims).values({ signature, entityType: "seller_commitment", entityPublicId: publicId });
+      const [result] = await tx.update(sellerCommitments).set({ paymentSignature: signature, paymentVerifiedAt: new Date(), status: "matched" }).where(and(eq(sellerCommitments.publicId, publicId), eq(sellerCommitments.buyerWallet, buyerWallet), eq(sellerCommitments.status, "awaiting_payment")));
+      if (!result.affectedRows) throw new Error("This offer is no longer awaiting this wallet's payment");
+    });
+  } catch (error) {
+    if ((error as { code?: string }).code === "ER_DUP_ENTRY") throw new Error("This payment signature has already been used");
+    throw error;
+  }
   await logActivity({ entityType: "seller_commitment", entityPublicId: publicId, eventType: "offer_purchase_verified" });
 }
 

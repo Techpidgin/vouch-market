@@ -178,6 +178,17 @@ export const activityLogs = mysqlTable(
 
 export const payoutStatus = mysqlEnum("payoutStatus", ["queued", "sent", "withheld"]);
 
+export const paymentSignatureClaims = mysqlTable(
+  "paymentSignatureClaims",
+  {
+    signature: varchar("signature", { length: 128 }).primaryKey(),
+    entityType: varchar("entityType", { length: 32 }).notNull(),
+    entityPublicId: varchar("entityPublicId", { length: 24 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("paymentSignatureClaims_entity_idx").on(table.entityPublicId)],
+);
+
 export const payoutRecords = mysqlTable(
   "payoutRecords",
   {
