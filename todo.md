@@ -52,8 +52,8 @@
 - [x] Map the buyer, seller, payment verification, review, payout, compact archive, and Upstash cache workflow end to end.
 - [x] Perform a focused server-side security review of wallet proofs, transaction verification, authorization, privacy, rate limiting, and deployment configuration.
 - [x] Validate the user-facing testing paths and apply safe high-priority fixes discovered during review.
-- [ ] Deliver a concise concept, workflow, and security improvement report with prioritized next steps.
-- [ ] Push the security hardening changes, payment-signature migration, and workflow review to the private GitHub repository.
+- [x] Deliver a concise concept, workflow, and security improvement report with prioritized next steps.
+- [x] Push the security hardening changes, payment-signature migration, and workflow review to the private GitHub repository.
 - [x] Require an action-bound wallet signature before a buyer request can be created and validate all supplied wallet addresses as Solana public keys.
 - [x] Restrict wallet activity lookup to a signed wallet confirmation so public callers cannot enumerate another wallet’s request and seller activity.
 - [x] Automatically release stale unpaid direct-offer reservations during normal request handling so a buyer cannot lock a seller listing indefinitely.
