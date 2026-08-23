@@ -68,4 +68,4 @@
 - [x] Remove the remaining public-facing review wording from completion messages and wallet activity while preserving clear payout terms.
 - [ ] Save and publish the compact-market refinement, then verify the published market view at desktop and mobile widths.
 - [x] Replace internal review-status labels with neutral public wallet-activity language and revalidate the activity display.
-- [ ] Push the compact marketplace refinement and public-copy cleanup to the private GitHub repository.
+- [x] Push the compact marketplace refinement and public-copy cleanup to the private GitHub repository.
