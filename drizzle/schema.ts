@@ -1,4 +1,14 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  decimal,
+  index,
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -25,4 +35,139 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+export const requestStatus = mysqlEnum("requestStatus", [
+  "awaiting_payment",
+  "open",
+  "filled",
+  "awaiting_review",
+  "completed",
+  "cancelled",
+  "disputed",
+]);
+
+export const vouchBand = mysqlEnum("vouchBand", [
+  "under_1k",
+  "1k_5k",
+  "5k_25k",
+  "25k_plus",
+]);
+
+export const marketRequests = mysqlTable(
+  "marketRequests",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    publicId: varchar("publicId", { length: 24 }).notNull(),
+    buyerWallet: varchar("buyerWallet", { length: 64 }).notNull(),
+    targetHandle: varchar("targetHandle", { length: 80 }).notNull(),
+    vouchBand: vouchBand.notNull(),
+    requestedQuantity: int("requestedQuantity").notNull(),
+    filledQuantity: int("filledQuantity").notNull().default(0),
+    pricePerVouch: decimal("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
+    totalUsdc: decimal("totalUsdc", { precision: 16, scale: 6 }).notNull(),
+    paymentSignature: varchar("paymentSignature", { length: 128 }).unique(),
+    paymentVerifiedAt: timestamp("paymentVerifiedAt"),
+    status: requestStatus.notNull().default("awaiting_payment"),
+    buyerMarkedDoneAt: timestamp("buyerMarkedDoneAt"),
+    archiveEligibleAt: timestamp("archiveEligibleAt").notNull(),
+    archivedAt: timestamp("archivedAt"),
+    archiveSummary: text("archiveSummary"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("marketRequests_publicId_unique").on(table.publicId),
+    index("marketRequests_status_createdAt_idx").on(table.status, table.createdAt),
+    index("marketRequests_archiveEligibleAt_idx").on(table.archiveEligibleAt),
+  ],
+);
+
+export const sellerCommitmentStatus = mysqlEnum("sellerCommitmentStatus", [
+  "open",
+  "matched",
+  "done",
+  "under_review",
+  "approved",
+  "paid",
+  "cancelled",
+  "disputed",
+]);
+
+export const sellerCommitments = mysqlTable(
+  "sellerCommitments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    publicId: varchar("publicId", { length: 24 }).notNull(),
+    requestId: int("requestId"),
+    sellerWallet: varchar("sellerWallet", { length: 64 }).notNull(),
+    profileHandle: varchar("profileHandle", { length: 80 }).notNull(),
+    vouchBand: vouchBand.notNull(),
+    quantity: int("quantity").notNull(),
+    pricePerVouch: decimal("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
+    status: sellerCommitmentStatus.notNull().default("open"),
+    sellerMarkedDoneAt: timestamp("sellerMarkedDoneAt"),
+    archiveEligibleAt: timestamp("archiveEligibleAt").notNull(),
+    archivedAt: timestamp("archivedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("sellerCommitments_publicId_unique").on(table.publicId),
+    index("sellerCommitments_requestId_status_idx").on(table.requestId, table.status),
+    index("sellerCommitments_status_createdAt_idx").on(table.status, table.createdAt),
+  ],
+);
+
+export const walletChallenges = mysqlTable(
+  "walletChallenges",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    wallet: varchar("wallet", { length: 64 }).notNull(),
+    action: varchar("action", { length: 48 }).notNull(),
+    message: text("message").notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    usedAt: timestamp("usedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("walletChallenges_wallet_action_idx").on(table.wallet, table.action)],
+);
+
+export const activityLogs = mysqlTable(
+  "activityLogs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    entityType: varchar("entityType", { length: 32 }).notNull(),
+    entityPublicId: varchar("entityPublicId", { length: 24 }).notNull(),
+    eventType: varchar("eventType", { length: 64 }).notNull(),
+    actorWallet: varchar("actorWallet", { length: 64 }),
+    actorAdminOpenId: varchar("actorAdminOpenId", { length: 64 }),
+    detail: text("detail"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [index("activityLogs_entity_createdAt_idx").on(table.entityPublicId, table.createdAt)],
+);
+
+export const payoutStatus = mysqlEnum("payoutStatus", ["queued", "sent", "withheld"]);
+
+export const payoutRecords = mysqlTable(
+  "payoutRecords",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    sellerCommitmentId: int("sellerCommitmentId").notNull(),
+    recipientWallet: varchar("recipientWallet", { length: 64 }).notNull(),
+    amountUsdc: decimal("amountUsdc", { precision: 16, scale: 6 }).notNull(),
+    status: payoutStatus.notNull().default("queued"),
+    externalReference: varchar("externalReference", { length: 160 }),
+    adminNote: text("adminNote"),
+    decidedByOpenId: varchar("decidedByOpenId", { length: 64 }).notNull(),
+    decidedAt: timestamp("decidedAt").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("payoutRecords_commitment_unique").on(table.sellerCommitmentId),
+    index("payoutRecords_status_createdAt_idx").on(table.status, table.createdAt),
+  ],
+);
+
+export type MarketRequest = typeof marketRequests.$inferSelect;
+export type SellerCommitment = typeof sellerCommitments.$inferSelect;

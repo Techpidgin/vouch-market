@@ -1,0 +1,23 @@
+# Project TODO
+
+- [x] Define public order language, market-suggestion disclosures, and non-guarantee notices.
+- [x] Design database tables for identity links, wallets, market entries, payment evidence, order states, manual review decisions, activity logs, and archival metadata.
+- [x] Apply database migrations and create secure query helpers with user and administrator ownership checks.
+- [x] Build a responsive public CommonsMade market board for buyer requests and seller offers.
+- [x] Build identity-gated buyer request creation with a $0.50 minimum for requests below 1,000 vouches.
+- [x] Build seller offer creation with receiving-wallet capture and fulfilment confirmation.
+- [x] Implement server-side Solana transaction verification for recipient, sender wallet, signature uniqueness, finalized status, and confirmed amount.
+- [x] Add order state history, plain-language status messages, failure/dispute flows, and no-guarantee notices.
+- [x] Build private role-gated operations views for evidence review, completion claims, manual decisions, and audit logs.
+- [ ] Add a safe 24-hour archival job that creates protected snapshot records and removes public exposure without storing sensitive transaction information in the public interface.
+- [x] Create an implementation-plan document explaining the architecture, operating process, safeguards, and deployment steps.
+- [x] Write and run Vitest coverage for validation, state transitions, ownership gates, and transaction-reuse prevention.
+- [x] Validate the responsive UI on desktop and mobile, resolve build/runtime issues, and record results.
+- [ ] Create and push the completed project to a private GitHub repository.
+- [x] Replace account-authentication and X-linking work with a wallet-only participation flow.
+- [x] Limit settlement support to USDC on Solana and verify the canonical USDC transfer amount and recipient wallet server-side.
+- [x] Implement seller fills against buyer requests, including available-vouch quantity, receiving-wallet address, and a no-overfill rule.
+- [x] Let request participants and sellers mark their own fulfilment as done, while retaining all payout and review operations privately for the administrator.
+- [x] Add Vitest coverage for wallet ownership enforcement and administrator-only operations access.
+- [x] Add Vitest coverage for the request and seller completion state transitions through manual payout resolution.
+- [x] Implement a wallet-confirmed cancellation path and plain-language cancelled-state message for unpaid buyer requests.

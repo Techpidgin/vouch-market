@@ -175,3 +175,20 @@
     }
   }
 }
+
+@layer components {
+  .market-shell {
+    width: 100%;
+    max-width: 1440px;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  .font-display { font-family: "DM Serif Display", Georgia, serif; }
+  .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 0.65rem; letter-spacing: 0.15em; line-height: 1.2; text-transform: uppercase; }
+  .paper-grid { background-image: linear-gradient(to right, rgba(27,27,25,.14) 1px, transparent 1px), linear-gradient(to bottom, rgba(27,27,25,.14) 1px, transparent 1px), radial-gradient(circle at 24% 22%, rgba(255,255,255,.8), transparent 25%); background-size: 34px 34px, 34px 34px, 100% 100%; }
+
+  @media (min-width: 640px) {
+    .market-shell { padding-inline: 2rem; }
+  }
+}
