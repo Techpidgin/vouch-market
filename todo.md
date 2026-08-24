@@ -94,7 +94,7 @@
 - [x] Change multi-unit seller supply into one-unit allocations across distinct buyer target accounts rather than a bulk sale to one buyer.
 - [x] Add reconciliation-ready source and target account details to private operations records without exposing private settlement mechanics publicly.
 - [x] Add a clear administrator entry point and verify the configured administrator role and wallet access path to the review dashboard.
-- [ ] Add allocation and administrator-access tests, verify responsive workflows, and publish the update.
+- [x] Add allocation and administrator-access tests, verify responsive workflows, and publish the update.
 - [x] Authorize Solana wallet 6SaEG13gzLSkYnam6gRkM2NGRctVLL5JZ9vEi5MgGydd as an additional private-operations administrator wallet while preserving role checks.
 - [x] Show source and target X-account details throughout private operations, including payment-evidence rows and all administrator reconciliation views.
 - [x] Verify that the operations desk displays source and target allocation details for commitments and direct purchases before publishing.
@@ -102,5 +102,6 @@
 - [x] Remove OAuth and Google-style sign-in from the private operations entry flow so administrators use Solana wallets only.
 - [x] Gate private operations routes and procedures solely through an authorized Solana-wallet allowlist plus an action-bound signature.
 - [x] Update wallet-only operations copy, tests, and responsive access views, then publish the access refinement.
-- [ ] Publish the wallet-only operations access update and verify the live `/ops` route has no OAuth or Google login option.
-- [ ] Verify the live wallet-only `/ops` entry at desktop and mobile widths on the custom domain.
+- [x] Publish the wallet-only operations access update and verify the live `/ops` route has no OAuth or Google login option.
+- [x] Verify the live wallet-only `/ops` entry at desktop and mobile widths on the custom domain.
+- [x] Capture OCR-backed text proof that the 390px live custom-domain operations entry is wallet-only and contains no OAuth or Google login option.
