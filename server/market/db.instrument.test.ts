@@ -79,25 +79,27 @@ describe("slash market service records", () => {
       projectSlug: "commonsmade",
       instrument: "slash",
       quantity: 24,
+      pointsPerUnit: 12000,
       pricePerVouch: 1.2,
     });
 
     const listing = state.inserts.find(entry => entry.table === sellerCommitments)?.values as Record<string, unknown>;
-    expect(listing).toMatchObject({ instrument: "slash", quantity: 24, profileHandle: "slash_account", sourceHandle: "slash_account" });
+    expect(listing).toMatchObject({ instrument: "slash", quantity: 24, pointsPerUnit: 12000, profileHandle: "slash_account", sourceHandle: "slash_account" });
     expect(listing).not.toHaveProperty("vouchBand");
   });
 
   it("returns slash records to the private operations service alongside historical band context", async () => {
     state.selectResponses = [
       [{ publicId: "REQ-SLASH", instrument: "slash", requestedQuantity: 9, vouchBand: null }],
-      [{ publicId: "ASK-SLASH", instrument: "slash", quantity: 6, vouchBand: "under_1k" }],
+      [{ publicId: "ASK-SLASH", instrument: "slash", quantity: 6, pointsPerUnit: 12000, vouchBand: "under_1k", status: "open", requestId: null, parentOfferId: null }],
       [],
       [],
     ];
 
     const operations = await getOperations();
     expect(operations.requests[0]).toMatchObject({ publicId: "REQ-SLASH", instrument: "slash", vouchBand: null });
-    expect(operations.commitments[0]).toMatchObject({ publicId: "ASK-SLASH", instrument: "slash", vouchBand: "under_1k" });
+    expect(operations.commitments[0]).toMatchObject({ publicId: "ASK-SLASH", instrument: "slash", pointsPerUnit: 12000, vouchBand: "under_1k" });
+    expect(operations.metrics).toMatchObject({ openSourceOffers: 1, availableUnits: 6, activeAllocations: 0, listingsMissingPoints: 0 });
   });
 
   it("preserves a slash instrument when a seller fills an exact slash bid", async () => {
@@ -113,9 +115,9 @@ describe("slash market service records", () => {
       pricePerVouch: "0.750000",
     }], []];
 
-    await fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash_seller", quantity: 1 });
+    await fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash_seller", quantity: 1, pointsPerUnit: 12000 });
     const fill = state.inserts.find(entry => entry.table === sellerCommitments && entry.values.profileHandle === "slash_seller")?.values;
-    expect(fill).toMatchObject({ instrument: "slash", quantity: 1, sourceHandle: "slash_seller", targetHandle: "buyer_target", allocationKey: "commonsmade:slash:slash_seller:buyer_target", projectSlug: "commonsmade" });
+    expect(fill).toMatchObject({ instrument: "slash", quantity: 1, pointsPerUnit: 12000, sourceHandle: "slash_seller", targetHandle: "buyer_target", allocationKey: "commonsmade:slash:slash_seller:buyer_target", projectSlug: "commonsmade" });
   });
 
   it("reserves and completes an exact slash direct purchase through the market service", async () => {
@@ -129,13 +131,14 @@ describe("slash market service records", () => {
       sourceHandle: "slash_source",
       profileHandle: "slash_source",
       projectSlug: "commonsmade",
+      pointsPerUnit: 12000,
       pricePerVouch: "1.200000",
     }], []];
 
     const purchase = await initiateOfferPurchase({ offerPublicId: "ASK-SLASH", buyerWallet: "buyer-wallet", targetHandle: "buyer_target" });
     expect(purchase).toMatchObject({ totalUsdc: "1.200000" });
     expect(purchase.publicId).not.toBe("ASK-SLASH");
-    expect(state.inserts.some(entry => entry.table === sellerCommitments && (entry.values as Record<string, unknown>).parentOfferId === 7 && (entry.values as Record<string, unknown>).status === "awaiting_payment")).toBe(true);
+    expect(state.inserts.some(entry => entry.table === sellerCommitments && (entry.values as Record<string, unknown>).parentOfferId === 7 && (entry.values as Record<string, unknown>).pointsPerUnit === 12000 && (entry.values as Record<string, unknown>).status === "awaiting_payment")).toBe(true);
     expect(state.updates.some(entry => entry.table === sellerCommitments && entry.values.status === "open" && "quantity" in entry.values)).toBe(true);
 
     state.selectResponses = [[{
@@ -164,6 +167,31 @@ describe("slash market service records", () => {
       pricePerVouch: "0.750000",
     }], [{ publicId: "FILL-OLD", allocationKey: "commonsmade:slash:slash_seller:buyer_target" }]];
 
-    await expect(fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash_seller", quantity: 1 })).rejects.toThrow("already allocated");
+    await expect(fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash_seller", quantity: 1, pointsPerUnit: 12000 })).rejects.toThrow("already allocated");
+  });
+
+  it("allows one buyer wallet to reserve the same source offer for different target handles", async () => {
+    const offer = {
+      id: 8,
+      publicId: "ASK-SLASH",
+      requestId: null,
+      status: "open",
+      instrument: "slash",
+      quantity: 2,
+      sourceHandle: "slash_source",
+      profileHandle: "slash_source",
+      projectSlug: "commonsmade",
+      pointsPerUnit: 12000,
+      pricePerVouch: "1.200000",
+    };
+    state.selectResponses = [[], [offer], [], [], [offer], []];
+
+    await initiateOfferPurchase({ offerPublicId: "ASK-SLASH", buyerWallet: "same-wallet", targetHandle: "target_one" });
+    await initiateOfferPurchase({ offerPublicId: "ASK-SLASH", buyerWallet: "same-wallet", targetHandle: "target_two" });
+
+    const targets = state.inserts
+      .filter(entry => entry.table === sellerCommitments && (entry.values as Record<string, unknown>).parentOfferId === 8)
+      .map(entry => (entry.values as Record<string, unknown>).targetHandle);
+    expect(targets).toEqual(["target_one", "target_two"]);
   });
 });

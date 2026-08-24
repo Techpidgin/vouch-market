@@ -133,6 +133,7 @@ export const sellerCommitments = mysqlTable(
     instrument: marketInstrument.notNull().default("vouch"),
     vouchBand: vouchBand,
     quantity: int("quantity").notNull(),
+    pointsPerUnit: int("pointsPerUnit"),
     pricePerVouch: decimal("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
     grossUsdc: decimal("grossUsdc", { precision: 16, scale: 6 }),
     platformFeeUsdc: decimal("platformFeeUsdc", { precision: 16, scale: 6 }),

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { lt } from "drizzle-orm";
 import {
@@ -11,7 +11,7 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, type MarketInstrument } from "./constants";
-import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
+import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforcePointsPerUnit, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
 import { removeArchiveMetadata } from "./visibility";
 import { getCachedPublicBoard, invalidatePublicBoardCache } from "./compactState";
 import { createDirectPurchaseIntent, createExactMarketIntent, createFillIntent } from "./instrumentLifecycle";
@@ -119,13 +119,14 @@ export async function getPublicMarket() {
         projectSlug: sellerCommitments.projectSlug,
         instrument: sellerCommitments.instrument,
         quantity: sellerCommitments.quantity,
+        pointsPerUnit: sellerCommitments.pointsPerUnit,
         pricePerVouch: sellerCommitments.pricePerVouch,
         status: sellerCommitments.status,
         archivedAt: sellerCommitments.archivedAt,
         createdAt: sellerCommitments.createdAt,
       })
       .from(sellerCommitments)
-      .where(and(isNull(sellerCommitments.requestId), isNull(sellerCommitments.parentOfferId), isNull(sellerCommitments.archivedAt), eq(sellerCommitments.status, "open")))
+      .where(and(isNull(sellerCommitments.requestId), isNull(sellerCommitments.parentOfferId), isNull(sellerCommitments.archivedAt), isNotNull(sellerCommitments.pointsPerUnit), eq(sellerCommitments.status, "open")))
       .orderBy(desc(sellerCommitments.createdAt)),
   ]);
 
@@ -224,10 +225,12 @@ export async function createSellerOffer(input: {
   projectSlug: string;
   instrument: MarketInstrument;
   quantity: number;
+  pointsPerUnit: number;
   pricePerVouch: number;
 }) {
   const db = await dbOrThrow();
   const intent = createExactMarketIntent(input.instrument, input.quantity);
+  enforcePointsPerUnit(input.pointsPerUnit);
   const sourceHandle = normalizeXHandle(input.profileHandle);
   const publicId = `ASK-${nanoid(8).toUpperCase()}`;
   await db.insert(sellerCommitments).values({
@@ -236,6 +239,7 @@ export async function createSellerOffer(input: {
     sourceHandle,
     instrument: intent.instrument,
     quantity: intent.quantity,
+    pointsPerUnit: input.pointsPerUnit,
     publicId,
     pricePerVouch: input.pricePerVouch.toFixed(6),
     archiveEligibleAt: new Date(Date.now() + ARCHIVE_AFTER_MS),
@@ -244,11 +248,12 @@ export async function createSellerOffer(input: {
   return { publicId, unitsPosted: intent.quantity };
 }
 
-export async function fillRequest(input: { requestPublicId: string; sellerWallet: string; profileHandle: string; quantity: number }) {
+export async function fillRequest(input: { requestPublicId: string; sellerWallet: string; profileHandle: string; quantity: number; pointsPerUnit: number }) {
   const db = await dbOrThrow();
   const request = (await db.select().from(marketRequests).where(eq(marketRequests.publicId, input.requestPublicId)).limit(1))[0];
   if (!request || request.status !== "open") throw new Error("This request is not open for fills");
   enforceSingleUnitAllocation(input.quantity);
+  enforcePointsPerUnit(input.pointsPerUnit);
   enforceAvailableFill(request.requestedQuantity - request.filledQuantity, input.quantity);
   const fillIntent = createFillIntent({ instrument: request.instrument, quantity: request.requestedQuantity - request.filledQuantity }, input.quantity);
   const sourceHandle = normalizeXHandle(input.profileHandle);
@@ -286,6 +291,7 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
       projectSlug: request.projectSlug,
       instrument: fillIntent.instrument,
       quantity: fillIntent.quantity,
+      pointsPerUnit: input.pointsPerUnit,
       pricePerVouch: request.pricePerVouch,
       grossUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).grossUsdc,
       platformFeeUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).platformFeeUsdc,
@@ -335,6 +341,7 @@ export async function initiateOfferPurchase(input: { offerPublicId: string; buye
       instrument: purchaseIntent.instrument,
       vouchBand: offer.vouchBand,
       quantity: 1,
+      pointsPerUnit: offer.pointsPerUnit,
       pricePerVouch: offer.pricePerVouch,
       grossUsdc: amounts.grossUsdc,
       platformFeeUsdc: amounts.platformFeeUsdc,
@@ -462,7 +469,23 @@ export async function getOperations() {
     db.select().from(payoutRecords).orderBy(desc(payoutRecords.createdAt)),
     db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(80),
   ]);
-  return { requests, commitments, payouts, logs };
+  const sourceOffers = commitments.filter(item => !item.requestId && !item.parentOfferId && item.status === "open");
+  const tradeableSourceOffers = sourceOffers.filter(item => Boolean(item.pointsPerUnit));
+  const activeAllocations = commitments.filter(item => (item.requestId || item.parentOfferId) && ["awaiting_payment", "matched", "done", "under_review", "approved"].includes(item.status));
+  const completedAllocations = commitments.filter(item => (item.requestId || item.parentOfferId) && ["paid", "disputed"].includes(item.status));
+  return {
+    requests,
+    commitments,
+    payouts,
+    logs,
+    metrics: {
+      openSourceOffers: sourceOffers.length,
+      availableUnits: tradeableSourceOffers.reduce((sum, item) => sum + item.quantity, 0),
+      activeAllocations: activeAllocations.length,
+      completedAllocations: completedAllocations.length,
+      listingsMissingPoints: sourceOffers.filter(item => !item.pointsPerUnit).length,
+    },
+  };
 }
 
 export async function getParticipantActivity(wallet: string) {
@@ -491,6 +514,7 @@ export async function getParticipantActivity(wallet: string) {
         targetHandle: sellerCommitments.targetHandle,
         instrument: sellerCommitments.instrument,
         quantity: sellerCommitments.quantity,
+        pointsPerUnit: sellerCommitments.pointsPerUnit,
         pricePerVouch: sellerCommitments.pricePerVouch,
         status: sellerCommitments.status,
         sellerMarkedDoneAt: sellerCommitments.sellerMarkedDoneAt,
@@ -506,6 +530,7 @@ export async function getParticipantActivity(wallet: string) {
         targetHandle: sellerCommitments.targetHandle,
         instrument: sellerCommitments.instrument,
         quantity: sellerCommitments.quantity,
+        pointsPerUnit: sellerCommitments.pointsPerUnit,
         pricePerVouch: sellerCommitments.pricePerVouch,
         grossUsdc: sellerCommitments.grossUsdc,
         status: sellerCommitments.status,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateMarketAmounts, decimalToUsdcMicro, MARKET_INSTRUMENTS, toUsdcMicro } from "./constants";
-import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
+import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforcePointsPerUnit, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
 
 describe("Vouch Market core rules", () => {
   it("prevents fills that exceed the remaining request quantity", () => {
@@ -14,6 +14,12 @@ describe("Vouch Market core rules", () => {
     expect(allocationKey({ sourceHandle: "@Maker_One", targetHandle: "Target_One", projectSlug: "commonsmade", instrument: "vouch" })).toBe("commonsmade:vouch:maker_one:target_one");
     expect(() => enforceSingleUnitAllocation(2)).toThrow("exactly one unit");
     expect(() => allocationKey({ sourceHandle: "same_account", targetHandle: "@same_account", projectSlug: "commonsmade", instrument: "slash" })).toThrow("cannot allocate");
+  });
+
+  it("requires each seller-declared vouch or slash unit to carry a positive whole-number point value", () => {
+    expect(() => enforcePointsPerUnit(12_000)).not.toThrow();
+    expect(() => enforcePointsPerUnit(0)).toThrow("positive whole number");
+    expect(() => enforcePointsPerUnit(12.5)).toThrow("positive whole number");
   });
 
   it("converts USDC exactly to six-decimal micro-units", () => {

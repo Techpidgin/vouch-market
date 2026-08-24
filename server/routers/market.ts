@@ -89,21 +89,21 @@ export const marketRouter = router({
       }
     }),
   createSellerOffer: rateLimitedPublicProcedure
-    .input(z.object({ wallet, profileHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, profileHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: z.number().int().positive().max(1_000_000), pointsPerUnit: z.number().int().positive().max(1_000_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-        return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, quantity: input.quantity, pricePerVouch: input.pricePerVouch });
+        return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, pricePerVouch: input.pricePerVouch });
       } catch (error) {
         marketError(error);
       }
     }),
   fillRequest: rateLimitedPublicProcedure
-    .input(z.object({ requestPublicId: z.string().startsWith("REQ-"), wallet, profileHandle: xHandle, quantity: z.number().int().positive(), proof }))
+    .input(z.object({ requestPublicId: z.string().startsWith("REQ-"), wallet, profileHandle: xHandle, quantity: z.number().int().positive(), pointsPerUnit: z.number().int().positive().max(1_000_000_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_fill" });
-        return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity });
+        return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit });
       } catch (error) {
         marketError(error);
       }

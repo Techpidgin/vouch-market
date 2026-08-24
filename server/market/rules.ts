@@ -21,6 +21,12 @@ export function enforceSingleUnitAllocation(quantity: number) {
   }
 }
 
+export function enforcePointsPerUnit(pointsPerUnit: number) {
+  if (!Number.isInteger(pointsPerUnit) || pointsPerUnit <= 0 || pointsPerUnit > 1_000_000_000) {
+    throw new Error("Points per unit must be a positive whole number");
+  }
+}
+
 export function allocationKey(input: { sourceHandle: string; targetHandle: string; projectSlug: string; instrument: "vouch" | "slash" }) {
   const sourceHandle = normalizeXHandle(input.sourceHandle);
   const targetHandle = normalizeXHandle(input.targetHandle);

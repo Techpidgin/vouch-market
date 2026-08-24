@@ -105,3 +105,8 @@
 - [x] Publish the wallet-only operations access update and verify the live `/ops` route has no OAuth or Google login option.
 - [x] Verify the live wallet-only `/ops` entry at desktop and mobile widths on the custom domain.
 - [x] Capture OCR-backed text proof that the 390px live custom-domain operations entry is wallet-only and contains no OAuth or Google login option.
+- [x] Correct the private operations metrics so active commitments and completed allocation history are counted separately and accurately.
+- [x] Add a required points-per-unit value to new vouch and slash source-account listings and retain it through allocation, review, and archive records.
+- [x] Display the source account, exact available units, and points per unit in the public leaderboard and private operations reconciliation views.
+- [x] Enforce source-handle and target-handle uniqueness per instrument while allowing the same buyer wallet to allocate units to different target handles.
+- [ ] Add count, point-value, and multi-target-wallet tests; verify desktop/mobile views and publish the refinement.

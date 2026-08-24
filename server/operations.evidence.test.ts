@@ -12,6 +12,7 @@ describe("private operations payment evidence", () => {
         targetHandle: "buyer_one",
         instrument: "vouch",
         quantity: 1,
+        pointsPerUnit: 12000,
         status: "under_review",
         grossUsdc: "0.520000",
         paymentSignature: "proof",
@@ -20,5 +21,7 @@ describe("private operations payment evidence", () => {
 
     expect(html).toContain("Accounts");
     expect(html).toContain("@maker_one → @buyer_one");
+    expect(html).toContain("Points / unit");
+    expect(html).toContain("12,000 points per unit");
   });
 });
