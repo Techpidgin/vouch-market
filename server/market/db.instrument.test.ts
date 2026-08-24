@@ -18,6 +18,26 @@ function query(result: unknown[]) {
   return chain;
 }
 
+function updateResult(table: unknown, values: Record<string, unknown>) {
+  let recorded = false;
+  const record = () => {
+    if (!recorded) {
+      state.updates.push({ table, values });
+      recorded = true;
+    }
+  };
+  return {
+    returning: async () => {
+      record();
+      return [{ id: 1 }];
+    },
+    then: <TResult1 = unknown[], TResult2 = never>(onfulfilled?: ((value: unknown[]) => TResult1 | PromiseLike<TResult1>) | null, onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null) => {
+      record();
+      return Promise.resolve([]).then(onfulfilled, onrejected);
+    },
+  };
+}
+
 vi.mock("../db", () => ({
   getDb: vi.fn(async () => ({
     insert: (table: unknown) => ({
@@ -29,15 +49,16 @@ vi.mock("../db", () => ({
     select: () => query(state.selectResponses.shift() ?? []),
     update: (table: unknown) => ({
       set: (values: Record<string, unknown>) => ({
-        where: async () => {
-          state.updates.push({ table, values });
-          return [{ affectedRows: 1 }];
-        },
+        where: () => updateResult(table, values),
       }),
     }),
-    transaction: async (callback: (tx: { insert: (table: unknown) => { values: (values: unknown) => Promise<unknown[]> }; update: (table: unknown) => { set: (values: Record<string, unknown>) => { where: () => Promise<Array<{ affectedRows: number }>> } } }) => Promise<unknown>) => callback({
+    transaction: async (callback: (tx: { insert: (table: unknown) => { values: (values: unknown) => Promise<unknown[]> }; update: (table: unknown) => { set: (values: Record<string, unknown>) => { where: () => { returning: () => Promise<Array<{ id: number }>> } } } }) => Promise<unknown>) => callback({
       insert: (table: unknown) => ({ values: async (values: unknown) => { state.inserts.push({ table, values }); return []; } }),
-      update: (table: unknown) => ({ set: (values: Record<string, unknown>) => ({ where: async () => { state.updates.push({ table, values }); return [{ affectedRows: 1 }]; } }) }),
+      update: (table: unknown) => ({
+        set: (values: Record<string, unknown>) => ({
+          where: () => updateResult(table, values),
+        }),
+      }),
     }),
   })),
 }));

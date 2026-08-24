@@ -1,102 +1,88 @@
 import {
-  decimal,
+  boolean,
   index,
-  int,
-  mysqlEnum,
-  mysqlTable,
+  integer,
+  numeric,
+  pgEnum,
+  pgTable,
+  serial,
   text,
   timestamp,
   uniqueIndex,
   varchar,
-} from "drizzle-orm/mysql-core";
+} from "drizzle-orm/pg-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
-export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
-  id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
+const utcTimestamp = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
+const updatedTimestamp = () => utcTimestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date());
+
+export const userRole = pgEnum("user_role", ["user", "admin"]);
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  role: userRole("role").default("user").notNull(),
+  createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+  updatedAt: updatedTimestamp(),
+  lastSignedIn: utcTimestamp("lastSignedIn").defaultNow().notNull(),
 });
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-export const requestStatus = mysqlEnum("requestStatus", [
-  "awaiting_payment",
-  "open",
-  "filled",
-  "awaiting_review",
-  "completed",
-  "cancelled",
-  "disputed",
+export const requestStatus = pgEnum("request_status", [
+  "awaiting_payment", "open", "filled", "awaiting_review", "completed", "cancelled", "disputed",
 ]);
-
-export const vouchBand = mysqlEnum("vouchBand", [
-  "under_1k",
-  "1k_5k",
-  "5k_10k",
-  "10k_25k",
-  "5k_25k",
-  "25k_50k",
-  "50k_plus",
-  "25k_plus",
+export const vouchBand = pgEnum("vouch_band", [
+  "under_1k", "1k_5k", "5k_10k", "10k_25k", "5k_25k", "25k_50k", "50k_plus", "25k_plus",
 ]);
+export const marketInstrument = pgEnum("market_instrument", ["vouch", "slash"]);
+export const sellerCommitmentStatus = pgEnum("seller_commitment_status", [
+  "open", "awaiting_payment", "matched", "done", "under_review", "approved", "paid", "cancelled", "disputed",
+]);
+export const payoutStatus = pgEnum("payout_status", ["queued", "sent", "withheld"]);
 
-export const marketInstrument = mysqlEnum("marketInstrument", ["vouch", "slash"]);
-
-export const marketProjects = mysqlTable(
+export const marketProjects = pgTable(
   "marketProjects",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     slug: varchar("slug", { length: 64 }).notNull(),
     name: varchar("name", { length: 120 }).notNull(),
     description: text("description"),
-    isActive: int("isActive").notNull().default(1),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    isActive: boolean("isActive").notNull().default(true),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp(),
   },
   table => [uniqueIndex("marketProjects_slug_unique").on(table.slug)],
 );
 
-export const marketRequests = mysqlTable(
+export const marketRequests = pgTable(
   "marketRequests",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     publicId: varchar("publicId", { length: 24 }).notNull(),
     buyerWallet: varchar("buyerWallet", { length: 64 }).notNull(),
     targetHandle: varchar("targetHandle", { length: 80 }).notNull(),
     projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
-    instrument: marketInstrument.notNull().default("vouch"),
-    vouchBand: vouchBand,
-    requestedQuantity: int("requestedQuantity").notNull(),
-    filledQuantity: int("filledQuantity").notNull().default(0),
-    pricePerVouch: decimal("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
-    totalUsdc: decimal("totalUsdc", { precision: 16, scale: 6 }).notNull(),
-    platformFeeUsdc: decimal("platformFeeUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
-    sellerNetUsdc: decimal("sellerNetUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
+    instrument: marketInstrument("instrument").notNull().default("vouch"),
+    vouchBand: vouchBand("vouchBand"),
+    requestedQuantity: integer("requestedQuantity").notNull(),
+    filledQuantity: integer("filledQuantity").notNull().default(0),
+    pricePerVouch: numeric("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
+    totalUsdc: numeric("totalUsdc", { precision: 16, scale: 6 }).notNull(),
+    platformFeeUsdc: numeric("platformFeeUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
+    sellerNetUsdc: numeric("sellerNetUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
     paymentSignature: varchar("paymentSignature", { length: 128 }).unique(),
-    paymentVerifiedAt: timestamp("paymentVerifiedAt"),
-    status: requestStatus.notNull().default("awaiting_payment"),
-    buyerMarkedDoneAt: timestamp("buyerMarkedDoneAt"),
-    archiveEligibleAt: timestamp("archiveEligibleAt").notNull(),
-    archivedAt: timestamp("archivedAt"),
+    paymentVerifiedAt: utcTimestamp("paymentVerifiedAt"),
+    status: requestStatus("status").notNull().default("awaiting_payment"),
+    buyerMarkedDoneAt: utcTimestamp("buyerMarkedDoneAt"),
+    archiveEligibleAt: utcTimestamp("archiveEligibleAt").notNull(),
+    archivedAt: utcTimestamp("archivedAt"),
     archiveSummary: text("archiveSummary"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp(),
   },
   table => [
     uniqueIndex("marketRequests_publicId_unique").on(table.publicId),
@@ -105,49 +91,37 @@ export const marketRequests = mysqlTable(
   ],
 );
 
-export const sellerCommitmentStatus = mysqlEnum("sellerCommitmentStatus", [
-  "open",
-  "awaiting_payment",
-  "matched",
-  "done",
-  "under_review",
-  "approved",
-  "paid",
-  "cancelled",
-  "disputed",
-]);
-
-export const sellerCommitments = mysqlTable(
+export const sellerCommitments = pgTable(
   "sellerCommitments",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     publicId: varchar("publicId", { length: 24 }).notNull(),
-    requestId: int("requestId"),
-    parentOfferId: int("parentOfferId"),
+    requestId: integer("requestId"),
+    parentOfferId: integer("parentOfferId"),
     sellerWallet: varchar("sellerWallet", { length: 64 }).notNull(),
     profileHandle: varchar("profileHandle", { length: 80 }).notNull(),
     sourceHandle: varchar("sourceHandle", { length: 80 }),
     targetHandle: varchar("targetHandle", { length: 80 }),
     allocationKey: varchar("allocationKey", { length: 255 }),
     projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
-    instrument: marketInstrument.notNull().default("vouch"),
-    vouchBand: vouchBand,
-    quantity: int("quantity").notNull(),
-    pointsPerUnit: int("pointsPerUnit"),
-    pricePerVouch: decimal("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
-    grossUsdc: decimal("grossUsdc", { precision: 16, scale: 6 }),
-    platformFeeUsdc: decimal("platformFeeUsdc", { precision: 16, scale: 6 }),
-    sellerNetUsdc: decimal("sellerNetUsdc", { precision: 16, scale: 6 }),
+    instrument: marketInstrument("instrument").notNull().default("vouch"),
+    vouchBand: vouchBand("vouchBand"),
+    quantity: integer("quantity").notNull(),
+    pointsPerUnit: integer("pointsPerUnit"),
+    pricePerVouch: numeric("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
+    grossUsdc: numeric("grossUsdc", { precision: 16, scale: 6 }),
+    platformFeeUsdc: numeric("platformFeeUsdc", { precision: 16, scale: 6 }),
+    sellerNetUsdc: numeric("sellerNetUsdc", { precision: 16, scale: 6 }),
     buyerWallet: varchar("buyerWallet", { length: 64 }),
     paymentSignature: varchar("paymentSignature", { length: 128 }).unique(),
-    paymentVerifiedAt: timestamp("paymentVerifiedAt"),
-    buyerMarkedDoneAt: timestamp("buyerMarkedDoneAt"),
-    status: sellerCommitmentStatus.notNull().default("open"),
-    sellerMarkedDoneAt: timestamp("sellerMarkedDoneAt"),
-    archiveEligibleAt: timestamp("archiveEligibleAt").notNull(),
-    archivedAt: timestamp("archivedAt"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    paymentVerifiedAt: utcTimestamp("paymentVerifiedAt"),
+    buyerMarkedDoneAt: utcTimestamp("buyerMarkedDoneAt"),
+    status: sellerCommitmentStatus("status").notNull().default("open"),
+    sellerMarkedDoneAt: utcTimestamp("sellerMarkedDoneAt"),
+    archiveEligibleAt: utcTimestamp("archiveEligibleAt").notNull(),
+    archivedAt: utcTimestamp("archivedAt"),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp(),
   },
   table => [
     uniqueIndex("sellerCommitments_publicId_unique").on(table.publicId),
@@ -158,64 +132,62 @@ export const sellerCommitments = mysqlTable(
   ],
 );
 
-export const walletChallenges = mysqlTable(
+export const walletChallenges = pgTable(
   "walletChallenges",
   {
     id: varchar("id", { length: 64 }).primaryKey(),
     wallet: varchar("wallet", { length: 64 }).notNull(),
     action: varchar("action", { length: 48 }).notNull(),
     message: text("message").notNull(),
-    expiresAt: timestamp("expiresAt").notNull(),
-    usedAt: timestamp("usedAt"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    expiresAt: utcTimestamp("expiresAt").notNull(),
+    usedAt: utcTimestamp("usedAt"),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
   },
   table => [index("walletChallenges_wallet_action_idx").on(table.wallet, table.action)],
 );
 
-export const activityLogs = mysqlTable(
+export const activityLogs = pgTable(
   "activityLogs",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: serial("id").primaryKey(),
     entityType: varchar("entityType", { length: 32 }).notNull(),
     entityPublicId: varchar("entityPublicId", { length: 24 }).notNull(),
     eventType: varchar("eventType", { length: 64 }).notNull(),
     actorWallet: varchar("actorWallet", { length: 64 }),
     actorAdminOpenId: varchar("actorAdminOpenId", { length: 64 }),
     detail: text("detail"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
   },
   table => [index("activityLogs_entity_createdAt_idx").on(table.entityPublicId, table.createdAt)],
 );
 
-export const payoutStatus = mysqlEnum("payoutStatus", ["queued", "sent", "withheld"]);
-
-export const paymentSignatureClaims = mysqlTable(
+export const paymentSignatureClaims = pgTable(
   "paymentSignatureClaims",
   {
     signature: varchar("signature", { length: 128 }).primaryKey(),
     entityType: varchar("entityType", { length: 32 }).notNull(),
     entityPublicId: varchar("entityPublicId", { length: 24 }).notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
   },
   table => [index("paymentSignatureClaims_entity_idx").on(table.entityPublicId)],
 );
 
-export const payoutRecords = mysqlTable(
+export const payoutRecords = pgTable(
   "payoutRecords",
   {
-    id: int("id").autoincrement().primaryKey(),
-    sellerCommitmentId: int("sellerCommitmentId").notNull(),
+    id: serial("id").primaryKey(),
+    sellerCommitmentId: integer("sellerCommitmentId").notNull(),
     recipientWallet: varchar("recipientWallet", { length: 64 }).notNull(),
-    amountUsdc: decimal("amountUsdc", { precision: 16, scale: 6 }).notNull(),
-    grossAmountUsdc: decimal("grossAmountUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
-    platformFeeUsdc: decimal("platformFeeUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
-    status: payoutStatus.notNull().default("queued"),
+    amountUsdc: numeric("amountUsdc", { precision: 16, scale: 6 }).notNull(),
+    grossAmountUsdc: numeric("grossAmountUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
+    platformFeeUsdc: numeric("platformFeeUsdc", { precision: 16, scale: 6 }).notNull().default("0.000000"),
+    status: payoutStatus("status").notNull().default("queued"),
     externalReference: varchar("externalReference", { length: 160 }),
     adminNote: text("adminNote"),
     decidedByOpenId: varchar("decidedByOpenId", { length: 64 }).notNull(),
-    decidedAt: timestamp("decidedAt").defaultNow().notNull(),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    decidedAt: utcTimestamp("decidedAt").defaultNow().notNull(),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp(),
   },
   table => [
     uniqueIndex("payoutRecords_commitment_unique").on(table.sellerCommitmentId),

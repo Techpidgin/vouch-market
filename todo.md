@@ -127,3 +127,7 @@
 - [x] Diagnose why the Vercel deployment cannot see the existing listed vouches and slashes, and document the production data configuration required.
 - [x] Verify the saved Vercel deployment guidance covers the shared durable database, server API handler, required secrets, and Upstash’s cache-only role.
 - [x] Provide an Upstash setup, retention, and Vercel environment-variable guide for the HANKA market.
+- [x] Switch HANKA persistence from the managed MySQL/TiDB database to a clean Neon PostgreSQL database without transferring legacy records.
+- [x] Configure Vercel for the fresh Neon database, preserving Upstash only for short-lived cache and rate-limit data.
+- [ ] Validate that the clean deployment starts with no historic listings while new wallet-first market records can be created safely.
+- [x] Support Vercel-managed Upstash `KV_REST_API_*` variables as server-side aliases for the existing public cache and mutation rate limiter.

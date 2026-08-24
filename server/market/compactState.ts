@@ -4,19 +4,26 @@ const PUBLIC_BOARD_KEY = "vouch-market:public-board:v1";
 const PUBLIC_BOARD_TTL_SECONDS = 45;
 let redis: Redis | null | undefined;
 
+export function upstashCredentials(env: NodeJS.ProcessEnv = process.env) {
+  const url = env.UPSTASH_REDIS_REST_URL ?? env.KV_REST_API_URL;
+  const token = env.UPSTASH_REDIS_REST_TOKEN ?? env.KV_REST_API_TOKEN;
+  return url && token ? { url, token } : null;
+}
+
 export function isUpstashConfigured(env: NodeJS.ProcessEnv = process.env) {
-  return Boolean(env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN);
+  return Boolean(upstashCredentials(env));
 }
 
 function getRedis() {
   if (redis !== undefined) return redis;
-  if (!isUpstashConfigured()) {
+  const credentials = upstashCredentials();
+  if (!credentials) {
     redis = null;
     return redis;
   }
   redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    url: credentials.url,
+    token: credentials.token,
   });
   return redis;
 }

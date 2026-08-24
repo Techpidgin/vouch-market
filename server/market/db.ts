@@ -39,7 +39,10 @@ export async function logActivity(input: {
 
 async function ensureDefaultProject() {
   const db = await dbOrThrow();
-  await db.insert(marketProjects).values(DEFAULT_PROJECT).onDuplicateKeyUpdate({ set: { name: DEFAULT_PROJECT.name, description: DEFAULT_PROJECT.description } });
+  await db.insert(marketProjects).values(DEFAULT_PROJECT).onConflictDoUpdate({
+    target: marketProjects.slug,
+    set: { name: DEFAULT_PROJECT.name, description: DEFAULT_PROJECT.description },
+  });
 }
 
 async function releaseStaleDirectPurchaseReservations(now = new Date()) {
@@ -81,8 +84,9 @@ async function releaseStaleDirectPurchaseReservations(now = new Date()) {
 
 export async function createMarketProject(input: { slug: string; name: string; description?: string }) {
   const db = await dbOrThrow();
-  await db.insert(marketProjects).values({ slug: input.slug, name: input.name, description: input.description }).onDuplicateKeyUpdate({
-    set: { name: input.name, description: input.description, isActive: 1 },
+  await db.insert(marketProjects).values({ slug: input.slug, name: input.name, description: input.description }).onConflictDoUpdate({
+    target: marketProjects.slug,
+    set: { name: input.name, description: input.description, isActive: true },
   });
   return { slug: input.slug };
 }
@@ -93,7 +97,7 @@ export async function getPublicMarket() {
     await ensureDefaultProject();
     await releaseStaleDirectPurchaseReservations();
     const [projects, requests, sellerOffers] = await Promise.all([
-    db.select({ slug: marketProjects.slug, name: marketProjects.name, description: marketProjects.description }).from(marketProjects).where(eq(marketProjects.isActive, 1)).orderBy(marketProjects.name),
+    db.select({ slug: marketProjects.slug, name: marketProjects.name, description: marketProjects.description }).from(marketProjects).where(eq(marketProjects.isActive, true)).orderBy(marketProjects.name),
     db
       .select({
         publicId: marketRequests.publicId,
@@ -206,14 +210,15 @@ export async function recordVerifiedPayment(publicId: string, signature: string,
   try {
     await db.transaction(async tx => {
       await tx.insert(paymentSignatureClaims).values({ signature, entityType: "request", entityPublicId: publicId });
-      const [result] = await tx
+      const result = await tx
         .update(marketRequests)
         .set({ paymentSignature: signature, paymentVerifiedAt: new Date(), status: "open" })
-        .where(and(eq(marketRequests.publicId, publicId), eq(marketRequests.buyerWallet, buyerWallet), eq(marketRequests.status, "awaiting_payment")));
-      if (!result.affectedRows) throw new Error("This request is no longer awaiting this wallet's payment");
+        .where(and(eq(marketRequests.publicId, publicId), eq(marketRequests.buyerWallet, buyerWallet), eq(marketRequests.status, "awaiting_payment")))
+        .returning({ id: marketRequests.id });
+      if (!result.length) throw new Error("This request is no longer awaiting this wallet's payment");
     });
   } catch (error) {
-    if ((error as { code?: string }).code === "ER_DUP_ENTRY") throw new Error("This payment signature has already been used");
+    if ((error as { code?: string }).code === "23505") throw new Error("This payment signature has already been used");
     throw error;
   }
   await logActivity({ entityType: "request", entityPublicId: publicId, eventType: "payment_verified" });
@@ -266,7 +271,7 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
 
   const publicId = `FILL-${nanoid(8).toUpperCase()}`;
   await db.transaction(async tx => {
-    const [updateResult] = await tx
+    const updateResult = await tx
       .update(marketRequests)
       .set({
         filledQuantity: sql`${marketRequests.filledQuantity} + ${input.quantity}`,
@@ -278,8 +283,9 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
           eq(marketRequests.status, "open"),
           sql`${marketRequests.filledQuantity} + ${input.quantity} <= ${marketRequests.requestedQuantity}`,
         ),
-      );
-    if (!updateResult.affectedRows) throw new Error("The request changed before this fill was recorded");
+      )
+      .returning({ id: marketRequests.id });
+    if (!updateResult.length) throw new Error("The request changed before this fill was recorded");
     await tx.insert(sellerCommitments).values({
       publicId,
       requestId: request.id,
@@ -320,15 +326,15 @@ export async function initiateOfferPurchase(input: { offerPublicId: string; buye
   const amounts = calculateMarketAmounts(purchaseIntent.quantity, Number(offer.pricePerVouch));
   const allocationPublicId = `ASK-${nanoid(8).toUpperCase()}`;
   await db.transaction(async tx => {
-    const [result] = await tx.update(sellerCommitments).set({
+    const result = await tx.update(sellerCommitments).set({
       quantity: sql`${sellerCommitments.quantity} - 1`,
       status: offer.quantity === 1 ? "matched" : "open",
     }).where(and(
       eq(sellerCommitments.id, offer.id),
       eq(sellerCommitments.status, "open"),
       sql`${sellerCommitments.quantity} >= 1`,
-    ));
-    if (!result.affectedRows) throw new Error("This seller offer was just claimed by another buyer");
+    )).returning({ id: sellerCommitments.id });
+    if (!result.length) throw new Error("This seller offer was just claimed by another buyer");
     await tx.insert(sellerCommitments).values({
       publicId: allocationPublicId,
       parentOfferId: offer.id,
@@ -370,11 +376,11 @@ export async function recordVerifiedOfferPurchase(publicId: string, signature: s
   try {
     await db.transaction(async tx => {
       await tx.insert(paymentSignatureClaims).values({ signature, entityType: "seller_commitment", entityPublicId: publicId });
-      const [result] = await tx.update(sellerCommitments).set({ paymentSignature: signature, paymentVerifiedAt: new Date(), status: "matched" }).where(and(eq(sellerCommitments.publicId, publicId), eq(sellerCommitments.buyerWallet, buyerWallet), eq(sellerCommitments.status, "awaiting_payment")));
-      if (!result.affectedRows) throw new Error("This offer is no longer awaiting this wallet's payment");
+      const result = await tx.update(sellerCommitments).set({ paymentSignature: signature, paymentVerifiedAt: new Date(), status: "matched" }).where(and(eq(sellerCommitments.publicId, publicId), eq(sellerCommitments.buyerWallet, buyerWallet), eq(sellerCommitments.status, "awaiting_payment"))).returning({ id: sellerCommitments.id });
+      if (!result.length) throw new Error("This offer is no longer awaiting this wallet's payment");
     });
   } catch (error) {
-    if ((error as { code?: string }).code === "ER_DUP_ENTRY") throw new Error("This payment signature has already been used");
+    if ((error as { code?: string }).code === "23505") throw new Error("This payment signature has already been used");
     throw error;
   }
   await logActivity({ entityType: "seller_commitment", entityPublicId: publicId, eventType: "offer_purchase_verified" });
@@ -403,14 +409,14 @@ export async function setLegacyOfferPoints(input: { offerPublicId: string; point
   if (!offer || offer.requestId || offer.parentOfferId || offer.status !== "open" || offer.pointsPerUnit != null) {
     throw new Error("Only an open legacy source offer without a declared point value can be repaired");
   }
-  const [result] = await db.update(sellerCommitments).set({ pointsPerUnit: input.pointsPerUnit }).where(and(
+  const result = await db.update(sellerCommitments).set({ pointsPerUnit: input.pointsPerUnit }).where(and(
     eq(sellerCommitments.id, offer.id),
     isNull(sellerCommitments.requestId),
     isNull(sellerCommitments.parentOfferId),
     eq(sellerCommitments.status, "open"),
     isNull(sellerCommitments.pointsPerUnit),
-  ));
-  if (!result.affectedRows) throw new Error("This legacy source offer changed before its point value could be recorded");
+  )).returning({ id: sellerCommitments.id });
+  if (!result.length) throw new Error("This legacy source offer changed before its point value could be recorded");
   await logActivity({
     entityType: "seller_commitment",
     entityPublicId: offer.publicId,
