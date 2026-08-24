@@ -23,4 +23,14 @@ describe("public market branding", () => {
     expect(homeSource).toContain("text-[clamp(3.7rem,11vw,7.5rem)]");
     expect(homeSource).toContain("py-8 sm:gap-10 sm:py-10");
   });
+
+  it("uses the HANKA Vouch & Slash Market name and positions the product for compatible proof instruments", () => {
+    const documentSource = readFileSync(resolve(process.cwd(), "client/index.html"), "utf8");
+    expect(documentSource).toContain("HANKA Vouch &amp; Slash Market");
+    expect(homeSource).toContain("HANKA · Social proof market");
+    expect(homeSource).toContain("compatible social-proof instruments");
+    expect(homeSource).toContain("HANKA Vouch &amp; Slash Market · USDC on Solana");
+    expect(marketSource).toContain("HANKA · Open market");
+    expect(marketSource).toContain("HANKA Vouch &amp; Slash Market · USDC on Solana");
+  });
 });

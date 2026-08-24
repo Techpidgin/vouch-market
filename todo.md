@@ -121,3 +121,5 @@
 - [x] Remove CommonsMade-specific public landing and market copy so the marketplace remains project-neutral.
 - [x] Move the public Terms and Operations links from the header into the footer while preserving clear navigation.
 - [x] Reduce the landing hero scale and spacing so Enter market remains visible at small mobile heights.
+- [x] Rename the public product to HANKA Vouch & Slash Market while retaining the existing logo mark.
+- [x] Clarify the public positioning as a market for vouches, slashes, and compatible social-proof instruments.
