@@ -109,10 +109,10 @@
 - [x] Add a required points-per-unit value to new vouch and slash source-account listings and retain it through allocation, review, and archive records.
 - [x] Display the source account, exact available units, and points per unit in the public leaderboard and private operations reconciliation views.
 - [x] Enforce source-handle and target-handle uniqueness per instrument while allowing the same buyer wallet to allocate units to different target handles.
-- [ ] Add count, point-value, and multi-target-wallet tests; verify desktop/mobile views and publish the refinement.
+- [x] Add count, point-value, and multi-target-wallet tests; verify desktop/mobile views and publish the refinement.
 - [x] Add an authorized operations workflow to assign a real per-unit point value to an eligible legacy source offer without inventing the value.
 - [x] Verify the wallet-first buyer, seller, source-target allocation, payment, completion, and wallet-only operations workflow contracts against the current product rules.
 - [x] Add integration coverage for the complete wallet-first lifecycle from listing or request through payment verification, source-target allocation, completion, and administrator review.
-- [ ] Re-verify the published custom-domain market and wallet-only operations entry after propagation, including the latest points-per-unit and legacy-offer behavior.
+- [x] Re-verify the published custom-domain market and wallet-only operations entry after propagation, including the latest points-per-unit and legacy-offer behavior.
 - [x] Document the sandbox limitation for real wallet signatures and USDC transfers separately from automated workflow verification.
 - [x] Add restrained, reduced-motion-aware animations to clarify market hierarchy and interaction feedback without delaying wallet or payment actions.
