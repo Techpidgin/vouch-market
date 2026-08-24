@@ -123,5 +123,6 @@
 - [x] Reduce the landing hero scale and spacing so Enter market remains visible at small mobile heights.
 - [x] Rename the public product to HANKA Vouch & Slash Market while retaining the existing logo mark.
 - [x] Clarify the public positioning as a market for vouches, slashes, and compatible social-proof instruments.
-- [ ] Push the current HANKA release to the private GitHub main branch.
-- [ ] Diagnose why the Vercel deployment cannot see the existing listed vouches and slashes, and document the production data configuration required.
+- [x] Push the current HANKA release to the private GitHub main branch.
+- [x] Diagnose why the Vercel deployment cannot see the existing listed vouches and slashes, and document the production data configuration required.
+- [x] Verify the saved Vercel deployment guidance covers the shared durable database, server API handler, required secrets, and Upstash’s cache-only role.

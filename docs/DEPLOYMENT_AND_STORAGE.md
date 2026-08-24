@@ -36,6 +36,23 @@ Upstash is limited to compact public-market state in this architecture. Private 
 
 When Upstash is configured, add its REST URL and token to the server-only Vercel environment. Then verify that the public board uses its short-lived cache while a listing mutation invalidates that cache. Continue to keep payment signatures, wallet addresses, payout records, and archive summaries in durable server-side storage.
 
+## Recovering existing listings in an external Vercel deployment
+
+The public board is not seeded from the frontend bundle or from Upstash. It reads open, point-declared source offers and paid buyer requests from the durable relational database through the `/api/trpc` Vercel function. Consequently, a Vercel deployment that has no `DATABASE_URL`, points to a fresh database, or cannot reach the existing database will show an empty board even though the managed deployment still has live listings.
+
+To surface the existing market on Vercel, deploy the repository root so both `dist/public` and `api/[...path].ts` are included, then set the following **Production** environment values in Vercel. Do not prefix any server value with `VITE_`.
+
+| Variable | Required for | Notes |
+| --- | --- | --- |
+| `DATABASE_URL` | Existing listings, bids, payments, and private operations | Must be the same durable MySQL/TiDB database that contains the existing market records, and it must accept encrypted inbound connections from Vercel. |
+| `JWT_SECRET` | Signed application/session infrastructure | Use the matching production secret; never expose it in browser code. |
+| `SOLANA_RPC_URL` | On-chain USDC verification | Server-side RPC endpoint only. |
+| `SOLANA_RECIPIENT_WALLET` | Payment-recipient verification and administrator allowlist | Must match the operating wallet used by the market. |
+| `ADMIN_SOLANA_WALLETS` | Additional wallet-only operations administrators | Comma-separated public keys, if additional administrators are required. |
+| `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` | Optional cache and rate limit | Missing Upstash does **not** remove listings; the board falls back to the durable database. |
+
+If the current managed database is not externally reachable, first migrate its schema and records to a Vercel-reachable MySQL/TiDB database, then place that new connection string in `DATABASE_URL`. Do not create replacement listings in the Vercel database: copying the durable records is required to preserve allocations, payment-signature protection, and operations history. After setting the values, redeploy `main` and confirm the browser request to `/api/trpc/market.board` returns HTTP 200 with the expected rows.
+
 ## 5% fee handling
 
 The marketplace calculates **gross amount**, **5% platform fee**, and **seller net** in micro-USDC units. The buyer pays the listed gross amount. The review desk records the seller net amount as the amount to send manually, while retaining the gross and fee values for audit. This is a product accounting rule, not tax or regulatory advice. A qualified legal and tax professional should review the operating model before public launch.
