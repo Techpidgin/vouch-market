@@ -26,5 +26,6 @@ describe("clean Neon deployment architecture", () => {
     expect(handlerSource).toContain("createVouchApp");
     expect(handlerSource).toContain("export default createVouchApp()");
     expect(packageJson.scripts?.["build:vercel:function"]).not.toContain("--packages=external");
+    expect(packageJson.dependencies?.["iconv-lite"]).toBeDefined();
   });
 });
