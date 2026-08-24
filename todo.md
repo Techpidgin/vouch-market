@@ -89,3 +89,18 @@
 - [x] Capture OCR-backed evidence of the published 390px mobile leaderboard, including filters, live rows, midpoint panels, and the absence of row-level connection actions.
 - [x] Capture readable live mobile proof that disconnected listing rows use a neutral placeholder rather than Connect, Buy, or Fill actions.
 - [x] Update the public entry page to describe both vouches and slashes and remove its remaining human-review language.
+- [x] Define and implement source X account and buyer target-account fields for every vouch or slash allocation.
+- [x] Enforce that a source account can allocate at most one vouch or slash of a given instrument to the same target account.
+- [x] Change multi-unit seller supply into one-unit allocations across distinct buyer target accounts rather than a bulk sale to one buyer.
+- [x] Add reconciliation-ready source and target account details to private operations records without exposing private settlement mechanics publicly.
+- [x] Add a clear administrator entry point and verify the configured administrator role and wallet access path to the review dashboard.
+- [ ] Add allocation and administrator-access tests, verify responsive workflows, and publish the update.
+- [x] Authorize Solana wallet 6SaEG13gzLSkYnam6gRkM2NGRctVLL5JZ9vEi5MgGydd as an additional private-operations administrator wallet while preserving role checks.
+- [x] Show source and target X-account details throughout private operations, including payment-evidence rows and all administrator reconciliation views.
+- [x] Verify that the operations desk displays source and target allocation details for commitments and direct purchases before publishing.
+- [x] Verify the updated private operations evidence table at desktop and mobile widths after the final source-target reconciliation changes.
+- [x] Remove OAuth and Google-style sign-in from the private operations entry flow so administrators use Solana wallets only.
+- [x] Gate private operations routes and procedures solely through an authorized Solana-wallet allowlist plus an action-bound signature.
+- [x] Update wallet-only operations copy, tests, and responsive access views, then publish the access refinement.
+- [ ] Publish the wallet-only operations access update and verify the live `/ops` route has no OAuth or Google login option.
+- [ ] Verify the live wallet-only `/ops` entry at desktop and mobile widths on the custom domain.

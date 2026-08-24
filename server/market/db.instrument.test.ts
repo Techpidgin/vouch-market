@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { marketRequests, sellerCommitments } from "../../drizzle/schema";
 
 const state = vi.hoisted(() => ({
-  inserts: [] as Array<{ table: unknown; values: Record<string, unknown> }>,
+  inserts: [] as Array<{ table: unknown; values: unknown }>,
   updates: [] as Array<{ table: unknown; values: Record<string, unknown> }>,
   selectResponses: [] as unknown[][],
 }));
@@ -21,7 +21,7 @@ function query(result: unknown[]) {
 vi.mock("../db", () => ({
   getDb: vi.fn(async () => ({
     insert: (table: unknown) => ({
-      values: async (values: Record<string, unknown>) => {
+      values: async (values: unknown) => {
         state.inserts.push({ table, values });
         return [];
       },
@@ -35,8 +35,8 @@ vi.mock("../db", () => ({
         },
       }),
     }),
-    transaction: async (callback: (tx: { insert: (table: unknown) => { values: (values: Record<string, unknown>) => Promise<unknown[]> }; update: (table: unknown) => { set: (values: Record<string, unknown>) => { where: () => Promise<Array<{ affectedRows: number }>> } } }) => Promise<unknown>) => callback({
-      insert: (table: unknown) => ({ values: async (values: Record<string, unknown>) => { state.inserts.push({ table, values }); return []; } }),
+    transaction: async (callback: (tx: { insert: (table: unknown) => { values: (values: unknown) => Promise<unknown[]> }; update: (table: unknown) => { set: (values: Record<string, unknown>) => { where: () => Promise<Array<{ affectedRows: number }>> } } }) => Promise<unknown>) => callback({
+      insert: (table: unknown) => ({ values: async (values: unknown) => { state.inserts.push({ table, values }); return []; } }),
       update: (table: unknown) => ({ set: (values: Record<string, unknown>) => ({ where: async () => { state.updates.push({ table, values }); return [{ affectedRows: 1 }]; } }) }),
     }),
   })),
@@ -72,18 +72,18 @@ describe("slash market service records", () => {
     expect(request).not.toHaveProperty("vouchBand");
   });
 
-  it("stores an exact slash seller listing without a reputation-band dependency", async () => {
+  it("stores exact slash seller supply as one compact source-account offer", async () => {
     await createSellerOffer({
       sellerWallet: "seller-wallet",
-      profileHandle: "slash-account",
+      profileHandle: "slash_account",
       projectSlug: "commonsmade",
       instrument: "slash",
       quantity: 24,
       pricePerVouch: 1.2,
     });
 
-    const listing = state.inserts.find(entry => entry.table === sellerCommitments)?.values;
-    expect(listing).toMatchObject({ instrument: "slash", quantity: 24, profileHandle: "slash-account" });
+    const listing = state.inserts.find(entry => entry.table === sellerCommitments)?.values as Record<string, unknown>;
+    expect(listing).toMatchObject({ instrument: "slash", quantity: 24, profileHandle: "slash_account", sourceHandle: "slash_account" });
     expect(listing).not.toHaveProperty("vouchBand");
   });
 
@@ -109,39 +109,61 @@ describe("slash market service records", () => {
       filledQuantity: 2,
       instrument: "slash",
       projectSlug: "commonsmade",
+      targetHandle: "buyer_target",
       pricePerVouch: "0.750000",
-    }]];
+    }], []];
 
-    await fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash-seller", quantity: 4 });
-    const fill = state.inserts.find(entry => entry.table === sellerCommitments && entry.values.profileHandle === "slash-seller")?.values;
-    expect(fill).toMatchObject({ instrument: "slash", quantity: 4, projectSlug: "commonsmade" });
+    await fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash_seller", quantity: 1 });
+    const fill = state.inserts.find(entry => entry.table === sellerCommitments && entry.values.profileHandle === "slash_seller")?.values;
+    expect(fill).toMatchObject({ instrument: "slash", quantity: 1, sourceHandle: "slash_seller", targetHandle: "buyer_target", allocationKey: "commonsmade:slash:slash_seller:buyer_target", projectSlug: "commonsmade" });
   });
 
   it("reserves and completes an exact slash direct purchase through the market service", async () => {
-    state.selectResponses = [[{
+    state.selectResponses = [[], [{
       id: 7,
       publicId: "ASK-SLASH",
       requestId: null,
       status: "open",
       instrument: "slash",
-      quantity: 6,
+      quantity: 3,
+      sourceHandle: "slash_source",
+      profileHandle: "slash_source",
+      projectSlug: "commonsmade",
       pricePerVouch: "1.200000",
-    }]];
+    }], []];
 
-    const purchase = await initiateOfferPurchase({ offerPublicId: "ASK-SLASH", buyerWallet: "buyer-wallet" });
-    expect(purchase).toMatchObject({ publicId: "ASK-SLASH", totalUsdc: "7.200000" });
-    expect(state.updates.some(entry => entry.table === sellerCommitments && entry.values.status === "awaiting_payment")).toBe(true);
+    const purchase = await initiateOfferPurchase({ offerPublicId: "ASK-SLASH", buyerWallet: "buyer-wallet", targetHandle: "buyer_target" });
+    expect(purchase).toMatchObject({ totalUsdc: "1.200000" });
+    expect(purchase.publicId).not.toBe("ASK-SLASH");
+    expect(state.inserts.some(entry => entry.table === sellerCommitments && (entry.values as Record<string, unknown>).parentOfferId === 7 && (entry.values as Record<string, unknown>).status === "awaiting_payment")).toBe(true);
+    expect(state.updates.some(entry => entry.table === sellerCommitments && entry.values.status === "open" && "quantity" in entry.values)).toBe(true);
 
     state.selectResponses = [[{
       id: 7,
-      publicId: "ASK-SLASH",
+      publicId: purchase.publicId,
       requestId: null,
       status: "matched",
       instrument: "slash",
       buyerWallet: "buyer-wallet",
       sellerMarkedDoneAt: new Date(),
     }]];
-    await markOfferBuyerDone("ASK-SLASH", "buyer-wallet");
+    await markOfferBuyerDone(purchase.publicId, "buyer-wallet");
     expect(state.updates.some(entry => entry.table === sellerCommitments && entry.values.status === "under_review")).toBe(true);
+  });
+
+  it("rejects a duplicate source-to-target slash allocation before it is inserted", async () => {
+    state.selectResponses = [[{
+      id: 3,
+      publicId: "REQ-SLASH",
+      status: "open",
+      requestedQuantity: 2,
+      filledQuantity: 0,
+      instrument: "slash",
+      projectSlug: "commonsmade",
+      targetHandle: "buyer_target",
+      pricePerVouch: "0.750000",
+    }], [{ publicId: "FILL-OLD", allocationKey: "commonsmade:slash:slash_seller:buyer_target" }]];
+
+    await expect(fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash_seller", quantity: 1 })).rejects.toThrow("already allocated");
   });
 });

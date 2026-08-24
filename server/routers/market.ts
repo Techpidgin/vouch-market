@@ -30,6 +30,7 @@ const wallet = z.string().trim().min(32).max(64).refine(value => {
 }, "Enter a valid Solana wallet address");
 const instrument = z.enum(["vouch", "slash"]);
 const proof = z.object({ challengeId: z.string().min(8), signature: z.string().min(20) });
+const xHandle = z.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle");
 
 function marketError(error: unknown): never {
   throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "The request could not be processed" });
@@ -55,7 +56,7 @@ export const marketRouter = router({
       }
     }),
   createRequest: rateLimitedPublicProcedure
-    .input(z.object({ wallet, targetHandle: z.string().trim().min(1).max(80), projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, targetHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "buyer_request" });
@@ -88,7 +89,7 @@ export const marketRouter = router({
       }
     }),
   createSellerOffer: rateLimitedPublicProcedure
-    .input(z.object({ wallet, profileHandle: z.string().trim().min(1).max(80), projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, profileHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
@@ -98,7 +99,7 @@ export const marketRouter = router({
       }
     }),
   fillRequest: rateLimitedPublicProcedure
-    .input(z.object({ requestPublicId: z.string().startsWith("REQ-"), wallet, profileHandle: z.string().trim().min(1).max(80), quantity: z.number().int().positive(), proof }))
+    .input(z.object({ requestPublicId: z.string().startsWith("REQ-"), wallet, profileHandle: xHandle, quantity: z.number().int().positive(), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_fill" });
@@ -108,11 +109,11 @@ export const marketRouter = router({
       }
     }),
   initiateOfferPurchase: rateLimitedPublicProcedure
-    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, proof }))
+    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, targetHandle: xHandle, proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "offer_buy" });
-        const created = await initiateOfferPurchase({ offerPublicId: input.publicId, buyerWallet: input.wallet });
+        const created = await initiateOfferPurchase({ offerPublicId: input.publicId, buyerWallet: input.wallet, targetHandle: input.targetHandle });
         return { ...created, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
       } catch (error) { marketError(error); }
     }),

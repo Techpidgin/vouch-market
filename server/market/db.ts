@@ -11,7 +11,7 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, type MarketInstrument } from "./constants";
-import { assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, transitionDirectPurchase } from "./rules";
+import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
 import { removeArchiveMetadata } from "./visibility";
 import { getCachedPublicBoard, invalidatePublicBoardCache } from "./compactState";
 import { createDirectPurchaseIntent, createExactMarketIntent, createFillIntent } from "./instrumentLifecycle";
@@ -45,22 +45,38 @@ async function ensureDefaultProject() {
 async function releaseStaleDirectPurchaseReservations(now = new Date()) {
   const db = await dbOrThrow();
   const cutoff = new Date(now.getTime() - DIRECT_PURCHASE_HOLD_MS);
-  const [result] = await db
-    .update(sellerCommitments)
-    .set({
-      status: "open",
-      buyerWallet: null,
-      grossUsdc: null,
-      platformFeeUsdc: null,
-      sellerNetUsdc: null,
-    })
-    .where(and(
-      eq(sellerCommitments.status, "awaiting_payment"),
-      isNull(sellerCommitments.paymentSignature),
-      lt(sellerCommitments.updatedAt, cutoff),
-    ));
-  if (result.affectedRows) await invalidatePublicBoardCache();
-  return result.affectedRows ?? 0;
+  const stale = await db.select().from(sellerCommitments).where(and(
+    eq(sellerCommitments.status, "awaiting_payment"),
+    isNull(sellerCommitments.paymentSignature),
+    lt(sellerCommitments.updatedAt, cutoff),
+  ));
+  if (!stale.length) return 0;
+  await db.transaction(async tx => {
+    for (const allocation of stale) {
+      if (allocation.parentOfferId) {
+        await tx.update(sellerCommitments).set({
+          quantity: sql`${sellerCommitments.quantity} + 1`,
+          status: "open",
+        }).where(and(
+          eq(sellerCommitments.id, allocation.parentOfferId),
+          inArray(sellerCommitments.status, ["open", "matched"]),
+        ));
+        await tx.update(sellerCommitments).set({ status: "cancelled" }).where(eq(sellerCommitments.id, allocation.id));
+      } else {
+        await tx.update(sellerCommitments).set({
+          status: "open",
+          buyerWallet: null,
+          grossUsdc: null,
+          platformFeeUsdc: null,
+          sellerNetUsdc: null,
+          targetHandle: null,
+          allocationKey: null,
+        }).where(eq(sellerCommitments.id, allocation.id));
+      }
+    }
+  });
+  await invalidatePublicBoardCache();
+  return stale.length;
 }
 
 export async function createMarketProject(input: { slug: string; name: string; description?: string }) {
@@ -99,6 +115,7 @@ export async function getPublicMarket() {
       .select({
         publicId: sellerCommitments.publicId,
         profileHandle: sellerCommitments.profileHandle,
+        sourceHandle: sellerCommitments.sourceHandle,
         projectSlug: sellerCommitments.projectSlug,
         instrument: sellerCommitments.instrument,
         quantity: sellerCommitments.quantity,
@@ -108,7 +125,7 @@ export async function getPublicMarket() {
         createdAt: sellerCommitments.createdAt,
       })
       .from(sellerCommitments)
-      .where(and(isNull(sellerCommitments.requestId), isNull(sellerCommitments.archivedAt), eq(sellerCommitments.status, "open")))
+      .where(and(isNull(sellerCommitments.requestId), isNull(sellerCommitments.parentOfferId), isNull(sellerCommitments.archivedAt), eq(sellerCommitments.status, "open")))
       .orderBy(desc(sellerCommitments.createdAt)),
   ]);
 
@@ -145,9 +162,11 @@ export async function createRequest(input: {
   const publicId = `REQ-${nanoid(8).toUpperCase()}`;
   const now = new Date();
   const intent = createExactMarketIntent(input.instrument, input.requestedQuantity);
+  const targetHandle = normalizeXHandle(input.targetHandle);
   const amounts = calculateMarketAmounts(intent.quantity, input.pricePerVouch);
   await db.insert(marketRequests).values({
     ...input,
+    targetHandle,
     instrument: intent.instrument,
     requestedQuantity: intent.quantity,
     publicId,
@@ -208,10 +227,13 @@ export async function createSellerOffer(input: {
   pricePerVouch: number;
 }) {
   const db = await dbOrThrow();
-  const publicId = `ASK-${nanoid(8).toUpperCase()}`;
   const intent = createExactMarketIntent(input.instrument, input.quantity);
+  const sourceHandle = normalizeXHandle(input.profileHandle);
+  const publicId = `ASK-${nanoid(8).toUpperCase()}`;
   await db.insert(sellerCommitments).values({
     ...input,
+    profileHandle: sourceHandle,
+    sourceHandle,
     instrument: intent.instrument,
     quantity: intent.quantity,
     publicId,
@@ -219,15 +241,23 @@ export async function createSellerOffer(input: {
     archiveEligibleAt: new Date(Date.now() + ARCHIVE_AFTER_MS),
   });
   await logActivity({ entityType: "seller_commitment", entityPublicId: publicId, eventType: "seller_offer_created", actorWallet: input.sellerWallet });
-  return { publicId };
+  return { publicId, unitsPosted: intent.quantity };
 }
 
 export async function fillRequest(input: { requestPublicId: string; sellerWallet: string; profileHandle: string; quantity: number }) {
   const db = await dbOrThrow();
   const request = (await db.select().from(marketRequests).where(eq(marketRequests.publicId, input.requestPublicId)).limit(1))[0];
   if (!request || request.status !== "open") throw new Error("This request is not open for fills");
+  enforceSingleUnitAllocation(input.quantity);
   enforceAvailableFill(request.requestedQuantity - request.filledQuantity, input.quantity);
   const fillIntent = createFillIntent({ instrument: request.instrument, quantity: request.requestedQuantity - request.filledQuantity }, input.quantity);
+  const sourceHandle = normalizeXHandle(input.profileHandle);
+  const targetHandle = normalizeXHandle(request.targetHandle);
+  const pairKey = allocationKey({ sourceHandle, targetHandle, projectSlug: request.projectSlug, instrument: fillIntent.instrument });
+  const existingAllocation = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.allocationKey, pairKey)).limit(1))[0];
+  if (existingAllocation) {
+    throw new Error(`@${sourceHandle} has already allocated this ${fillIntent.instrument} to @${targetHandle}`);
+  }
 
   const publicId = `FILL-${nanoid(8).toUpperCase()}`;
   await db.transaction(async tx => {
@@ -249,7 +279,10 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
       publicId,
       requestId: request.id,
       sellerWallet: input.sellerWallet,
-      profileHandle: input.profileHandle,
+      profileHandle: sourceHandle,
+      sourceHandle,
+      targetHandle,
+      allocationKey: pairKey,
       projectSlug: request.projectSlug,
       instrument: fillIntent.instrument,
       quantity: fillIntent.quantity,
@@ -261,27 +294,58 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
       archiveEligibleAt: new Date(Date.now() + ARCHIVE_AFTER_MS),
     });
   });
-  await logActivity({ entityType: "seller_commitment", entityPublicId: publicId, eventType: "request_filled", actorWallet: input.sellerWallet, detail: input.requestPublicId });
+  await logActivity({ entityType: "seller_commitment", entityPublicId: publicId, eventType: "request_filled", actorWallet: input.sellerWallet, detail: `${input.requestPublicId}:${sourceHandle}->${targetHandle}` });
   return { publicId };
 }
 
-export async function initiateOfferPurchase(input: { offerPublicId: string; buyerWallet: string }) {
+export async function initiateOfferPurchase(input: { offerPublicId: string; buyerWallet: string; targetHandle: string }) {
   const db = await dbOrThrow();
   await releaseStaleDirectPurchaseReservations();
   const offer = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, input.offerPublicId)).limit(1))[0];
-  if (!offer || offer.requestId || transitionDirectPurchase({ status: offer.status as "open", buyerMarkedDone: false, sellerMarkedDone: false }, "reserve").status !== "awaiting_payment") throw new Error("This seller offer is no longer available");
-  const purchaseIntent = createDirectPurchaseIntent({ instrument: offer.instrument, quantity: offer.quantity });
+  if (!offer || offer.requestId || offer.parentOfferId || offer.status !== "open" || offer.quantity < 1) throw new Error("This seller offer is no longer available");
+  const purchaseIntent = createDirectPurchaseIntent({ instrument: offer.instrument, quantity: 1 });
+  const sourceHandle = normalizeXHandle(offer.sourceHandle ?? offer.profileHandle);
+  const targetHandle = normalizeXHandle(input.targetHandle);
+  const pairKey = allocationKey({ sourceHandle, targetHandle, projectSlug: offer.projectSlug, instrument: purchaseIntent.instrument });
+  const existingAllocation = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.allocationKey, pairKey)).limit(1))[0];
+  if (existingAllocation) {
+    throw new Error(`@${sourceHandle} has already allocated this ${purchaseIntent.instrument} to @${targetHandle}`);
+  }
   const amounts = calculateMarketAmounts(purchaseIntent.quantity, Number(offer.pricePerVouch));
-  const [result] = await db.update(sellerCommitments).set({
-    buyerWallet: input.buyerWallet,
-    grossUsdc: amounts.grossUsdc,
-    platformFeeUsdc: amounts.platformFeeUsdc,
-    sellerNetUsdc: amounts.sellerNetUsdc,
-    status: "awaiting_payment",
-  }).where(and(eq(sellerCommitments.id, offer.id), eq(sellerCommitments.status, "open")));
-  if (!result.affectedRows) throw new Error("This seller offer was just claimed by another buyer");
-  await logActivity({ entityType: "seller_commitment", entityPublicId: offer.publicId, eventType: "offer_purchase_started", actorWallet: input.buyerWallet });
-  return { publicId: offer.publicId, totalUsdc: amounts.grossUsdc };
+  const allocationPublicId = `ASK-${nanoid(8).toUpperCase()}`;
+  await db.transaction(async tx => {
+    const [result] = await tx.update(sellerCommitments).set({
+      quantity: sql`${sellerCommitments.quantity} - 1`,
+      status: offer.quantity === 1 ? "matched" : "open",
+    }).where(and(
+      eq(sellerCommitments.id, offer.id),
+      eq(sellerCommitments.status, "open"),
+      sql`${sellerCommitments.quantity} >= 1`,
+    ));
+    if (!result.affectedRows) throw new Error("This seller offer was just claimed by another buyer");
+    await tx.insert(sellerCommitments).values({
+      publicId: allocationPublicId,
+      parentOfferId: offer.id,
+      sellerWallet: offer.sellerWallet,
+      profileHandle: sourceHandle,
+      sourceHandle,
+      targetHandle,
+      allocationKey: pairKey,
+      projectSlug: offer.projectSlug,
+      instrument: purchaseIntent.instrument,
+      vouchBand: offer.vouchBand,
+      quantity: 1,
+      pricePerVouch: offer.pricePerVouch,
+      grossUsdc: amounts.grossUsdc,
+      platformFeeUsdc: amounts.platformFeeUsdc,
+      sellerNetUsdc: amounts.sellerNetUsdc,
+      buyerWallet: input.buyerWallet,
+      status: "awaiting_payment",
+      archiveEligibleAt: offer.archiveEligibleAt,
+    });
+  });
+  await logActivity({ entityType: "seller_commitment", entityPublicId: allocationPublicId, eventType: "offer_purchase_started", actorWallet: input.buyerWallet, detail: `${sourceHandle}->${targetHandle}` });
+  return { publicId: allocationPublicId, totalUsdc: amounts.grossUsdc };
 }
 
 export async function activateOfferPurchase(input: { publicId: string; signature: string; buyerWallet: string }) {
@@ -423,6 +487,8 @@ export async function getParticipantActivity(wallet: string) {
         publicId: sellerCommitments.publicId,
         requestId: sellerCommitments.requestId,
         profileHandle: sellerCommitments.profileHandle,
+        sourceHandle: sellerCommitments.sourceHandle,
+        targetHandle: sellerCommitments.targetHandle,
         instrument: sellerCommitments.instrument,
         quantity: sellerCommitments.quantity,
         pricePerVouch: sellerCommitments.pricePerVouch,
@@ -436,6 +502,8 @@ export async function getParticipantActivity(wallet: string) {
       .select({
         publicId: sellerCommitments.publicId,
         profileHandle: sellerCommitments.profileHandle,
+        sourceHandle: sellerCommitments.sourceHandle,
+        targetHandle: sellerCommitments.targetHandle,
         instrument: sellerCommitments.instrument,
         quantity: sellerCommitments.quantity,
         pricePerVouch: sellerCommitments.pricePerVouch,

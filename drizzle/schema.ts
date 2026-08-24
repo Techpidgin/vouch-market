@@ -123,8 +123,12 @@ export const sellerCommitments = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     publicId: varchar("publicId", { length: 24 }).notNull(),
     requestId: int("requestId"),
+    parentOfferId: int("parentOfferId"),
     sellerWallet: varchar("sellerWallet", { length: 64 }).notNull(),
     profileHandle: varchar("profileHandle", { length: 80 }).notNull(),
+    sourceHandle: varchar("sourceHandle", { length: 80 }),
+    targetHandle: varchar("targetHandle", { length: 80 }),
+    allocationKey: varchar("allocationKey", { length: 255 }),
     projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
     instrument: marketInstrument.notNull().default("vouch"),
     vouchBand: vouchBand,
@@ -146,7 +150,9 @@ export const sellerCommitments = mysqlTable(
   },
   table => [
     uniqueIndex("sellerCommitments_publicId_unique").on(table.publicId),
+    uniqueIndex("sellerCommitments_allocationKey_unique").on(table.allocationKey),
     index("sellerCommitments_requestId_status_idx").on(table.requestId, table.status),
+    index("sellerCommitments_parentOfferId_status_idx").on(table.parentOfferId, table.status),
     index("sellerCommitments_status_createdAt_idx").on(table.status, table.createdAt),
   ],
 );

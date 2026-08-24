@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { adminProcedure, router } from "../_core/trpc";
+import { rateLimitedPublicProcedure, router } from "../_core/trpc";
 import { createMarketProject, getOperations, recordPayoutDecision } from "../market/db";
 import { verifyWalletChallenge } from "../market/walletProof";
 import { runMarketArchive } from "../market/archive";
@@ -8,9 +8,16 @@ import { runMarketArchive } from "../market/archive";
 const wallet = z.string().trim().min(32).max(64);
 const proof = z.object({ challengeId: z.string().min(8), signature: z.string().min(20) });
 
-function assertConfiguredAdminWallet(candidate: string) {
-  const configured = process.env.SOLANA_RECIPIENT_WALLET;
-  if (!configured || candidate !== configured) throw new TRPCError({ code: "FORBIDDEN", message: "Connect the configured administrator wallet to continue" });
+export function configuredAdminWallets() {
+  return [process.env.SOLANA_RECIPIENT_WALLET, ...(process.env.ADMIN_SOLANA_WALLETS ?? "").split(",")]
+    .map(wallet => wallet?.trim())
+    .filter((wallet): wallet is string => Boolean(wallet));
+}
+
+export function assertConfiguredAdminWallet(candidate: string) {
+  if (!configuredAdminWallets().includes(candidate)) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Connect an authorized administrator wallet to continue" });
+  }
 }
 
 async function verifyAdminWallet(input: { wallet: string; proof: { challengeId: string; signature: string } }) {
@@ -19,30 +26,30 @@ async function verifyAdminWallet(input: { wallet: string; proof: { challengeId: 
 }
 
 export const adminRouter = router({
-  operations: adminProcedure
+  operations: rateLimitedPublicProcedure
     .input(z.object({ wallet, proof }))
     .mutation(async ({ input }) => {
       await verifyAdminWallet(input);
       return getOperations();
     }),
-  createProject: adminProcedure
+  createProject: rateLimitedPublicProcedure
     .input(z.object({ wallet, proof, slug: z.string().trim().regex(/^[a-z0-9-]+$/).min(2).max(64), name: z.string().trim().min(2).max(120), description: z.string().trim().max(800).optional() }))
     .mutation(async ({ input }) => {
       await verifyAdminWallet(input);
       return createMarketProject({ slug: input.slug, name: input.name, description: input.description });
     }),
-  archiveEligible: adminProcedure
+  archiveEligible: rateLimitedPublicProcedure
     .input(z.object({ wallet, proof }))
     .mutation(async ({ input }) => {
       await verifyAdminWallet(input);
       return runMarketArchive();
     }),
-  recordPayout: adminProcedure
+  recordPayout: rateLimitedPublicProcedure
     .input(z.object({ commitmentPublicId: z.string().regex(/^(FILL|ASK)-/), status: z.enum(["sent", "withheld"]), externalReference: z.string().trim().max(160).optional(), adminNote: z.string().trim().max(1000).optional(), wallet, proof }))
-    .mutation(async ({ ctx, input }) => {
+    .mutation(async ({ input }) => {
       try {
         await verifyAdminWallet(input);
-        await recordPayoutDecision({ ...input, adminOpenId: ctx.user.openId });
+        await recordPayoutDecision({ ...input, adminOpenId: `wallet:${input.wallet}` });
         return { ok: true };
       } catch (error) {
         if (error instanceof TRPCError) throw error;

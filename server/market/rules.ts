@@ -7,6 +7,29 @@ export function enforceAvailableFill(remainingQuantity: number, fillQuantity: nu
   }
 }
 
+export function normalizeXHandle(handle: string) {
+  const normalized = handle.trim().replace(/^@/, "").toLowerCase();
+  if (!/^[a-z0-9_]{1,15}$/.test(normalized)) {
+    throw new Error("Enter a valid X handle without the @ symbol");
+  }
+  return normalized;
+}
+
+export function enforceSingleUnitAllocation(quantity: number) {
+  if (quantity !== 1) {
+    throw new Error("Each vouch or slash allocation must be exactly one unit for one target account");
+  }
+}
+
+export function allocationKey(input: { sourceHandle: string; targetHandle: string; projectSlug: string; instrument: "vouch" | "slash" }) {
+  const sourceHandle = normalizeXHandle(input.sourceHandle);
+  const targetHandle = normalizeXHandle(input.targetHandle);
+  if (sourceHandle === targetHandle) {
+    throw new Error("A source account cannot allocate a vouch or slash to itself");
+  }
+  return [input.projectSlug.toLowerCase(), input.instrument, sourceHandle, targetHandle].join(":");
+}
+
 export function assertUnusedPaymentSignature(signatureAlreadyUsed: boolean) {
   if (signatureAlreadyUsed) {
     throw new Error("This payment signature has already been used");

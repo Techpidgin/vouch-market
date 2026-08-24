@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { calculateMarketAmounts, decimalToUsdcMicro, MARKET_INSTRUMENTS, toUsdcMicro } from "./constants";
-import { assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, transitionDirectPurchase } from "./rules";
+import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
 
 describe("Vouch Market core rules", () => {
   it("prevents fills that exceed the remaining request quantity", () => {
     expect(() => enforceAvailableFill(12, 13)).toThrow("exceeds the remaining");
     expect(() => enforceAvailableFill(12, 12)).not.toThrow();
     expect(() => enforceAvailableFill(12, 0)).toThrow("positive whole number");
+  });
+
+  it("normalizes account pairs and limits every source-to-target allocation to one unit", () => {
+    expect(normalizeXHandle("@Maker_One")).toBe("maker_one");
+    expect(allocationKey({ sourceHandle: "@Maker_One", targetHandle: "Target_One", projectSlug: "commonsmade", instrument: "vouch" })).toBe("commonsmade:vouch:maker_one:target_one");
+    expect(() => enforceSingleUnitAllocation(2)).toThrow("exactly one unit");
+    expect(() => allocationKey({ sourceHandle: "same_account", targetHandle: "@same_account", projectSlug: "commonsmade", instrument: "slash" })).toThrow("cannot allocate");
   });
 
   it("converts USDC exactly to six-decimal micro-units", () => {
