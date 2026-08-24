@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { rateLimitedPublicProcedure, router } from "../_core/trpc";
-import { createMarketProject, getOperations, recordPayoutDecision } from "../market/db";
+import { createMarketProject, getOperations, recordPayoutDecision, setLegacyOfferPoints } from "../market/db";
 import { verifyWalletChallenge } from "../market/walletProof";
 import { runMarketArchive } from "../market/archive";
 
@@ -43,6 +43,17 @@ export const adminRouter = router({
     .mutation(async ({ input }) => {
       await verifyAdminWallet(input);
       return runMarketArchive();
+    }),
+  setLegacyOfferPoints: rateLimitedPublicProcedure
+    .input(z.object({ offerPublicId: z.string().regex(/^ASK-/), pointsPerUnit: z.number().int().min(1).max(1_000_000_000), wallet, proof }))
+    .mutation(async ({ input }) => {
+      try {
+        await verifyAdminWallet(input);
+        return await setLegacyOfferPoints({ ...input, adminWallet: input.wallet });
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Point value could not be recorded" });
+      }
     }),
   recordPayout: rateLimitedPublicProcedure
     .input(z.object({ commitmentPublicId: z.string().regex(/^(FILL|ASK)-/), status: z.enum(["sent", "withheld"]), externalReference: z.string().trim().max(160).optional(), adminNote: z.string().trim().max(1000).optional(), wallet, proof }))

@@ -47,7 +47,7 @@ vi.mock("./compactState", () => ({
   invalidatePublicBoardCache: async () => undefined,
 }));
 
-import { createRequest, createSellerOffer, fillRequest, getOperations, initiateOfferPurchase, markOfferBuyerDone } from "./db";
+import { createRequest, createSellerOffer, fillRequest, getOperations, initiateOfferPurchase, markOfferBuyerDone, setLegacyOfferPoints } from "./db";
 
 describe("slash market service records", () => {
   beforeEach(() => {
@@ -193,5 +193,19 @@ describe("slash market service records", () => {
       .filter(entry => entry.table === sellerCommitments && (entry.values as Record<string, unknown>).parentOfferId === 8)
       .map(entry => (entry.values as Record<string, unknown>).targetHandle);
     expect(targets).toEqual(["target_one", "target_two"]);
+  });
+
+  it("records an administrator-supplied point value only for an open legacy source offer", async () => {
+    state.selectResponses = [[{
+      id: 12,
+      publicId: "ASK-LEGACY",
+      requestId: null,
+      parentOfferId: null,
+      status: "open",
+      pointsPerUnit: null,
+    }]];
+
+    await expect(setLegacyOfferPoints({ offerPublicId: "ASK-LEGACY", pointsPerUnit: 12000, adminWallet: "admin-wallet" })).resolves.toEqual({ publicId: "ASK-LEGACY", pointsPerUnit: 12000 });
+    expect(state.updates).toContainEqual({ table: sellerCommitments, values: { pointsPerUnit: 12000 } });
   });
 });

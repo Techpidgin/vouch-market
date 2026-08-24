@@ -192,3 +192,69 @@
     .market-shell { padding-inline: 2rem; }
   }
 }
+
+@keyframes market-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes market-mark-settle {
+  0% { opacity: 0; transform: translateY(-4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :root {
+    --market-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href] {
+    transition: color 160ms var(--market-ease-out), background-color 160ms var(--market-ease-out), border-color 160ms var(--market-ease-out), opacity 160ms var(--market-ease-out), transform 160ms var(--market-ease-out);
+  }
+
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active {
+    transform: scale(0.97);
+  }
+
+  .market-mark > i {
+    animation: market-mark-settle 320ms var(--market-ease-out) both;
+  }
+
+  .market-mark > i:nth-child(2) { animation-delay: 45ms; }
+  .market-mark > i:nth-child(3) { animation-delay: 90ms; }
+  .market-mark > i:nth-child(4) { animation-delay: 135ms; }
+
+  .market-page > section:first-child .market-shell > .mt-5 > *,
+  .market-page > #market,
+  .market-page > section:nth-of-type(3) .market-shell > div:first-child,
+  .market-page > section:nth-of-type(3) .market-shell > aside > *,
+  .operations-shell > * {
+    animation: market-rise 440ms var(--market-ease-out) both;
+  }
+
+  .market-page > section:first-child .market-shell > .mt-5 > *:nth-child(2) { animation-delay: 80ms; }
+  .market-page > #market { animation-delay: 100ms; }
+  .market-page > section:nth-of-type(3) .market-shell > div:first-child { animation-delay: 150ms; }
+  .market-page > section:nth-of-type(3) .market-shell > aside > *:nth-child(1) { animation-delay: 190ms; }
+  .market-page > section:nth-of-type(3) .market-shell > aside > *:nth-child(2) { animation-delay: 230ms; }
+  .market-page > section:nth-of-type(3) .market-shell > aside > *:nth-child(3) { animation-delay: 270ms; }
+  .operations-shell > *:nth-child(2) { animation-delay: 80ms; }
+  .operations-shell > *:nth-child(3) { animation-delay: 120ms; }
+  .operations-shell > *:nth-child(4) { animation-delay: 160ms; }
+
+  .market-row {
+    animation: market-rise 320ms var(--market-ease-out) both;
+    transition: transform 160ms var(--market-ease-out), background-color 160ms var(--market-ease-out), border-color 160ms var(--market-ease-out);
+  }
+
+  .market-row:nth-of-type(2) { animation-delay: 35ms; }
+  .market-row:nth-of-type(3) { animation-delay: 70ms; }
+  .market-row:nth-of-type(4) { animation-delay: 105ms; }
+  .market-row:nth-of-type(5) { animation-delay: 140ms; }
+  .market-row:nth-of-type(6) { animation-delay: 175ms; }
+  .market-row:nth-of-type(7) { animation-delay: 210ms; }
+  .market-row:hover { transform: translateY(-1px); }
+}

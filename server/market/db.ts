@@ -396,6 +396,31 @@ export async function delistSellerOffer(publicId: string, wallet: string) {
   await logActivity({ entityType: "seller_commitment", entityPublicId: publicId, eventType: "seller_offer_delisted", actorWallet: wallet });
 }
 
+export async function setLegacyOfferPoints(input: { offerPublicId: string; pointsPerUnit: number; adminWallet: string }) {
+  const db = await dbOrThrow();
+  enforcePointsPerUnit(input.pointsPerUnit);
+  const offer = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, input.offerPublicId)).limit(1))[0];
+  if (!offer || offer.requestId || offer.parentOfferId || offer.status !== "open" || offer.pointsPerUnit != null) {
+    throw new Error("Only an open legacy source offer without a declared point value can be repaired");
+  }
+  const [result] = await db.update(sellerCommitments).set({ pointsPerUnit: input.pointsPerUnit }).where(and(
+    eq(sellerCommitments.id, offer.id),
+    isNull(sellerCommitments.requestId),
+    isNull(sellerCommitments.parentOfferId),
+    eq(sellerCommitments.status, "open"),
+    isNull(sellerCommitments.pointsPerUnit),
+  ));
+  if (!result.affectedRows) throw new Error("This legacy source offer changed before its point value could be recorded");
+  await logActivity({
+    entityType: "seller_commitment",
+    entityPublicId: offer.publicId,
+    eventType: "legacy_offer_points_recorded",
+    actorWallet: input.adminWallet,
+    detail: String(input.pointsPerUnit),
+  });
+  return { publicId: offer.publicId, pointsPerUnit: input.pointsPerUnit };
+}
+
 async function requestReadyForReview(requestId: number) {
   const db = await dbOrThrow();
   const request = (await db.select().from(marketRequests).where(eq(marketRequests.id, requestId)).limit(1))[0];
