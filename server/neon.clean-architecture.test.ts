@@ -23,8 +23,8 @@ describe("clean Neon deployment architecture", () => {
     expect(existsSync(functionPath)).toBe(true);
     expect(existsSync(resolve(root, "api/trpc/[...path].js"))).toBe(false);
     const handlerSource = readFileSync(handlerPath, "utf8");
-    expect(handlerSource).toContain("createVouchApp");
-    expect(handlerSource).toContain("export default createVouchApp()");
+    expect(handlerSource).toContain("createHTTPHandler");
+    expect(handlerSource).toContain('basePath: "/api/trpc/"');
     expect(packageJson.scripts?.["build:vercel:function"]).not.toContain("--packages=external");
     expect(packageJson.dependencies?.["iconv-lite"]).toBeDefined();
   });

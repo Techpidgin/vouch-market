@@ -1,6 +1,12 @@
-import { createVouchApp } from "../_core/app";
+import { createHTTPHandler } from "@trpc/server/adapters/standalone";
+import { appRouter } from "../routers";
+import { createContext } from "../_core/context";
 
 // This source is bundled into one CommonJS Vercel function during the build.
-// It prevents the Vercel runtime from resolving TypeScript server modules at
-// request time and leaves HANKA with exactly one tRPC API entry point.
-export default createVouchApp();
+// The standalone adapter receives the native Node request Vercel provides,
+// avoiding Express and its runtime dependency chain entirely.
+export default createHTTPHandler({
+  router: appRouter,
+  createContext,
+  basePath: "/api/trpc/",
+});
