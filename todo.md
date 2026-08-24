@@ -71,3 +71,18 @@
 - [x] Capture inspectable loaded mobile evidence of the published compact market, including the live seller rows and reduced midpoint panel.
 - [x] Replace internal review-status labels with neutral public wallet-activity language and revalidate the activity display.
 - [x] Push the compact marketplace refinement and public-copy cleanup to the private GitHub repository.
+- [x] Extend the marketplace data model and wallet workflows so CommonsMade slashes can be listed, requested, purchased, completed, and administered alongside vouches.
+- [x] Replace the separate request-and-offer panels with a unified leaderboard-style market ledger that lists buy and sell intent together using restrained contrasting shades.
+- [x] Remove repetitive row-level wallet connection buttons and provide clear, contextual actions that appear only when a connected wallet can act.
+- [x] Rework the market board for mobile-first readability while retaining the compact leaderboard hierarchy and both vouch/slash market types.
+- [x] Add validation and Vitest coverage for slash-market lifecycle handling, then verify the redesigned board on desktop and mobile before publishing.
+- [x] Remove reputation-band inputs and active listing columns so new vouch and slash listings use exact account-specific quantities only.
+- [x] Update buy and sell forms, market rows, activity labels, and validation messages to describe the exact vouch or slash quantity offered or requested.
+- [x] Preserve historical band data only for existing records while publishing a responsive exact-quantity leaderboard refinement.
+- [x] Show the vouch-or-slash instrument in private operations records so administrators can review and pay both market types.
+- [x] Make disconnected leaderboard rows non-actionable and direct wallet connection through the single top-level wallet control.
+- [x] Add lifecycle-focused tests for slash bids, slash listings, fills, direct purchases, completions, and administrator visibility.
+- [x] Retain historical reputation-band context in private operations records while keeping new public rows exact-quantity only.
+- [x] Add service-level tests for slash buyer bids and slash seller listings through the market lifecycle inputs.
+- [x] Add service-level tests for slash fills, direct purchases, completion transitions, and administrator operations visibility.
+- [ ] Publish the exact-quantity leaderboard and verify the live custom-domain market at desktop and mobile widths.

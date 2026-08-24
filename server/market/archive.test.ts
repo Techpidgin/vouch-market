@@ -22,6 +22,7 @@ describe("market archive snapshots", () => {
     const sanitized = sanitizeArchiveRecord({
       publicId: "REQ-PRIVATE",
       targetHandle: "commonsmade",
+      instrument: "slash",
       status: "completed",
       buyerWallet: "wallet-that-must-not-be-archived",
       paymentSignature: "signature-that-must-not-be-archived",
@@ -29,7 +30,7 @@ describe("market archive snapshots", () => {
       archiveEligibleAt: new Date("2026-08-23T09:00:00.000Z"),
     });
 
-    expect(sanitized).toMatchObject({ publicId: "REQ-PRIVATE", targetHandle: "commonsmade", status: "completed" });
+    expect(sanitized).toMatchObject({ publicId: "REQ-PRIVATE", targetHandle: "commonsmade", instrument: "slash", status: "completed" });
     expect(sanitized).not.toHaveProperty("buyerWallet");
     expect(sanitized).not.toHaveProperty("paymentSignature");
   });

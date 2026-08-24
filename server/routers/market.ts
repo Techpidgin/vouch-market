@@ -24,12 +24,11 @@ import {
 import { verifyUsdcPayment } from "../market/solana";
 import { USDC_MINT } from "../market/constants";
 import { createWalletChallenge, verifyWalletChallenge } from "../market/walletProof";
-import { enforceUnder1kMinimum } from "../market/rules";
 
 const wallet = z.string().trim().min(32).max(64).refine(value => {
   try { new PublicKey(value); return true; } catch { return false; }
 }, "Enter a valid Solana wallet address");
-const band = z.enum(["under_1k", "1k_5k", "5k_10k", "10k_25k", "25k_50k", "50k_plus"]);
+const instrument = z.enum(["vouch", "slash"]);
 const proof = z.object({ challengeId: z.string().min(8), signature: z.string().min(20) });
 
 function marketError(error: unknown): never {
@@ -56,12 +55,11 @@ export const marketRouter = router({
       }
     }),
   createRequest: rateLimitedPublicProcedure
-    .input(z.object({ wallet, targetHandle: z.string().trim().min(1).max(80), projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), vouchBand: band, quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, targetHandle: z.string().trim().min(1).max(80), projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "buyer_request" });
-        enforceUnder1kMinimum(input.vouchBand, input.pricePerVouch);
-        const created = await createRequest({ buyerWallet: input.wallet, targetHandle: input.targetHandle.replace(/^@/, ""), projectSlug: input.projectSlug, vouchBand: input.vouchBand, requestedQuantity: input.quantity, pricePerVouch: input.pricePerVouch, totalUsdc: input.quantity * input.pricePerVouch });
+        const created = await createRequest({ buyerWallet: input.wallet, targetHandle: input.targetHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, requestedQuantity: input.quantity, pricePerVouch: input.pricePerVouch, totalUsdc: input.quantity * input.pricePerVouch });
         return { ...created, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
       } catch (error) {
         marketError(error);
@@ -90,11 +88,11 @@ export const marketRouter = router({
       }
     }),
   createSellerOffer: rateLimitedPublicProcedure
-    .input(z.object({ wallet, profileHandle: z.string().trim().min(1).max(80), projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), vouchBand: band, quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, profileHandle: z.string().trim().min(1).max(80), projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-        return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, vouchBand: input.vouchBand, quantity: input.quantity, pricePerVouch: input.pricePerVouch });
+        return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, quantity: input.quantity, pricePerVouch: input.pricePerVouch });
       } catch (error) {
         marketError(error);
       }

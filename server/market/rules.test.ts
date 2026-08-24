@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { calculateMarketAmounts, decimalToUsdcMicro, toUsdcMicro, VOUCH_BANDS } from "./constants";
-import { assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceUnder1kMinimum, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, transitionDirectPurchase } from "./rules";
+import { calculateMarketAmounts, decimalToUsdcMicro, MARKET_INSTRUMENTS, toUsdcMicro } from "./constants";
+import { assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, transitionDirectPurchase } from "./rules";
 
 describe("Vouch Market core rules", () => {
-  it("enforces the 0.50 USDC floor for under-1k requests", () => {
-    expect(() => enforceUnder1kMinimum("under_1k", 0.49)).toThrow("at least 0.50 USDC");
-    expect(() => enforceUnder1kMinimum("under_1k", 0.5)).not.toThrow();
-    expect(() => enforceUnder1kMinimum("1k_5k", 0.01)).not.toThrow();
-  });
-
   it("prevents fills that exceed the remaining request quantity", () => {
     expect(() => enforceAvailableFill(12, 13)).toThrow("exceeds the remaining");
     expect(() => enforceAvailableFill(12, 12)).not.toThrow();
@@ -21,9 +15,8 @@ describe("Vouch Market core rules", () => {
     expect(() => decimalToUsdcMicro("0.5000001")).toThrow("up to six decimal places");
   });
 
-  it("supports expanded point bands and calculates the 5% platform fee exactly", () => {
-    expect(VOUCH_BANDS.map(item => item.value)).toContain("50k_plus");
-    expect(VOUCH_BANDS.map(item => item.value)).toContain("25k_50k");
+  it("supports vouch and slash instruments with exact-quantity fee calculations", () => {
+    expect(MARKET_INSTRUMENTS.map(item => item.value)).toEqual(["vouch", "slash"]);
     expect(calculateMarketAmounts(100, 0.5)).toEqual({ grossUsdc: "50.000000", platformFeeUsdc: "2.500000", sellerNetUsdc: "47.500000" });
   });
 

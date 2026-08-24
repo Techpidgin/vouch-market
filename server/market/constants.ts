@@ -14,7 +14,13 @@ export const VOUCH_BANDS = [
 ] as const;
 
 export type VouchBandValue = (typeof VOUCH_BANDS)[number]["value"];
-export const DEFAULT_PROJECT = { slug: "commonsmade", name: "CommonsMade", description: "Ethos vouch points for the CommonsMade project." } as const;
+export const MARKET_INSTRUMENTS = [
+  { value: "vouch", label: "Vouches" },
+  { value: "slash", label: "Slashes" },
+] as const;
+export type MarketInstrument = (typeof MARKET_INSTRUMENTS)[number]["value"];
+export function instrumentLabel(instrument: MarketInstrument) { return instrument === "slash" ? "slashes" : "vouches"; }
+export const DEFAULT_PROJECT = { slug: "commonsmade", name: "CommonsMade", description: "Trade CommonsMade vouches and slashes." } as const;
 
 export function toUsdcMicro(amount: number): number {
   if (!Number.isFinite(amount) || amount < 0) {

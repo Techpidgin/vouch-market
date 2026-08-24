@@ -14,6 +14,7 @@ const ARCHIVE_FIELDS = [
   "publicId",
   "targetHandle",
   "profileHandle",
+  "instrument",
   "vouchBand",
   "requestedQuantity",
   "filledQuantity",

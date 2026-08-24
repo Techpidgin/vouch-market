@@ -56,6 +56,8 @@ export const vouchBand = mysqlEnum("vouchBand", [
   "25k_plus",
 ]);
 
+export const marketInstrument = mysqlEnum("marketInstrument", ["vouch", "slash"]);
+
 export const marketProjects = mysqlTable(
   "marketProjects",
   {
@@ -78,7 +80,8 @@ export const marketRequests = mysqlTable(
     buyerWallet: varchar("buyerWallet", { length: 64 }).notNull(),
     targetHandle: varchar("targetHandle", { length: 80 }).notNull(),
     projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
-    vouchBand: vouchBand.notNull(),
+    instrument: marketInstrument.notNull().default("vouch"),
+    vouchBand: vouchBand,
     requestedQuantity: int("requestedQuantity").notNull(),
     filledQuantity: int("filledQuantity").notNull().default(0),
     pricePerVouch: decimal("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
@@ -123,7 +126,8 @@ export const sellerCommitments = mysqlTable(
     sellerWallet: varchar("sellerWallet", { length: 64 }).notNull(),
     profileHandle: varchar("profileHandle", { length: 80 }).notNull(),
     projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
-    vouchBand: vouchBand.notNull(),
+    instrument: marketInstrument.notNull().default("vouch"),
+    vouchBand: vouchBand,
     quantity: int("quantity").notNull(),
     pricePerVouch: decimal("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
     grossUsdc: decimal("grossUsdc", { precision: 16, scale: 6 }),

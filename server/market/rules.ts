@@ -1,12 +1,3 @@
-export function enforceUnder1kMinimum(vouchBand: string, pricePerVouch: number) {
-  if (!Number.isFinite(pricePerVouch) || pricePerVouch <= 0) {
-    throw new Error("Price per vouch must be greater than zero");
-  }
-  if (vouchBand === "under_1k" && pricePerVouch < 0.5) {
-    throw new Error("Requests under 1k must offer at least 0.50 USDC per vouch");
-  }
-}
-
 export function enforceAvailableFill(remainingQuantity: number, fillQuantity: number) {
   if (!Number.isInteger(fillQuantity) || fillQuantity <= 0) {
     throw new Error("Fill quantity must be a positive whole number");

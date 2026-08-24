@@ -36,6 +36,20 @@
       "when": 1787528114086,
       "tag": "0004_massive_sinister_six",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1787530438589,
+      "tag": "0005_orange_longshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787530658338,
+      "tag": "0006_amazing_green_goblin",
+      "breakpoints": true
     }
   ]
 }

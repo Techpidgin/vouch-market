@@ -10,10 +10,11 @@ import {
   sellerCommitments,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, type VouchBandValue } from "./constants";
+import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, type MarketInstrument } from "./constants";
 import { assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, transitionDirectPurchase } from "./rules";
 import { removeArchiveMetadata } from "./visibility";
 import { getCachedPublicBoard, invalidatePublicBoardCache } from "./compactState";
+import { createDirectPurchaseIntent, createExactMarketIntent, createFillIntent } from "./instrumentLifecycle";
 
 const DIRECT_PURCHASE_HOLD_MS = 15 * 60 * 1000;
 
@@ -38,7 +39,7 @@ export async function logActivity(input: {
 
 async function ensureDefaultProject() {
   const db = await dbOrThrow();
-  await db.insert(marketProjects).values(DEFAULT_PROJECT).onDuplicateKeyUpdate({ set: { name: DEFAULT_PROJECT.name } });
+  await db.insert(marketProjects).values(DEFAULT_PROJECT).onDuplicateKeyUpdate({ set: { name: DEFAULT_PROJECT.name, description: DEFAULT_PROJECT.description } });
 }
 
 async function releaseStaleDirectPurchaseReservations(now = new Date()) {
@@ -82,7 +83,7 @@ export async function getPublicMarket() {
         publicId: marketRequests.publicId,
         targetHandle: marketRequests.targetHandle,
         projectSlug: marketRequests.projectSlug,
-        vouchBand: marketRequests.vouchBand,
+        instrument: marketRequests.instrument,
         requestedQuantity: marketRequests.requestedQuantity,
         filledQuantity: marketRequests.filledQuantity,
         pricePerVouch: marketRequests.pricePerVouch,
@@ -99,7 +100,7 @@ export async function getPublicMarket() {
         publicId: sellerCommitments.publicId,
         profileHandle: sellerCommitments.profileHandle,
         projectSlug: sellerCommitments.projectSlug,
-        vouchBand: sellerCommitments.vouchBand,
+        instrument: sellerCommitments.instrument,
         quantity: sellerCommitments.quantity,
         pricePerVouch: sellerCommitments.pricePerVouch,
         status: sellerCommitments.status,
@@ -113,12 +114,21 @@ export async function getPublicMarket() {
 
     const visibleRequests = removeArchiveMetadata(requests);
     const visibleSellerOffers = removeArchiveMetadata(sellerOffers);
-    const prices = [...visibleRequests, ...visibleSellerOffers]
-      .map(entry => Number(entry.pricePerVouch))
-      .filter(price => Number.isFinite(price) && price > 0)
-      .sort((a, b) => a - b);
-    const midpoint = prices.length ? prices[Math.floor(prices.length / 2)] : null;
-    return { projects, requests: visibleRequests, sellerOffers: visibleSellerOffers, suggestedPricePerVouch: midpoint?.toFixed(4) ?? null };
+    const midpointFor = (instrument: MarketInstrument) => {
+      const prices = [...visibleRequests, ...visibleSellerOffers]
+        .filter(entry => entry.instrument === instrument)
+        .map(entry => Number(entry.pricePerVouch))
+        .filter(price => Number.isFinite(price) && price > 0)
+        .sort((a, b) => a - b);
+      const midpoint = prices.length ? prices[Math.floor(prices.length / 2)] : null;
+      return midpoint?.toFixed(4) ?? null;
+    };
+    return {
+      projects,
+      requests: visibleRequests,
+      sellerOffers: visibleSellerOffers,
+      suggestedPriceByInstrument: { vouch: midpointFor("vouch"), slash: midpointFor("slash") },
+    };
   });
 }
 
@@ -126,7 +136,7 @@ export async function createRequest(input: {
   buyerWallet: string;
   targetHandle: string;
   projectSlug: string;
-  vouchBand: VouchBandValue;
+  instrument: MarketInstrument;
   requestedQuantity: number;
   pricePerVouch: number;
   totalUsdc: number;
@@ -134,9 +144,12 @@ export async function createRequest(input: {
   const db = await dbOrThrow();
   const publicId = `REQ-${nanoid(8).toUpperCase()}`;
   const now = new Date();
-  const amounts = calculateMarketAmounts(input.requestedQuantity, input.pricePerVouch);
+  const intent = createExactMarketIntent(input.instrument, input.requestedQuantity);
+  const amounts = calculateMarketAmounts(intent.quantity, input.pricePerVouch);
   await db.insert(marketRequests).values({
     ...input,
+    instrument: intent.instrument,
+    requestedQuantity: intent.quantity,
     publicId,
     pricePerVouch: input.pricePerVouch.toFixed(6),
     totalUsdc: amounts.grossUsdc,
@@ -190,14 +203,17 @@ export async function createSellerOffer(input: {
   sellerWallet: string;
   profileHandle: string;
   projectSlug: string;
-  vouchBand: VouchBandValue;
+  instrument: MarketInstrument;
   quantity: number;
   pricePerVouch: number;
 }) {
   const db = await dbOrThrow();
   const publicId = `ASK-${nanoid(8).toUpperCase()}`;
+  const intent = createExactMarketIntent(input.instrument, input.quantity);
   await db.insert(sellerCommitments).values({
     ...input,
+    instrument: intent.instrument,
+    quantity: intent.quantity,
     publicId,
     pricePerVouch: input.pricePerVouch.toFixed(6),
     archiveEligibleAt: new Date(Date.now() + ARCHIVE_AFTER_MS),
@@ -211,6 +227,7 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
   const request = (await db.select().from(marketRequests).where(eq(marketRequests.publicId, input.requestPublicId)).limit(1))[0];
   if (!request || request.status !== "open") throw new Error("This request is not open for fills");
   enforceAvailableFill(request.requestedQuantity - request.filledQuantity, input.quantity);
+  const fillIntent = createFillIntent({ instrument: request.instrument, quantity: request.requestedQuantity - request.filledQuantity }, input.quantity);
 
   const publicId = `FILL-${nanoid(8).toUpperCase()}`;
   await db.transaction(async tx => {
@@ -234,12 +251,12 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
       sellerWallet: input.sellerWallet,
       profileHandle: input.profileHandle,
       projectSlug: request.projectSlug,
-      vouchBand: request.vouchBand,
-      quantity: input.quantity,
+      instrument: fillIntent.instrument,
+      quantity: fillIntent.quantity,
       pricePerVouch: request.pricePerVouch,
-      grossUsdc: calculateMarketAmounts(input.quantity, Number(request.pricePerVouch)).grossUsdc,
-      platformFeeUsdc: calculateMarketAmounts(input.quantity, Number(request.pricePerVouch)).platformFeeUsdc,
-      sellerNetUsdc: calculateMarketAmounts(input.quantity, Number(request.pricePerVouch)).sellerNetUsdc,
+      grossUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).grossUsdc,
+      platformFeeUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).platformFeeUsdc,
+      sellerNetUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).sellerNetUsdc,
       status: "matched",
       archiveEligibleAt: new Date(Date.now() + ARCHIVE_AFTER_MS),
     });
@@ -253,7 +270,8 @@ export async function initiateOfferPurchase(input: { offerPublicId: string; buye
   await releaseStaleDirectPurchaseReservations();
   const offer = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, input.offerPublicId)).limit(1))[0];
   if (!offer || offer.requestId || transitionDirectPurchase({ status: offer.status as "open", buyerMarkedDone: false, sellerMarkedDone: false }, "reserve").status !== "awaiting_payment") throw new Error("This seller offer is no longer available");
-  const amounts = calculateMarketAmounts(offer.quantity, Number(offer.pricePerVouch));
+  const purchaseIntent = createDirectPurchaseIntent({ instrument: offer.instrument, quantity: offer.quantity });
+  const amounts = calculateMarketAmounts(purchaseIntent.quantity, Number(offer.pricePerVouch));
   const [result] = await db.update(sellerCommitments).set({
     buyerWallet: input.buyerWallet,
     grossUsdc: amounts.grossUsdc,
@@ -390,6 +408,7 @@ export async function getParticipantActivity(wallet: string) {
       .select({
         publicId: marketRequests.publicId,
         targetHandle: marketRequests.targetHandle,
+        instrument: marketRequests.instrument,
         requestedQuantity: marketRequests.requestedQuantity,
         filledQuantity: marketRequests.filledQuantity,
         totalUsdc: marketRequests.totalUsdc,
@@ -404,6 +423,7 @@ export async function getParticipantActivity(wallet: string) {
         publicId: sellerCommitments.publicId,
         requestId: sellerCommitments.requestId,
         profileHandle: sellerCommitments.profileHandle,
+        instrument: sellerCommitments.instrument,
         quantity: sellerCommitments.quantity,
         pricePerVouch: sellerCommitments.pricePerVouch,
         status: sellerCommitments.status,
@@ -416,6 +436,7 @@ export async function getParticipantActivity(wallet: string) {
       .select({
         publicId: sellerCommitments.publicId,
         profileHandle: sellerCommitments.profileHandle,
+        instrument: sellerCommitments.instrument,
         quantity: sellerCommitments.quantity,
         pricePerVouch: sellerCommitments.pricePerVouch,
         grossUsdc: sellerCommitments.grossUsdc,
