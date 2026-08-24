@@ -19,6 +19,8 @@ describe("clean Neon deployment architecture", () => {
     const handlerPath = resolve(root, "api/trpc/[...path].ts");
     expect(existsSync(handlerPath)).toBe(true);
     expect(existsSync(resolve(root, "api/trpc/[...path].js"))).toBe(false);
-    expect(readFileSync(handlerPath, "utf8")).toContain("createVouchApp");
+    const handlerSource = readFileSync(handlerPath, "utf8");
+    expect(handlerSource).toContain("createVouchApp");
+    expect(handlerSource).toContain("return app(req as never, res as never)");
   });
 });

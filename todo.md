@@ -138,3 +138,4 @@
 - [x] Remove Upstash cache and rate-limiting integration, environment aliases, dependencies, tests, and obsolete guidance.
 - [x] Preserve wallet-first validation, payment safeguards, source-target rules, and private operations while starting the Neon market with no legacy records.
 - [ ] Validate the simple Vercel API route and empty Neon board before publishing the backend reset.
+- [ ] Fix the live Vercel API invocation failure by exporting an explicit Node serverless handler for the tRPC app.
