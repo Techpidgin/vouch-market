@@ -88,3 +88,4 @@
 - [x] Publish the exact-quantity leaderboard and verify the live custom-domain market at desktop and mobile widths.
 - [x] Capture OCR-backed evidence of the published 390px mobile leaderboard, including filters, live rows, midpoint panels, and the absence of row-level connection actions.
 - [x] Capture readable live mobile proof that disconnected listing rows use a neutral placeholder rather than Connect, Buy, or Fill actions.
+- [x] Update the public entry page to describe both vouches and slashes and remove its remaining human-review language.
