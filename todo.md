@@ -85,4 +85,6 @@
 - [x] Retain historical reputation-band context in private operations records while keeping new public rows exact-quantity only.
 - [x] Add service-level tests for slash buyer bids and slash seller listings through the market lifecycle inputs.
 - [x] Add service-level tests for slash fills, direct purchases, completion transitions, and administrator operations visibility.
-- [ ] Publish the exact-quantity leaderboard and verify the live custom-domain market at desktop and mobile widths.
+- [x] Publish the exact-quantity leaderboard and verify the live custom-domain market at desktop and mobile widths.
+- [x] Capture OCR-backed evidence of the published 390px mobile leaderboard, including filters, live rows, midpoint panels, and the absence of row-level connection actions.
+- [x] Capture readable live mobile proof that disconnected listing rows use a neutral placeholder rather than Connect, Buy, or Fill actions.
