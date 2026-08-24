@@ -10,6 +10,8 @@ Vercel now runs `pnpm run db:migrate && pnpm run build:vercel`. The first clean 
 
 The Vercel configuration also rewrites non-API deep links, including `/market` and `/ops`, to the Vite SPA entry point while explicitly excluding `/api/*`. This keeps direct public links functional without intercepting the database-backed tRPC function.[3]
 
+The tRPC function is pre-bundled as `api/trpc/[...path].js` from `server/vercel/trpcHandler.ts` before deployment. This is intentional: Vercel's Node ESM runtime must receive the bundled local server graph rather than resolve TypeScript imports from `server/_core` at request time.
+
 ## Intentional fresh-start behavior
 
 | Area | Fresh Neon behavior |
