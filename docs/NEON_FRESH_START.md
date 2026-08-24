@@ -8,6 +8,8 @@ The Neon connection must be linked to the active `vouch-market` Vercel project. 
 
 Vercel now runs `pnpm run db:migrate && pnpm run build:vercel`. The first clean production deployment creates the PostgreSQL schema through the generated Drizzle migration; later deployments apply only outstanding migrations. Keep `DATABASE_URL`, `JWT_SECRET`, `SOLANA_RPC_URL`, `SOLANA_RECIPIENT_WALLET`, and any administrator wallet allowlist server-side. Upstash remains optional and cache-only.
 
+The Vercel configuration also rewrites non-API deep links, including `/market` and `/ops`, to the Vite SPA entry point while explicitly excluding `/api/*`. This keeps direct public links functional without intercepting the database-backed tRPC function.[3]
+
 ## Intentional fresh-start behavior
 
 | Area | Fresh Neon behavior |
@@ -22,3 +24,5 @@ Vercel now runs `pnpm run db:migrate && pnpm run build:vercel`. The first clean 
 [1] Neon, [Connecting with the Neon-Managed Vercel Integration](https://neon.com/docs/guides/neon-managed-vercel-integration).
 
 [2] Drizzle ORM, [Drizzle <> Neon Postgres](https://orm.drizzle.team/docs/connect-neon).
+
+[3] Vercel, [Rewrites on Vercel](https://vercel.com/docs/routing/rewrites).

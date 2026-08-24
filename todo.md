@@ -131,3 +131,4 @@
 - [x] Configure Vercel for the fresh Neon database, preserving Upstash only for short-lived cache and rate-limit data.
 - [ ] Validate that the clean deployment starts with no historic listings while new wallet-first market records can be created safely.
 - [x] Support Vercel-managed Upstash `KV_REST_API_*` variables as server-side aliases for the existing public cache and mutation rate limiter.
+- [x] Restore Vercel deep-link routing so public market routes resolve to the HANKA single-page application without intercepting API functions.
