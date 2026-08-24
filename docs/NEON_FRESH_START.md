@@ -1,30 +1,35 @@
 # HANKA Fresh Neon Database
 
-HANKA now targets a clean Neon PostgreSQL database and **does not import the former managed MySQL/TiDB records**. The earlier database remains unchanged, but the active Neon-backed deployment starts with an empty market and accepts new wallet-first listings, requests, allocations, and operations records.
+HANKA uses **one clean Neon PostgreSQL database** for its wallet-first market. No records from the former MySQL/TiDB deployment are copied, shown, or modified. The active `vouch-market` Vercel project begins with an empty board and writes all new listings, requests, payment claims, completion records, and private operations records to Neon.
 
-## Vercel connection requirements
+## Required active-project configuration
 
-The Neon connection must be linked to the active `vouch-market` Vercel project. Neon’s Vercel integration provides `DATABASE_URL` for the production branch; HANKA also accepts `POSTGRES_URL` as a fallback. The value must be a PostgreSQL URL, not the previous MySQL connection string. Neon documents that its Vercel integration injects `DATABASE_URL` and related PostgreSQL variables per deployment.[1]
+The Neon integration must be connected to the active Vercel project named `vouch-market`, which is the project intended to serve `www.hankavirality.xyz`. The integration should provide a production `DATABASE_URL`; HANKA also accepts `POSTGRES_URL` if that is the name supplied by the integration. The value must be a PostgreSQL URL. Neon documents its Vercel integration as providing `DATABASE_URL` and related PostgreSQL connection variables.[1]
 
-Vercel now runs `pnpm run db:migrate && pnpm run build:vercel`. The first clean production deployment creates the PostgreSQL schema through the generated Drizzle migration; later deployments apply only outstanding migrations. Keep `DATABASE_URL`, `JWT_SECRET`, `SOLANA_RPC_URL`, `SOLANA_RECIPIENT_WALLET`, and any administrator wallet allowlist server-side. Upstash remains optional and cache-only.
+Vercel runs `pnpm run db:migrate && pnpm run build:vercel`. The checked-in Drizzle migration initializes only the new Neon schema, and Drizzle records applied migrations so later deployments run only outstanding schema changes. Do not provide a legacy MySQL connection string.
 
-The Vercel configuration also rewrites non-API deep links, including `/market` and `/ops`, to the Vite SPA entry point while explicitly excluding `/api/*`. This keeps direct public links functional without intercepting the database-backed tRPC function.[3]
-
-The tRPC function is pre-bundled as `api/trpc/[...path].js` from `server/vercel/trpcHandler.ts` before deployment. This is intentional: Vercel's Node ESM runtime must receive the bundled local server graph rather than resolve TypeScript imports from `server/_core` at request time.
+The application has one source-traced serverless API entry at `api/trpc/[...path].ts`. It serves `/api/trpc/*`; the SPA rewrite keeps `/market` and `/ops` usable as direct links while excluding `/api/*` from that fallback.[2]
 
 ## Intentional fresh-start behavior
 
-| Area | Fresh Neon behavior |
+| Area | HANKA behavior |
 | --- | --- |
-| Public board | Starts empty until a new vouch, slash, or bid is posted. |
-| Legacy rows | Not copied, displayed, or deleted. |
-| Payment and allocation protections | Created anew for each new market action. |
-| Upstash | Stores only short-lived public-board and rate-limit keys; it never supplies historic market records. |
+| Durable store | Neon PostgreSQL only. |
+| Public board | Reads directly from Neon and starts empty. |
+| Historic rows | Intentionally not transferred, displayed, or deleted. |
+| Cache and limiter service | Upstash has been removed entirely. |
+| Market safeguards | Signed wallet actions, Solana USDC verification, source-to-target uniqueness, and wallet-only operations remain in place. |
+
+Keep `DATABASE_URL` or `POSTGRES_URL`, `JWT_SECRET`, `SOLANA_RPC_URL`, `SOLANA_RECIPIENT_WALLET`, and `ADMIN_SOLANA_WALLETS` server-side. The database URL and any Solana operational controls must not be placed in browser-exposed `VITE_*` variables.
+
+## Verification sequence
+
+First confirm that the active Vercel project has the linked Neon connection variable without exposing its value. After deployment, request `/api/trpc/market.board` and confirm an HTTP 200 response with the default project and empty offers and requests. Only then use a wallet-signed, non-payment test action if further lifecycle validation is needed. No fund transfer is required for setup verification.
+
+> Do not delete `vouch-market-mrx9` until `vouch-market` is confirmed as the project attached to `www.hankavirality.xyz` and it has the Neon connection variable. The duplicate project is not used by this codebase.
 
 ## References
 
-[1] Neon, [Connecting with the Neon-Managed Vercel Integration](https://neon.com/docs/guides/neon-managed-vercel-integration).
+[1] Neon, [Neon-managed Vercel integration](https://neon.com/docs/guides/neon-managed-vercel-integration).
 
-[2] Drizzle ORM, [Drizzle <> Neon Postgres](https://orm.drizzle.team/docs/connect-neon).
-
-[3] Vercel, [Rewrites on Vercel](https://vercel.com/docs/routing/rewrites).
+[2] Vercel, [Rewrites](https://vercel.com/docs/routing/rewrites).

@@ -13,7 +13,6 @@ import { getDb } from "../db";
 import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, type MarketInstrument } from "./constants";
 import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforcePointsPerUnit, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
 import { removeArchiveMetadata } from "./visibility";
-import { getCachedPublicBoard, invalidatePublicBoardCache } from "./compactState";
 import { createDirectPurchaseIntent, createExactMarketIntent, createFillIntent } from "./instrumentLifecycle";
 
 const DIRECT_PURCHASE_HOLD_MS = 15 * 60 * 1000;
@@ -34,7 +33,6 @@ export async function logActivity(input: {
 }) {
   const db = await dbOrThrow();
   await db.insert(activityLogs).values(input);
-  await invalidatePublicBoardCache();
 }
 
 async function ensureDefaultProject() {
@@ -78,7 +76,6 @@ async function releaseStaleDirectPurchaseReservations(now = new Date()) {
       }
     }
   });
-  await invalidatePublicBoardCache();
   return stale.length;
 }
 
@@ -92,11 +89,10 @@ export async function createMarketProject(input: { slug: string; name: string; d
 }
 
 export async function getPublicMarket() {
-  return getCachedPublicBoard(async () => {
-    const db = await dbOrThrow();
-    await ensureDefaultProject();
-    await releaseStaleDirectPurchaseReservations();
-    const [projects, requests, sellerOffers] = await Promise.all([
+  const db = await dbOrThrow();
+  await ensureDefaultProject();
+  await releaseStaleDirectPurchaseReservations();
+  const [projects, requests, sellerOffers] = await Promise.all([
     db.select({ slug: marketProjects.slug, name: marketProjects.name, description: marketProjects.description }).from(marketProjects).where(eq(marketProjects.isActive, true)).orderBy(marketProjects.name),
     db
       .select({
@@ -134,24 +130,23 @@ export async function getPublicMarket() {
       .orderBy(desc(sellerCommitments.createdAt)),
   ]);
 
-    const visibleRequests = removeArchiveMetadata(requests);
-    const visibleSellerOffers = removeArchiveMetadata(sellerOffers);
-    const midpointFor = (instrument: MarketInstrument) => {
-      const prices = [...visibleRequests, ...visibleSellerOffers]
-        .filter(entry => entry.instrument === instrument)
-        .map(entry => Number(entry.pricePerVouch))
-        .filter(price => Number.isFinite(price) && price > 0)
-        .sort((a, b) => a - b);
-      const midpoint = prices.length ? prices[Math.floor(prices.length / 2)] : null;
-      return midpoint?.toFixed(4) ?? null;
-    };
-    return {
-      projects,
-      requests: visibleRequests,
-      sellerOffers: visibleSellerOffers,
-      suggestedPriceByInstrument: { vouch: midpointFor("vouch"), slash: midpointFor("slash") },
-    };
-  });
+  const visibleRequests = removeArchiveMetadata(requests);
+  const visibleSellerOffers = removeArchiveMetadata(sellerOffers);
+  const midpointFor = (instrument: MarketInstrument) => {
+    const prices = [...visibleRequests, ...visibleSellerOffers]
+      .filter(entry => entry.instrument === instrument)
+      .map(entry => Number(entry.pricePerVouch))
+      .filter(price => Number.isFinite(price) && price > 0)
+      .sort((a, b) => a - b);
+    const midpoint = prices.length ? prices[Math.floor(prices.length / 2)] : null;
+    return midpoint?.toFixed(4) ?? null;
+  };
+  return {
+    projects,
+    requests: visibleRequests,
+    sellerOffers: visibleSellerOffers,
+    suggestedPriceByInstrument: { vouch: midpointFor("vouch"), slash: midpointFor("slash") },
+  };
 }
 
 export async function createRequest(input: {

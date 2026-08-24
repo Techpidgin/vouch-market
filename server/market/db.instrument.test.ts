@@ -63,11 +63,6 @@ vi.mock("../db", () => ({
   })),
 }));
 
-vi.mock("./compactState", () => ({
-  getCachedPublicBoard: async <T>(factory: () => Promise<T>) => factory(),
-  invalidatePublicBoardCache: async () => undefined,
-}));
-
 import { createRequest, createSellerOffer, fillRequest, getOperations, initiateOfferPurchase, markOfferBuyerDone, setLegacyOfferPoints } from "./db";
 
 describe("slash market service records", () => {

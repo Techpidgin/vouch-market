@@ -11,13 +11,14 @@ describe("Vercel deployment configuration", () => {
   };
 
   it("migrates the fresh Neon schema before the production build", () => {
-    expect(config.buildCommand).toBe("pnpm run build:vercel:function && pnpm run db:migrate && pnpm run build:vercel");
+    expect(config.buildCommand).toBe("pnpm run db:migrate && pnpm run build:vercel");
     expect(config.outputDirectory).toBe("dist/public");
   });
 
-  it("serves SPA deep links without rewriting the database-backed API", () => {
-    expect(config.functions?.["api/trpc/[...path].js"]?.maxDuration).toBe(30);
-    expect(existsSync(resolve(process.cwd(), "api/trpc/[...path].js"))).toBe(true);
+  it("uses one source-traced API function and keeps API paths outside the SPA fallback", () => {
+    expect(config.functions?.["api/trpc/[...path].ts"]?.maxDuration).toBe(30);
+    expect(existsSync(resolve(process.cwd(), "api/trpc/[...path].ts"))).toBe(true);
+    expect(existsSync(resolve(process.cwd(), "api/trpc/[...path].js"))).toBe(false);
     expect(config.rewrites).toContainEqual({
       source: "/:path((?!api(?:/|$)).*)",
       destination: "/index.html",

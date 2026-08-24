@@ -128,8 +128,13 @@
 - [x] Verify the saved Vercel deployment guidance covers the shared durable database, server API handler, required secrets, and Upstash’s cache-only role.
 - [x] Provide an Upstash setup, retention, and Vercel environment-variable guide for the HANKA market.
 - [x] Switch HANKA persistence from the managed MySQL/TiDB database to a clean Neon PostgreSQL database without transferring legacy records.
-- [x] Configure Vercel for the fresh Neon database, preserving Upstash only for short-lived cache and rate-limit data.
+- [x] Configure Vercel for the fresh Neon database; the completed final design removes Upstash entirely.
 - [ ] Validate that the clean deployment starts with no historic listings while new wallet-first market records can be created safely.
-- [x] Support Vercel-managed Upstash `KV_REST_API_*` variables as server-side aliases for the existing public cache and mutation rate limiter.
+- [x] Superseded the Vercel-managed Upstash `KV_REST_API_*` alias path by removing Upstash entirely.
 - [x] Restore Vercel deep-link routing so public market routes resolve to the HANKA single-page application without intercepting API functions.
-- [ ] Ensure Vercel deploys the HANKA tRPC API as an explicit catch-all serverless function so the fresh Neon board endpoint is reachable.
+- [x] Replace the generated explicit tRPC bundle with one source-traced TypeScript catch-all function so the fresh Neon board endpoint has one maintained runtime path.
+- [x] Retire the generated bundled handler that produced the startup crash and replace it with the direct source-traced TypeScript function.
+- [x] Replace the layered Vercel runtime setup with a direct, simple Neon-only serverless backend.
+- [x] Remove Upstash cache and rate-limiting integration, environment aliases, dependencies, tests, and obsolete guidance.
+- [x] Preserve wallet-first validation, payment safeguards, source-target rules, and private operations while starting the Neon market with no legacy records.
+- [ ] Validate the simple Vercel API route and empty Neon board before publishing the backend reset.
