@@ -1,11 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { neonConfig, Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
+import { migrate } from "drizzle-orm/neon-serverless/migrator";
+import { resolve } from "node:path";
 import ws from "ws";
 import { InsertUser, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let database: ReturnType<typeof drizzle> | null = null;
+let migrationPromise: Promise<void> | null = null;
 
 export function databaseUrl(env: NodeJS.ProcessEnv = process.env) {
   return env.DATABASE_URL ?? env.POSTGRES_URL ?? "";
@@ -28,6 +31,10 @@ export async function getDb() {
   neonConfig.poolQueryViaFetch = true;
   const pool = new Pool({ connectionString: url });
   database = drizzle({ client: pool });
+  migrationPromise ??= migrate(database, {
+    migrationsFolder: resolve(process.cwd(), "drizzle/neon"),
+  });
+  await migrationPromise;
   return database;
 }
 

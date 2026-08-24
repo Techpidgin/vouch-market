@@ -18,7 +18,7 @@ Vercel Functions provide request-scoped server-side handlers, which keeps databa
 | Schema | `drizzle/neon/0000_sad_lucky_pierre.sql` | Applied idempotently through `pnpm run db:migrate`. |
 | Authentication and control | Wallet signatures and allowlisted operations wallet | No public OAuth or X-account connection requirement. |
 
-The Vercel build command is `pnpm run build:vercel:function && pnpm run db:migrate && pnpm run build:vercel`. It first bundles the API into one deployable CommonJS function, then applies outstanding Drizzle migrations to the linked database before producing the frontend output. The Vercel rewrite sends non-API deep links to `index.html` and leaves API requests untouched.[2]
+The Vercel build command is `pnpm run build:vercel:function && pnpm run build:vercel`. It packages the API and frontend without requiring a database connection during build. The API function includes the checked-in Neon migrations and applies outstanding schema changes on its first database-backed request. The Vercel rewrite sends non-API deep links to `index.html` and leaves API requests untouched.[2]
 
 ## Active Vercel environment variables
 

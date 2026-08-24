@@ -6,7 +6,7 @@ HANKA uses **one clean Neon PostgreSQL database** for its wallet-first market. N
 
 The Neon integration must be connected to the active Vercel project named `vouch-market`, which is the project intended to serve `www.hankavirality.xyz`. The integration should provide a production `DATABASE_URL`; HANKA also accepts `POSTGRES_URL` if that is the name supplied by the integration. The value must be a PostgreSQL URL. Neon documents its Vercel integration as providing `DATABASE_URL` and related PostgreSQL connection variables.[1]
 
-Vercel runs `pnpm run build:vercel:function && pnpm run db:migrate && pnpm run build:vercel`. The first step bundles the complete tRPC graph as one CommonJS function; the checked-in Drizzle migration then initializes only the new Neon schema. Drizzle records applied migrations so later deployments run only outstanding schema changes. Do not provide a legacy MySQL connection string.
+Vercel runs `pnpm run build:vercel:function && pnpm run build:vercel` without connecting to the database during build. The single API function packages `drizzle/neon/**` and initializes the fresh schema on its first Neon-backed request. Drizzle records applied migrations so later requests and deployments run only outstanding schema changes. Do not provide a legacy MySQL connection string.
 
 The application has one checked-in, bundled serverless API entry at `api/trpc/[...path].cjs`, regenerated from maintained source at `server/vercel/trpcHandler.ts` by the build. Tracking the artifact ensures Vercel discovers the function before it starts the build. It serves `/api/trpc/*`; the SPA rewrite keeps `/market` and `/ops` usable as direct links while excluding `/api/*` from that fallback.[2]
 

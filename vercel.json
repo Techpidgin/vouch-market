@@ -1,10 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm run build:vercel:function && pnpm run db:migrate && pnpm run build:vercel",
+  "buildCommand": "pnpm run build:vercel:function && pnpm run build:vercel",
   "outputDirectory": "dist/public",
   "functions": {
     "api/trpc/[...path].cjs": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": "drizzle/neon/**"
     }
   },
   "rewrites": [

@@ -1391,7 +1391,7 @@ var require_constants = __commonJS({
 // node_modules/.pnpm/node-gyp-build@4.8.4/node_modules/node-gyp-build/node-gyp-build.js
 var require_node_gyp_build = __commonJS({
   "node_modules/.pnpm/node-gyp-build@4.8.4/node_modules/node-gyp-build/node-gyp-build.js"(exports2, module2) {
-    var fs = require("fs");
+    var fs2 = require("fs");
     var path = require("path");
     var os2 = require("os");
     var runtimeRequire = typeof __webpack_require__ === "function" ? __non_webpack_require__ : require;
@@ -1421,9 +1421,9 @@ var require_node_gyp_build = __commonJS({
         var debug = getFirst(path.join(dir, "build/Debug"), matchBuild);
         if (debug) return debug;
       }
-      var prebuild = resolve(dir);
+      var prebuild = resolve2(dir);
       if (prebuild) return prebuild;
-      var nearby = resolve(path.dirname(process.execPath));
+      var nearby = resolve2(path.dirname(process.execPath));
       if (nearby) return nearby;
       var target = [
         "platform=" + platform,
@@ -1439,7 +1439,7 @@ var require_node_gyp_build = __commonJS({
         // eslint-disable-line
       ].filter(Boolean).join(" ");
       throw new Error("No native build was found for " + target + "\n    loaded from: " + dir + "\n");
-      function resolve(dir2) {
+      function resolve2(dir2) {
         var tuples = readdirSync(path.join(dir2, "prebuilds")).map(parseTuple);
         var tuple2 = tuples.filter(matchTuple(platform, arch)).sort(compareTuples)[0];
         if (!tuple2) return;
@@ -1452,7 +1452,7 @@ var require_node_gyp_build = __commonJS({
     };
     function readdirSync(dir) {
       try {
-        return fs.readdirSync(dir);
+        return fs2.readdirSync(dir);
       } catch (err) {
         return [];
       }
@@ -1546,7 +1546,7 @@ var require_node_gyp_build = __commonJS({
       return typeof window !== "undefined" && window.process && window.process.type === "renderer";
     }
     function isAlpine(platform2) {
-      return platform2 === "linux" && fs.existsSync("/etc/alpine-release");
+      return platform2 === "linux" && fs2.existsSync("/etc/alpine-release");
     }
     load.parseTags = parseTags;
     load.matchTags = matchTags;
@@ -7494,22 +7494,22 @@ var require_nacl_fast = __commonJS({
         randombytes = fn;
       };
       (function() {
-        var crypto6 = typeof self !== "undefined" ? self.crypto || self.msCrypto : null;
-        if (crypto6 && crypto6.getRandomValues) {
+        var crypto7 = typeof self !== "undefined" ? self.crypto || self.msCrypto : null;
+        if (crypto7 && crypto7.getRandomValues) {
           var QUOTA = 65536;
           nacl2.setPRNG(function(x2, n) {
             var i, v2 = new Uint8Array(n);
             for (i = 0; i < n; i += QUOTA) {
-              crypto6.getRandomValues(v2.subarray(i, i + Math.min(n - i, QUOTA)));
+              crypto7.getRandomValues(v2.subarray(i, i + Math.min(n - i, QUOTA)));
             }
             for (i = 0; i < n; i++) x2[i] = v2[i];
             cleanup(v2);
           });
         } else if (typeof require !== "undefined") {
-          crypto6 = require("crypto");
-          if (crypto6 && crypto6.randomBytes) {
+          crypto7 = require("crypto");
+          if (crypto7 && crypto7.randomBytes) {
             nacl2.setPRNG(function(x2, n) {
-              var i, v2 = crypto6.randomBytes(n);
+              var i, v2 = crypto7.randomBytes(n);
               for (i = 0; i < n; i++) x2[i] = v2[i];
               cleanup(v2);
             });
@@ -21326,7 +21326,7 @@ var require_lib3 = __commonJS({
       let accum = [];
       let accumBytes = 0;
       let abort = false;
-      return new Body.Promise(function(resolve, reject) {
+      return new Body.Promise(function(resolve2, reject) {
         let resTimeout;
         if (_this4.timeout) {
           resTimeout = setTimeout(function() {
@@ -21360,7 +21360,7 @@ var require_lib3 = __commonJS({
           }
           clearTimeout(resTimeout);
           try {
-            resolve(Buffer.concat(accum, accumBytes));
+            resolve2(Buffer.concat(accum, accumBytes));
           } catch (err) {
             reject(new FetchError(`Could not create Buffer from response body for ${_this4.url}: ${err.message}`, "system", err));
           }
@@ -22035,7 +22035,7 @@ var require_lib3 = __commonJS({
         throw new Error("native promise missing, set fetch.Promise to your favorite alternative");
       }
       Body.Promise = fetch2.Promise;
-      return new fetch2.Promise(function(resolve, reject) {
+      return new fetch2.Promise(function(resolve2, reject) {
         const request = new Request2(url2, opts);
         const options = getNodeRequestOptions(request);
         const send = (options.protocol === "https:" ? https : http).request;
@@ -22168,7 +22168,7 @@ var require_lib3 = __commonJS({
                   requestOpts.body = void 0;
                   requestOpts.headers.delete("content-length");
                 }
-                resolve(fetch2(new Request2(locationURL, requestOpts)));
+                resolve2(fetch2(new Request2(locationURL, requestOpts)));
                 finalize();
                 return;
             }
@@ -22189,7 +22189,7 @@ var require_lib3 = __commonJS({
           const codings = headers.get("Content-Encoding");
           if (!request.compress || request.method === "HEAD" || codings === null || res.statusCode === 204 || res.statusCode === 304) {
             response = new Response2(body, response_options);
-            resolve(response);
+            resolve2(response);
             return;
           }
           const zlibOptions = {
@@ -22199,7 +22199,7 @@ var require_lib3 = __commonJS({
           if (codings == "gzip" || codings == "x-gzip") {
             body = body.pipe(zlib.createGunzip(zlibOptions));
             response = new Response2(body, response_options);
-            resolve(response);
+            resolve2(response);
             return;
           }
           if (codings == "deflate" || codings == "x-deflate") {
@@ -22211,12 +22211,12 @@ var require_lib3 = __commonJS({
                 body = body.pipe(zlib.createInflateRaw());
               }
               response = new Response2(body, response_options);
-              resolve(response);
+              resolve2(response);
             });
             raw.on("end", function() {
               if (!response) {
                 response = new Response2(body, response_options);
-                resolve(response);
+                resolve2(response);
               }
             });
             return;
@@ -22224,11 +22224,11 @@ var require_lib3 = __commonJS({
           if (codings == "br" && typeof zlib.createBrotliDecompress === "function") {
             body = body.pipe(zlib.createBrotliDecompress());
             response = new Response2(body, response_options);
-            resolve(response);
+            resolve2(response);
             return;
           }
           response = new Response2(body, response_options);
-          resolve(response);
+          resolve2(response);
         });
         writeToStream(req, request);
       });
@@ -22661,12 +22661,12 @@ function md52(bytes) {
   } else if (typeof bytes === "string") {
     bytes = Buffer.from(bytes, "utf8");
   }
-  return (0, import_node_crypto2.createHash)("md5").update(bytes).digest();
+  return (0, import_node_crypto3.createHash)("md5").update(bytes).digest();
 }
-var import_node_crypto2, md5_default2;
+var import_node_crypto3, md5_default2;
 var init_md52 = __esm({
   "node_modules/.pnpm/uuid@14.0.2/node_modules/uuid/dist-node/md5.js"() {
-    import_node_crypto2 = require("node:crypto");
+    import_node_crypto3 = require("node:crypto");
     md5_default2 = md52;
   }
 });
@@ -22775,12 +22775,12 @@ function sha12(bytes) {
   } else if (typeof bytes === "string") {
     bytes = Buffer.from(bytes, "utf8");
   }
-  return (0, import_node_crypto3.createHash)("sha1").update(bytes).digest();
+  return (0, import_node_crypto4.createHash)("sha1").update(bytes).digest();
 }
-var import_node_crypto3, sha1_default2;
+var import_node_crypto4, sha1_default2;
 var init_sha12 = __esm({
   "node_modules/.pnpm/uuid@14.0.2/node_modules/uuid/dist-node/sha1.js"() {
-    import_node_crypto3 = require("node:crypto");
+    import_node_crypto4 = require("node:crypto");
     sha1_default2 = sha12;
   }
 });
@@ -23079,7 +23079,7 @@ var require_dist3 = __commonJS({
           ws_opts = timeout;
           timeout = null;
         }
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve2, reject) => {
           if (!this.ready) return reject(new Error("socket not ready"));
           const rpc_id = this.generate_request_id(method, params);
           const message = {
@@ -23090,7 +23090,7 @@ var require_dist3 = __commonJS({
           };
           this.socket.send(this.dataPack.encode(message), ws_opts, (error46) => {
             if (error46) return reject(error46);
-            this.queue[rpc_id] = { promise: [resolve, reject] };
+            this.queue[rpc_id] = { promise: [resolve2, reject] };
             if (timeout) {
               this.queue[rpc_id].timeout = setTimeout(() => {
                 delete this.queue[rpc_id];
@@ -23127,7 +23127,7 @@ var require_dist3 = __commonJS({
       * @return {Promise}
       */
       notify(method, params) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve2, reject) => {
           if (!this.ready) return reject(new Error("socket not ready"));
           const message = {
             jsonrpc: "2.0",
@@ -23136,7 +23136,7 @@ var require_dist3 = __commonJS({
           };
           this.socket.send(this.dataPack.encode(message), (error46) => {
             if (error46) return reject(error46);
-            resolve();
+            resolve2();
           });
         });
       }
@@ -23606,11 +23606,11 @@ var require_dist3 = __commonJS({
       * @return {Promise}
       */
       close() {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve2, reject) => {
           try {
             this.wss.close();
             this.emit("close");
-            resolve();
+            resolve2();
           } catch (error46) {
             reject(error46);
           }
@@ -27463,12 +27463,12 @@ Message: ${transactionMessage}.
       }
       async getLogs(connection) {
         if (!Array.isArray(this.transactionLogs)) {
-          this.transactionLogs = new Promise((resolve, reject) => {
+          this.transactionLogs = new Promise((resolve2, reject) => {
             connection.getTransaction(this.signature).then((tx) => {
               if (tx && tx.meta && tx.meta.logMessages) {
                 const logs = tx.meta.logMessages;
                 this.transactionLogs = logs;
-                resolve(logs);
+                resolve2(logs);
               } else {
                 reject(new Error("Log messages not found"));
               }
@@ -27557,7 +27557,7 @@ Message: ${transactionMessage}.
       return signature2;
     }
     function sleep(ms3) {
-      return new Promise((resolve) => setTimeout(resolve, ms3));
+      return new Promise((resolve2) => setTimeout(resolve2, ms3));
     }
     function encodeData(type, fields) {
       const allocLength = type.layout.span >= 0 ? type.layout.span : getAlloc(type, fields);
@@ -28417,7 +28417,7 @@ Message: ${transactionMessage}.
               }
             } catch {
             }
-            await new Promise((resolve) => setTimeout(resolve, Math.round(MS_PER_SLOT / 2)));
+            await new Promise((resolve2) => setTimeout(resolve2, Math.round(MS_PER_SLOT / 2)));
           }
         }
         return true;
@@ -29481,9 +29481,9 @@ Message: ${transactionMessage}.
       let fetchWithMiddleware;
       if (fetchMiddleware) {
         fetchWithMiddleware = async (info, init) => {
-          const modifiedFetchArgs = await new Promise((resolve, reject) => {
+          const modifiedFetchArgs = await new Promise((resolve2, reject) => {
             try {
-              fetchMiddleware(info, init, (modifiedInfo, modifiedInit) => resolve([modifiedInfo, modifiedInit]));
+              fetchMiddleware(info, init, (modifiedInfo, modifiedInit) => resolve2([modifiedInfo, modifiedInit]));
             } catch (error46) {
               reject(error46);
             }
@@ -29538,21 +29538,21 @@ Message: ${transactionMessage}.
     }
     function createRpcRequest(client) {
       return (method, args) => {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve2, reject) => {
           client.request(method, args, (err, response) => {
             if (err) {
               reject(err);
               return;
             }
-            resolve(response);
+            resolve2(response);
           });
         });
       };
     }
     function createRpcBatchRequest(client) {
       return (requests) => {
-        return new Promise((resolve, reject) => {
-          if (requests.length === 0) resolve([]);
+        return new Promise((resolve2, reject) => {
+          if (requests.length === 0) resolve2([]);
           const batch = requests.map((params) => {
             return client.request(params.methodName, params.args);
           });
@@ -29561,7 +29561,7 @@ Message: ${transactionMessage}.
               reject(err);
               return;
             }
-            resolve(response);
+            resolve2(response);
           });
         });
       };
@@ -30522,7 +30522,7 @@ Message: ${transactionMessage}.
         let signatureSubscriptionId;
         let disposeSignatureSubscriptionStateChangeObserver;
         let done = false;
-        const confirmationPromise = new Promise((resolve, reject) => {
+        const confirmationPromise = new Promise((resolve2, reject) => {
           try {
             signatureSubscriptionId = this.onSignature(signature2, (result, context) => {
               signatureSubscriptionId = void 0;
@@ -30530,7 +30530,7 @@ Message: ${transactionMessage}.
                 context,
                 value: result
               };
-              resolve({
+              resolve2({
                 __type: TransactionStatus.PROCESSED,
                 response
               });
@@ -30586,7 +30586,7 @@ Message: ${transactionMessage}.
                   case "recent":
                 }
                 done = true;
-                resolve({
+                resolve2({
                   __type: TransactionStatus.PROCESSED,
                   response: {
                     context,
@@ -30623,7 +30623,7 @@ Message: ${transactionMessage}.
         }
       }) {
         let done = false;
-        const expiryPromise = new Promise((resolve) => {
+        const expiryPromise = new Promise((resolve2) => {
           const checkBlockHeight = async () => {
             try {
               const blockHeight = await this.getBlockHeight(commitment);
@@ -30641,7 +30641,7 @@ Message: ${transactionMessage}.
               currentBlockHeight = await checkBlockHeight();
               if (done) return;
             }
-            resolve({
+            resolve2({
               __type: TransactionStatus.BLOCKHEIGHT_EXCEEDED
             });
           })();
@@ -30679,7 +30679,7 @@ Message: ${transactionMessage}.
         }
       }) {
         let done = false;
-        const expiryPromise = new Promise((resolve) => {
+        const expiryPromise = new Promise((resolve2) => {
           let currentNonceValue = nonceValue;
           let lastCheckedSlot = null;
           const getCurrentNonceValue = async () => {
@@ -30702,7 +30702,7 @@ Message: ${transactionMessage}.
             if (done) return;
             while (true) {
               if (nonceValue !== currentNonceValue) {
-                resolve({
+                resolve2({
                   __type: TransactionStatus.NONCE_INVALID,
                   slotInWhichNonceDidAdvance: lastCheckedSlot
                 });
@@ -30793,7 +30793,7 @@ Message: ${transactionMessage}.
         signature: signature2
       }) {
         let timeoutId;
-        const expiryPromise = new Promise((resolve) => {
+        const expiryPromise = new Promise((resolve2) => {
           let timeoutMs = this._confirmTransactionInitialTimeout || 60 * 1e3;
           switch (commitment) {
             case "processed":
@@ -30805,7 +30805,7 @@ Message: ${transactionMessage}.
               break;
             }
           }
-          timeoutId = setTimeout(() => resolve({
+          timeoutId = setTimeout(() => resolve2({
             __type: TransactionStatus.TIMED_OUT,
             timeoutMs
           }), timeoutMs);
@@ -35648,8 +35648,8 @@ var Unpromise = class Unpromise2 {
         status: "fulfilled",
         value
       };
-      subscribers === null || subscribers === void 0 || subscribers.forEach(({ resolve }) => {
-        resolve(value);
+      subscribers === null || subscribers === void 0 || subscribers.forEach(({ resolve: resolve2 }) => {
+        resolve2(value);
       });
     });
     if ("catch" in thenReturn) thenReturn.catch((reason) => {
@@ -35790,15 +35790,15 @@ function resolveSelfTuple(promise2) {
   return Unpromise.proxy(promise2).then(() => [promise2]);
 }
 function withResolvers() {
-  let resolve;
+  let resolve2;
   let reject;
   const promise2 = new Promise((_resolve, _reject) => {
-    resolve = _resolve;
+    resolve2 = _resolve;
     reject = _reject;
   });
   return {
     promise: promise2,
-    resolve,
+    resolve: resolve2,
     reject
   };
 }
@@ -35842,8 +35842,8 @@ function timerResource(ms2) {
   let timer = null;
   return makeResource({ start() {
     if (timer) throw new Error("Timer already started");
-    const promise2 = new Promise((resolve) => {
-      timer = setTimeout(() => resolve(disposablePromiseTimerResult), ms2);
+    const promise2 = new Promise((resolve2) => {
+      timer = setTimeout(() => resolve2(disposablePromiseTimerResult), ms2);
     });
     return promise2;
   } }, () => {
@@ -36030,15 +36030,15 @@ function _takeWithGrace() {
   return _takeWithGrace.apply(this, arguments);
 }
 function createDeferred() {
-  let resolve;
+  let resolve2;
   let reject;
   const promise2 = new Promise((res, rej) => {
-    resolve = res;
+    resolve2 = res;
     reject = rej;
   });
   return {
     promise: promise2,
-    resolve,
+    resolve: resolve2,
     reject
   };
 }
@@ -37445,13 +37445,13 @@ function incomingMessageToRequest(req, res, opts) {
   return request;
 }
 async function writeResponseBodyChunk(res, chunk) {
-  if (res.write(chunk) === false) await new Promise((resolve, reject) => {
+  if (res.write(chunk) === false) await new Promise((resolve2, reject) => {
     const onError = (err) => {
       reject(err);
       cleanup();
     };
     const onDrain = () => {
-      resolve();
+      resolve2();
       cleanup();
     };
     const cleanup = () => {
@@ -37526,11 +37526,11 @@ function internal_exceptionHandler(opts) {
   };
 }
 async function nodeHTTPRequestHandler(opts) {
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     var _opts$middleware;
     const handleViaMiddleware = (_opts$middleware = opts.middleware) !== null && _opts$middleware !== void 0 ? _opts$middleware : (_req, _res, next) => next();
     opts.res.once("finish", () => {
-      resolve();
+      resolve2();
     });
     return handleViaMiddleware(opts.req, opts.res, (err) => {
       run(async () => {
@@ -59954,7 +59954,7 @@ var ds = T((th, ps) => {
     return /^(?:[a-zA-Z0-9+/]{4})*(?:[a-zA-Z0-9+/]{2}==|[a-zA-Z0-9+/]{3}=)?$/.test(r);
   }
   a(ls, "isBase64");
-  function fs(r) {
+  function fs2(r) {
     if (typeof r != "string") throw new TypeError("SASL: attribute pairs text must be a string");
     return new Map(r.split(",").map((e) => {
       if (!/^.=/.test(e)) throw new Error("SASL: Invalid attribute pair entry");
@@ -59962,9 +59962,9 @@ var ds = T((th, ps) => {
       return [t2, n];
     }));
   }
-  a(fs, "parseAttributePairs");
+  a(fs2, "parseAttributePairs");
   function qu(r) {
-    let e = fs(r), t2 = e.get("r");
+    let e = fs2(r), t2 = e.get("r");
     if (t2) {
       if (!Ou(t2)) throw new Error("SASL: SCRAM-SERVER-FIRST-MESSAGE: nonce must only contain printable characters");
     } else throw new Error("SASL: SCRAM-SERVER-FIRST-MESSAGE: nonce missing");
@@ -59981,7 +59981,7 @@ var ds = T((th, ps) => {
   }
   a(qu, "parseServerFirstMessage");
   function Qu(r) {
-    let t2 = fs(r).get("v");
+    let t2 = fs2(r).get("v");
     if (t2) {
       if (!ls(t2)) throw new Error("SASL: SCRAM-SERVER-FINAL-MESSAGE: server signature must be base64");
     } else throw new Error("SASL: SCRAM-SERVER-FINAL-MESSAGE: server signature is missing");
@@ -62716,6 +62716,47 @@ function drizzle(...params) {
   drizzle2.mock = mock;
 })(drizzle || (drizzle = {}));
 
+// node_modules/.pnpm/drizzle-orm@0.45.2_@neondatabase+serverless@1.1.0_@upstash+redis@1.38.2_mysql2@3.15.1/node_modules/drizzle-orm/migrator.js
+var import_node_crypto2 = __toESM(require("node:crypto"), 1);
+var import_node_fs = __toESM(require("node:fs"), 1);
+function readMigrationFiles(config2) {
+  const migrationFolderTo = config2.migrationsFolder;
+  const migrationQueries = [];
+  const journalPath = `${migrationFolderTo}/meta/_journal.json`;
+  if (!import_node_fs.default.existsSync(journalPath)) {
+    throw new Error(`Can't find meta/_journal.json file`);
+  }
+  const journalAsString = import_node_fs.default.readFileSync(`${migrationFolderTo}/meta/_journal.json`).toString();
+  const journal = JSON.parse(journalAsString);
+  for (const journalEntry of journal.entries) {
+    const migrationPath = `${migrationFolderTo}/${journalEntry.tag}.sql`;
+    try {
+      const query = import_node_fs.default.readFileSync(`${migrationFolderTo}/${journalEntry.tag}.sql`).toString();
+      const result = query.split("--> statement-breakpoint").map((it2) => {
+        return it2;
+      });
+      migrationQueries.push({
+        sql: result,
+        bps: journalEntry.breakpoints,
+        folderMillis: journalEntry.when,
+        hash: import_node_crypto2.default.createHash("sha256").update(query).digest("hex")
+      });
+    } catch {
+      throw new Error(`No file ${migrationPath} found in ${migrationFolderTo} folder`);
+    }
+  }
+  return migrationQueries;
+}
+
+// node_modules/.pnpm/drizzle-orm@0.45.2_@neondatabase+serverless@1.1.0_@upstash+redis@1.38.2_mysql2@3.15.1/node_modules/drizzle-orm/neon-serverless/migrator.js
+async function migrate(db, config2) {
+  const migrations = readMigrationFiles(config2);
+  await db.dialect.migrate(migrations, db.session, config2);
+}
+
+// server/db.ts
+var import_node_path = require("node:path");
+
 // node_modules/.pnpm/ws@8.21.3_bufferutil@4.1.0_utf-8-validate@6.0.6/node_modules/ws/wrapper.mjs
 var import_stream = __toESM(require_stream(), 1);
 var import_extension = __toESM(require_extension(), 1);
@@ -62743,6 +62784,7 @@ var ENV = {
 
 // server/db.ts
 var database = null;
+var migrationPromise = null;
 function databaseUrl(env = process.env) {
   return env.DATABASE_URL ?? env.POSTGRES_URL ?? "";
 }
@@ -62760,6 +62802,10 @@ async function getDb() {
   ce.poolQueryViaFetch = true;
   const pool2 = new Mn({ connectionString: url2 });
   database = drizzle({ client: pool2 });
+  migrationPromise ??= migrate(database, {
+    migrationsFolder: (0, import_node_path.resolve)(process.cwd(), "drizzle/neon")
+  });
+  await migrationPromise;
   return database;
 }
 
