@@ -116,3 +116,5 @@
 - [x] Re-verify the published custom-domain market and wallet-only operations entry after propagation, including the latest points-per-unit and legacy-offer behavior.
 - [x] Document the sandbox limitation for real wallet signatures and USDC transfers separately from automated workflow verification.
 - [x] Add restrained, reduced-motion-aware animations to clarify market hierarchy and interaction feedback without delaying wallet or payment actions.
+- [x] Fix the seller listing submission so a required per-unit point value is always sent and invalid input is explained before signing.
+- [x] Add concise in-form guidance that distinguishes buyer target X handles from seller source X handles, units, point value, and USDC quote.
