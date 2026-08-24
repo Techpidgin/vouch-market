@@ -126,3 +126,4 @@
 - [x] Push the current HANKA release to the private GitHub main branch.
 - [x] Diagnose why the Vercel deployment cannot see the existing listed vouches and slashes, and document the production data configuration required.
 - [x] Verify the saved Vercel deployment guidance covers the shared durable database, server API handler, required secrets, and Upstash’s cache-only role.
+- [x] Provide an Upstash setup, retention, and Vercel environment-variable guide for the HANKA market.
