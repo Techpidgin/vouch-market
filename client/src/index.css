@@ -187,6 +187,14 @@
   .font-display { font-family: "DM Serif Display", Georgia, serif; }
   .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 0.65rem; letter-spacing: 0.15em; line-height: 1.2; text-transform: uppercase; }
   .paper-grid { background-image: linear-gradient(to right, rgba(27,27,25,.14) 1px, transparent 1px), linear-gradient(to bottom, rgba(27,27,25,.14) 1px, transparent 1px), radial-gradient(circle at 24% 22%, rgba(255,255,255,.8), transparent 25%); background-size: 34px 34px, 34px 34px, 100% 100%; }
+  .home-ambient { background: radial-gradient(circle at 8% 16%, rgba(213,79,40,.13), transparent 26%), radial-gradient(circle at 92% 78%, rgba(40,82,62,.16), transparent 31%); }
+  .home-header { backdrop-filter: blur(12px); }
+  .home-kicker { display: inline-flex; align-items: center; gap: .55rem; }
+  .home-kicker > span { width: .45rem; height: .45rem; border-radius: 999px; background: #d54f28; box-shadow: 0 0 0 .3rem rgba(213,79,40,.12); }
+  .hero-terms { isolation: isolate; }
+  .status-orb { display: block; width: .58rem; height: .58rem; border-radius: 999px; background: #7eab69; box-shadow: 0 0 0 .28rem rgba(126,171,105,.14); }
+  .cta-primary { position: relative; overflow: hidden; box-shadow: 0 12px 24px rgba(213,79,40,.22); }
+  .cta-primary::after { position: absolute; inset: 0; content: ""; transform: translateX(-125%); background: linear-gradient(100deg, transparent 22%, rgba(255,255,255,.42) 50%, transparent 76%); pointer-events: none; }
 
   @media (min-width: 640px) {
     .market-shell { padding-inline: 2rem; }
@@ -201,6 +209,16 @@
 @keyframes market-mark-settle {
   0% { opacity: 0; transform: translateY(-4px); }
   100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes home-sheen {
+  0%, 24% { transform: translateX(-125%); }
+  52%, 100% { transform: translateX(125%); }
+}
+
+@keyframes logo-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -219,13 +237,19 @@
     transform: scale(0.97);
   }
 
-  .market-mark > i {
+  .brand-mark > i {
     animation: market-mark-settle 320ms var(--market-ease-out) both;
   }
 
-  .market-mark > i:nth-child(2) { animation-delay: 45ms; }
-  .market-mark > i:nth-child(3) { animation-delay: 90ms; }
-  .market-mark > i:nth-child(4) { animation-delay: 135ms; }
+  .brand-mark > i:nth-child(2) { animation-delay: 45ms; }
+  .brand-mark > i:nth-child(3) { animation-delay: 90ms; }
+  .brand-mark > i:nth-child(4) { animation-delay: 135ms; }
+  .brand-mark { transition: transform 220ms var(--market-ease-out), filter 220ms var(--market-ease-out); }
+  .brand-mark:hover { transform: rotate(-5deg) scale(1.06); filter: drop-shadow(0 7px 8px rgba(27,27,25,.16)); }
+  .home-copy, .hero-terms { animation: market-rise 520ms var(--market-ease-out) both; }
+  .hero-terms { animation-delay: 90ms; }
+  .cta-primary::after { animation: home-sheen 3.6s var(--market-ease-out) 900ms infinite; }
+  .status-orb { animation: logo-drift 2.4s var(--market-ease-out) infinite; }
 
   .market-page > section:first-child .market-shell > .mt-5 > *,
   .market-page > #market,

@@ -13,12 +13,12 @@ Vercel Functions provide request-scoped server-side handlers, which keeps databa
 | Component | HANKA implementation | Boundary |
 | --- | --- | --- |
 | Frontend | `dist/public` Vite build | Public pages, including direct `/market` and `/ops` routes. |
-| API | `api/trpc/[...path].ts` | One source-traced Vercel function for `/api/trpc/*`. |
+| API | `api/trpc/[...path].cjs` | One CommonJS Vercel function for `/api/trpc/*`, generated from `server/vercel/trpcHandler.ts` during the build. |
 | Database | Linked Neon PostgreSQL | Sole durable store for the active market. |
 | Schema | `drizzle/neon/0000_sad_lucky_pierre.sql` | Applied idempotently through `pnpm run db:migrate`. |
 | Authentication and control | Wallet signatures and allowlisted operations wallet | No public OAuth or X-account connection requirement. |
 
-The Vercel build command is `pnpm run db:migrate && pnpm run build:vercel`. It applies outstanding Drizzle migrations to the linked database before producing the frontend output. The Vercel rewrite sends non-API deep links to `index.html` and leaves API requests untouched.[2]
+The Vercel build command is `pnpm run build:vercel:function && pnpm run db:migrate && pnpm run build:vercel`. It first bundles the API into one deployable CommonJS function, then applies outstanding Drizzle migrations to the linked database before producing the frontend output. The Vercel rewrite sends non-API deep links to `index.html` and leaves API requests untouched.[2]
 
 ## Active Vercel environment variables
 
@@ -27,7 +27,6 @@ Set these values only on the active `vouch-market` Vercel project. Do not expose
 | Variable | Purpose |
 | --- | --- |
 | `DATABASE_URL` or `POSTGRES_URL` | Injected by the linked Neon integration; used for the fresh PostgreSQL schema and all market records. |
-| `JWT_SECRET` | Server-side session infrastructure retained by the application template. |
 | `SOLANA_RPC_URL` | Server-side USDC transaction verification. |
 | `SOLANA_RECIPIENT_WALLET` | Expected payment-recipient verification. |
 | `ADMIN_SOLANA_WALLETS` | Additional wallet-only operations administrators, when needed. |

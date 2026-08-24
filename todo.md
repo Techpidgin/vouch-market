@@ -139,3 +139,8 @@
 - [x] Preserve wallet-first validation, payment safeguards, source-target rules, and private operations while starting the Neon market with no legacy records.
 - [ ] Validate the simple Vercel API route and empty Neon board before publishing the backend reset.
 - [ ] Fix the live Vercel API invocation failure by exporting an explicit Node serverless handler for the tRPC app.
+- [x] Package the tRPC function as one Vercel-traceable serverless bundle to eliminate the current module-resolution failure.
+- [x] Remove unused template OAuth and storage server code no longer used by the wallet-first product.
+- [x] Add a logo-based favicon and browser metadata for HANKA.
+- [x] Refine the HANKA interface with tasteful logo motion, shine effects, and a modern SaaS visual system that respects reduced-motion preferences.
+- [x] Run a focused cleanup and security review covering dependency graph, server-only secrets, signed actions, input validation, and deployment configuration.

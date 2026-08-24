@@ -15,12 +15,12 @@ describe("clean Neon deployment architecture", () => {
     expect(existsSync(resolve(root, "server/security/rateLimit.ts"))).toBe(false);
   });
 
-  it("keeps one traceable TypeScript tRPC function instead of a generated bundle", () => {
-    const handlerPath = resolve(root, "api/trpc/[...path].ts");
+  it("keeps one bundled CommonJS tRPC function generated from maintained source", () => {
+    const handlerPath = resolve(root, "server/vercel/trpcHandler.ts");
     expect(existsSync(handlerPath)).toBe(true);
     expect(existsSync(resolve(root, "api/trpc/[...path].js"))).toBe(false);
     const handlerSource = readFileSync(handlerPath, "utf8");
     expect(handlerSource).toContain("createVouchApp");
-    expect(handlerSource).toContain("return app(req as never, res as never)");
+    expect(handlerSource).toContain("export default createVouchApp()");
   });
 });

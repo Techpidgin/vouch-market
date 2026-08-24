@@ -126,7 +126,7 @@ export default function MarketHome() {
   </div>;
 }
 
-function Mark() { return <span className="market-mark grid size-7 grid-cols-2 gap-[2px] sm:size-8" aria-hidden>{[0, 1, 2, 3].map(index => <i key={index} className={`block bg-[#f2efe4] ${index === 1 ? "translate-x-1" : ""}`} />)}</span>; }
+function Mark() { return <span className="brand-mark market-mark grid size-7 grid-cols-2 gap-[2px] sm:size-8" aria-hidden>{[0, 1, 2, 3].map(index => <i key={index} className={`block bg-[#f2efe4] ${index === 1 ? "translate-x-1" : ""}`} />)}</span>; }
 function Loading() { return <div className="h-60 animate-pulse bg-[#101612]" />; }
 function Midpoint({ label, value, instrument }: { label: string; value?: string | null; instrument: Instrument }) { return <div className={`border p-4 ${instrument === "vouch" ? "border-[#8fcfa0]/35 bg-[#183223]" : "border-[#c3848a]/35 bg-[#2b1d1f]"}`}><p className="eyebrow text-[#d3d5ca]">{label}</p><p className="mt-3 font-display text-3xl tracking-[-.06em]">{value ? money(value) : "—"}</p><p className="mt-1 text-xs text-[#c6c7be]">Indicative USDC per {singleInstrument(instrument)}</p></div>; }
 function Empty({ instrument, onBid, onAsk }: { instrument: Instrument | "all"; onBid: () => void; onAsk: () => void }) { const subject = instrument === "all" ? "market" : instrumentLabel(instrument); return <div className="m-4 border border-dashed border-[#e9e5d5]/25 p-5 text-sm text-[#b9bcb0]"><p>No live {subject} bids or asks for this project.</p><div className="mt-3 flex gap-4"><button onClick={onBid} className="underline underline-offset-4 hover:text-white">Post a bid</button><button onClick={onAsk} className="underline underline-offset-4 hover:text-white">List your account</button></div></div>; }
