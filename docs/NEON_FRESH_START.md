@@ -8,7 +8,7 @@ The Neon integration must be connected to the active Vercel project named `vouch
 
 Vercel runs `pnpm run build:vercel:function && pnpm run build:vercel` without connecting to the database during build. The single API function packages `drizzle/neon/**` and initializes the fresh schema on its first Neon-backed request. Drizzle records applied migrations so later requests and deployments run only outstanding schema changes. Do not provide a legacy MySQL connection string.
 
-The application has one checked-in, bundled serverless API entry at `api/trpc/[...path].cjs`, regenerated from maintained source at `server/vercel/trpcHandler.ts` by the build. Tracking the artifact ensures Vercel discovers the function before it starts the build. It serves `/api/trpc/*`; the SPA rewrite keeps `/market` and `/ops` usable as direct links while excluding `/api/*` from that fallback.[2]
+The application has one checked-in JavaScript API entry at `api/trpc/[...path].js`, regenerated from maintained source at `server/vercel/trpcHandler.ts` by the build. Its adjacent `api/trpc/package.json` declares the bundled file as CommonJS for the Neon WebSocket dependency chain while preserving Vercel’s standard JavaScript function discovery. It serves `/api/trpc/*`; the SPA rewrite keeps `/market` and `/ops` usable as direct links while excluding `/api/*` from that fallback.[2]
 
 ## Intentional fresh-start behavior
 

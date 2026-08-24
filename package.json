@@ -7,7 +7,7 @@
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:vercel": "vite build",
-    "build:vercel:function": "rm -f 'api/trpc/[...path].cjs' && esbuild server/vercel/trpcHandler.ts --platform=node --bundle --format=cjs --outfile='api/trpc/[...path].cjs' --footer:js='module.exports = module.exports.default;'",
+    "build:vercel:function": "rm -f 'api/trpc/[...path].cjs' 'api/trpc/[...path].js' && esbuild server/vercel/trpcHandler.ts --platform=node --bundle --format=cjs --outfile='api/trpc/[...path].js' --footer:js='module.exports = module.exports.default;'",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "start": "NODE_ENV=production node dist/index.js",

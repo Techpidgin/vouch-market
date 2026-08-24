@@ -3,8 +3,7 @@
   "buildCommand": "pnpm run build:vercel:function && pnpm run build:vercel",
   "outputDirectory": "dist/public",
   "functions": {
-    "api/trpc/[...path].cjs": {
-      "maxDuration": 30,
+    "api/trpc/[...path].js": {
       "includeFiles": "drizzle/neon/**"
     }
   },

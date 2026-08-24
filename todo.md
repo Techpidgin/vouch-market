@@ -130,6 +130,8 @@
 - [x] Switch HANKA persistence from the managed MySQL/TiDB database to a clean Neon PostgreSQL database without transferring legacy records.
 - [x] Configure Vercel for the fresh Neon database; the completed final design removes Upstash entirely.
 - [ ] Validate that the clean deployment starts with no historic listings while new wallet-first market records can be created safely.
+- [ ] Trigger the active Vercel project to deploy the already-pushed GitHub main release, which is not currently reaching production.
+- [ ] Remove the Vercel configuration validation issue that is causing new production deployments to fail within seconds.
 - [x] Superseded the Vercel-managed Upstash `KV_REST_API_*` alias path by removing Upstash entirely.
 - [x] Restore Vercel deep-link routing so public market routes resolve to the HANKA single-page application without intercepting API functions.
 - [x] Replace the generated explicit tRPC bundle with one source-traced TypeScript catch-all function so the fresh Neon board endpoint has one maintained runtime path.

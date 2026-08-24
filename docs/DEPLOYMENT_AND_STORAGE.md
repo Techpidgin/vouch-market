@@ -13,7 +13,7 @@ Vercel Functions provide request-scoped server-side handlers, which keeps databa
 | Component | HANKA implementation | Boundary |
 | --- | --- | --- |
 | Frontend | `dist/public` Vite build | Public pages, including direct `/market` and `/ops` routes. |
-| API | `api/trpc/[...path].cjs` | One CommonJS Vercel function for `/api/trpc/*`, generated from `server/vercel/trpcHandler.ts` during the build. |
+| API | `api/trpc/[...path].js` | One standard JavaScript Vercel function for `/api/trpc/*`, generated from `server/vercel/trpcHandler.ts` during the build. |
 | Database | Linked Neon PostgreSQL | Sole durable store for the active market. |
 | Schema | `drizzle/neon/0000_sad_lucky_pierre.sql` | Applied idempotently through `pnpm run db:migrate`. |
 | Authentication and control | Wallet signatures and allowlisted operations wallet | No public OAuth or X-account connection requirement. |
