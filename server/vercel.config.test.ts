@@ -6,6 +6,7 @@ describe("Vercel deployment configuration", () => {
   const config = JSON.parse(readFileSync(resolve(process.cwd(), "vercel.json"), "utf8")) as {
     buildCommand?: string;
     outputDirectory?: string;
+    functions?: Record<string, { maxDuration?: number }>;
     rewrites?: Array<{ source: string; destination: string }>;
   };
 
@@ -15,6 +16,7 @@ describe("Vercel deployment configuration", () => {
   });
 
   it("serves SPA deep links without rewriting the database-backed API", () => {
+    expect(config.functions?.["api/trpc/[...path].ts"]?.maxDuration).toBe(30);
     expect(config.rewrites).toContainEqual({
       source: "/:path((?!api(?:/|$)).*)",
       destination: "/index.html",

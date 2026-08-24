@@ -2,6 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm run db:migrate && pnpm run build:vercel",
   "outputDirectory": "dist/public",
+  "functions": {
+    "api/trpc/[...path].ts": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/:path((?!api(?:/|$)).*)",
