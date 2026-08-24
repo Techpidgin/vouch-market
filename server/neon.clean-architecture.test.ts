@@ -18,7 +18,9 @@ describe("clean Neon deployment architecture", () => {
 
   it("keeps one bundled CommonJS tRPC function generated from maintained source", () => {
     const handlerPath = resolve(root, "server/vercel/trpcHandler.ts");
+    const functionPath = resolve(root, "api/trpc/[...path].cjs");
     expect(existsSync(handlerPath)).toBe(true);
+    expect(existsSync(functionPath)).toBe(true);
     expect(existsSync(resolve(root, "api/trpc/[...path].js"))).toBe(false);
     const handlerSource = readFileSync(handlerPath, "utf8");
     expect(handlerSource).toContain("createVouchApp");
