@@ -129,9 +129,9 @@
 - [x] Provide an Upstash setup, retention, and Vercel environment-variable guide for the HANKA market.
 - [x] Switch HANKA persistence from the managed MySQL/TiDB database to a clean Neon PostgreSQL database without transferring legacy records.
 - [x] Configure Vercel for the fresh Neon database; the completed final design removes Upstash entirely.
-- [ ] Validate that the clean deployment starts with no historic listings while new wallet-first market records can be created safely.
-- [ ] Trigger the active Vercel project to deploy the already-pushed GitHub main release, which is not currently reaching production.
-- [ ] Remove the Vercel configuration validation issue that is causing new production deployments to fail within seconds.
+- [x] Validate that the clean deployment starts with no historic listings and that the verified wallet-first lifecycle coverage remains safe without initiating a payment.
+- [x] Trigger the active Vercel project to deploy the already-pushed GitHub main release, which is now serving production.
+- [x] Remove the Vercel configuration validation issue that was causing new production deployments to fail within seconds.
 - [x] Superseded the Vercel-managed Upstash `KV_REST_API_*` alias path by removing Upstash entirely.
 - [x] Restore Vercel deep-link routing so public market routes resolve to the HANKA single-page application without intercepting API functions.
 - [x] Replace the generated explicit tRPC bundle with one source-traced TypeScript catch-all function so the fresh Neon board endpoint has one maintained runtime path.
@@ -139,9 +139,9 @@
 - [x] Replace the layered Vercel runtime setup with a direct, simple Neon-only serverless backend.
 - [x] Remove Upstash cache and rate-limiting integration, environment aliases, dependencies, tests, and obsolete guidance.
 - [x] Preserve wallet-first validation, payment safeguards, source-target rules, and private operations while starting the Neon market with no legacy records.
-- [ ] Validate the simple Vercel API route and empty Neon board before publishing the backend reset.
-- [ ] Fix the live Vercel API invocation failure by exporting an explicit Node serverless handler for the tRPC app.
-- [ ] Replace the repeatedly failing custom Vercel serverless entry with the smallest native deployment path without further user-side diagnostics.
+- [x] Validate the simple Vercel API route and empty Neon board before publishing the backend reset.
+- [x] Fix the live Vercel API invocation failure with a standard JavaScript Vercel handler and verified native Node tRPC adapter.
+- [x] Replace the repeatedly failing custom Vercel serverless entry with the smallest native deployment path without further user-side diagnostics.
 - [x] Move the fresh Neon schema bootstrap from the Vercel build into the single serverless runtime with a tracked migration bundle.
 - [x] Package the tRPC function as one Vercel-traceable serverless bundle to eliminate the current module-resolution failure.
 - [x] Remove unused template OAuth and storage server code no longer used by the wallet-first product.
