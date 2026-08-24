@@ -118,3 +118,6 @@
 - [x] Add restrained, reduced-motion-aware animations to clarify market hierarchy and interaction feedback without delaying wallet or payment actions.
 - [x] Fix the seller listing submission so a required per-unit point value is always sent and invalid input is explained before signing.
 - [x] Add concise in-form guidance that distinguishes buyer target X handles from seller source X handles, units, point value, and USDC quote.
+- [x] Remove CommonsMade-specific public landing and market copy so the marketplace remains project-neutral.
+- [x] Move the public Terms and Operations links from the header into the footer while preserving clear navigation.
+- [x] Reduce the landing hero scale and spacing so Enter market remains visible at small mobile heights.
