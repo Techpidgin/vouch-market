@@ -6,6 +6,7 @@ describe("clean Neon deployment architecture", () => {
   const root = process.cwd();
   const packageJson = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as {
     dependencies?: Record<string, string>;
+    scripts?: Record<string, string>;
   };
 
   it("has no Upstash runtime packages or source modules", () => {
@@ -22,5 +23,6 @@ describe("clean Neon deployment architecture", () => {
     const handlerSource = readFileSync(handlerPath, "utf8");
     expect(handlerSource).toContain("createVouchApp");
     expect(handlerSource).toContain("export default createVouchApp()");
+    expect(packageJson.scripts?.["build:vercel:function"]).not.toContain("--packages=external");
   });
 });
