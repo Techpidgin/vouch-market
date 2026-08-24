@@ -148,3 +148,4 @@
 - [x] Add a logo-based favicon and browser metadata for HANKA.
 - [x] Refine the HANKA interface with tasteful logo motion, shine effects, and a modern SaaS visual system that respects reduced-motion preferences.
 - [x] Run a focused cleanup and security review covering dependency graph, server-only secrets, signed actions, input validation, and deployment configuration.
+- [x] Fix the local `/market` database-unavailable query error without accepting the legacy MySQL environment in production.

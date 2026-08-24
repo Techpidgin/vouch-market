@@ -89,7 +89,18 @@ export async function createMarketProject(input: { slug: string; name: string; d
 }
 
 export async function getPublicMarket() {
-  const db = await dbOrThrow();
+  const db = await getDb();
+  if (!db) {
+    if (process.env.NODE_ENV === "development") {
+      return {
+        projects: [DEFAULT_PROJECT],
+        requests: [],
+        sellerOffers: [],
+        suggestedPriceByInstrument: { vouch: null, slash: null },
+      };
+    }
+    throw new Error("Database is unavailable");
+  }
   await ensureDefaultProject();
   await releaseStaleDirectPurchaseReservations();
   const [projects, requests, sellerOffers] = await Promise.all([

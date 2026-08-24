@@ -5,6 +5,7 @@ const state = vi.hoisted(() => ({
   inserts: [] as Array<{ table: unknown; values: unknown }>,
   updates: [] as Array<{ table: unknown; values: Record<string, unknown> }>,
   selectResponses: [] as unknown[][],
+  databaseAvailable: true,
 }));
 
 function query(result: unknown[]) {
@@ -39,7 +40,7 @@ function updateResult(table: unknown, values: Record<string, unknown>) {
 }
 
 vi.mock("../db", () => ({
-  getDb: vi.fn(async () => ({
+  getDb: vi.fn(async () => state.databaseAvailable ? ({
     insert: (table: unknown) => ({
       values: async (values: unknown) => {
         state.inserts.push({ table, values });
@@ -60,16 +61,42 @@ vi.mock("../db", () => ({
         }),
       }),
     }),
-  })),
+  }) : null),
 }));
 
-import { createRequest, createSellerOffer, fillRequest, getOperations, initiateOfferPurchase, markOfferBuyerDone, setLegacyOfferPoints } from "./db";
+import { createRequest, createSellerOffer, fillRequest, getOperations, getPublicMarket, initiateOfferPurchase, markOfferBuyerDone, setLegacyOfferPoints } from "./db";
 
 describe("slash market service records", () => {
   beforeEach(() => {
     state.inserts = [];
     state.updates = [];
     state.selectResponses = [];
+    state.databaseAvailable = true;
+  });
+
+  it("returns an explicitly empty board only for local development when Neon is not configured", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    state.databaseAvailable = false;
+    process.env.NODE_ENV = "development";
+
+    await expect(getPublicMarket()).resolves.toEqual({
+      projects: [{ slug: "commonsmade", name: "CommonsMade", description: "Trade CommonsMade vouches and slashes." }],
+      requests: [],
+      sellerOffers: [],
+      suggestedPriceByInstrument: { vouch: null, slash: null },
+    });
+
+    process.env.NODE_ENV = originalNodeEnv;
+  });
+
+  it("keeps production board requests unavailable when Neon is not configured", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    state.databaseAvailable = false;
+    process.env.NODE_ENV = "production";
+
+    await expect(getPublicMarket()).rejects.toThrow("Database is unavailable");
+
+    process.env.NODE_ENV = originalNodeEnv;
   });
 
   it("stores an exact slash buyer bid without a reputation-band dependency", async () => {
