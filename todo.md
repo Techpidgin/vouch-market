@@ -166,3 +166,4 @@
 - [x] Humanize the landing-page language, remove the wallet-first label, and add restrained editorial text shine.
 - [x] Reduce the landing hero scale and rebalance first-screen spacing so the Buy or sell proof CTA remains visible at 100% desktop zoom.
 - [x] Let visitors submit a wallet-linked customer-support message that authorized operators can read privately.
+- [x] Optimize landing, market, forms, and support for a fast thumb-friendly mobile HANKA experience while preserving the dark modern theme.
