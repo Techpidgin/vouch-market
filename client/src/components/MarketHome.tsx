@@ -17,7 +17,7 @@ type DialogState = "bid" | "ask" | "activity" | { fill: string; remaining: numbe
 type MarketRow = { publicId: string; side: "bid" | "ask"; instrument: Instrument; handle: string; sourceHandle?: string | null; exactQuantity: number; pointsPerUnit?: number | null; price: string; proofDetail?: string | null; spaceMinutes?: number | null; createdAt: Date };
 
 const instruments: Array<{ value: Instrument; label: string; icon: typeof BadgeCheck }> = [
-  { value: "vouch", label: "Ethos voucher", icon: BadgeCheck },
+  { value: "vouch", label: "Ethos vouch", icon: BadgeCheck },
   { value: "slash", label: "Ethos slash", icon: CircleUserRound },
   { value: "follow", label: "X follow", icon: UsersRound },
   { value: "repost", label: "X repost", icon: Repeat2 },

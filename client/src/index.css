@@ -43,15 +43,15 @@
 }
 
 :root {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: var(--color-blue-50);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
+  --primary: oklch(0.86 0.11 151);
+  --primary-foreground: oklch(0.16 0.03 151);
+  --sidebar-primary: oklch(0.75 0.1 151);
+  --sidebar-primary-foreground: oklch(0.16 0.03 151);
+  --chart-1: oklch(0.86 0.11 151);
+  --chart-2: oklch(0.7 0.1 151);
+  --chart-3: oklch(0.55 0.09 151);
+  --chart-4: oklch(0.42 0.07 151);
+  --chart-5: oklch(0.3 0.05 151);
   --radius: 0.65rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.235 0.015 65);
@@ -79,10 +79,10 @@
 }
 
 .dark {
-  --primary: var(--color-blue-700);
-  --primary-foreground: var(--color-blue-50);
-  --sidebar-primary: var(--color-blue-500);
-  --sidebar-primary-foreground: var(--color-blue-50);
+  --primary: oklch(0.86 0.11 151);
+  --primary-foreground: oklch(0.16 0.03 151);
+  --sidebar-primary: oklch(0.75 0.1 151);
+  --sidebar-primary-foreground: oklch(0.16 0.03 151);
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.85 0.005 65);
   --card: oklch(0.21 0.006 285.885);
@@ -99,18 +99,18 @@
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.488 0.243 264.376);
-  --chart-1: var(--color-blue-300);
-  --chart-2: var(--color-blue-500);
-  --chart-3: var(--color-blue-600);
-  --chart-4: var(--color-blue-700);
-  --chart-5: var(--color-blue-800);
+  --ring: oklch(0.78 0.11 151);
+  --chart-1: oklch(0.86 0.11 151);
+  --chart-2: oklch(0.7 0.1 151);
+  --chart-3: oklch(0.55 0.09 151);
+  --chart-4: oklch(0.42 0.07 151);
+  --chart-5: oklch(0.3 0.05 151);
   --sidebar: oklch(0.21 0.006 285.885);
   --sidebar-foreground: oklch(0.85 0.005 65);
   --sidebar-accent: oklch(0.274 0.006 286.033);
   --sidebar-accent-foreground:  oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.488 0.243 264.376);
+  --sidebar-ring: oklch(0.78 0.11 151);
 }
 
 @layer base {
@@ -229,6 +229,11 @@
   .proof-card:hover .proof-arrow { transform: translate(2px, -2px); color: var(--hanka-text); }
   .proof-card:focus-visible { outline: 2px solid var(--hanka-accent); outline-offset: -3px; }
 
+  .market-page [class*="rounded-"], .hanka-header [class*="rounded-"], [data-slot="dialog-content"], [data-slot="dialog-content"] [class*="rounded-"] { border-radius: 0 !important; }
+  [data-slot="select-content"], [data-slot="select-content"] [class*="rounded-"] { border-radius: 0 !important; }
+  .market-page [data-slot="button"], .hanka-header [data-slot="button"], [data-slot="dialog-content"] [data-slot="button"] { position: relative; overflow: hidden; border-radius: 0 !important; border-color: var(--hanka-line); box-shadow: none; }
+  .market-page [data-slot="button"]::after, .hanka-header [data-slot="button"]::after, [data-slot="dialog-content"] [data-slot="button"]::after { position: absolute; inset: 0; content: ""; transform: translateX(-125%); background: linear-gradient(100deg, transparent 24%, rgba(255,255,255,.34) 50%, transparent 76%); pointer-events: none; }
+
   .market-pricing { border: 1px solid var(--hanka-line); background: #0e1711; }
   .market-price-card { min-height: 9.5rem; border-right: 1px solid var(--hanka-line); border-bottom: 1px solid var(--hanka-line); padding: 1rem; }
   .market-price-card:hover { background: #142019; }
@@ -294,6 +299,7 @@
   .hero-terms { animation-delay: 90ms; }
   .cta-primary::after { animation: home-sheen 3.6s var(--market-ease-out) 900ms infinite; }
   .hanka-primary-button::after { animation: home-sheen 3.8s var(--market-ease-out) 800ms infinite; }
+  .market-page [data-slot="button"]::after, .hanka-header [data-slot="button"]::after, [data-slot="dialog-content"] [data-slot="button"]::after { animation: home-sheen 4.2s var(--market-ease-out) 700ms infinite; }
   .status-orb { animation: logo-drift 2.4s var(--market-ease-out) infinite; }
   .terms-caret { animation: caret-pulse 900ms steps(2, start) infinite; }
 

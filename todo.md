@@ -160,3 +160,5 @@
 - [x] Make every landing-page proof catalogue item link to the matching filtered market view.
 - [x] Optimize complete-market discovery and add recommended pricing guidance for all proof types.
 - [x] Use singular Vouch terminology consistently in the market filters and public discovery labels.
+- [x] Replace remaining marketplace-form and dashboard references to plural vouchers with singular Vouch terminology.
+- [x] Remove off-palette blue button styling and standardize marketplace controls to sharp-edged HANKA colors with shine.
