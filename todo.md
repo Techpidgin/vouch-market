@@ -163,3 +163,4 @@
 - [x] Replace remaining marketplace-form and dashboard references to plural vouchers with singular Vouch terminology.
 - [x] Remove off-palette blue button styling and standardize marketplace controls to sharp-edged HANKA colors with shine.
 - [x] Add the supplied Ethos logo consistently wherever public Ethos vouch and Ethos slash labels appear.
+- [x] Humanize the landing-page language, remove the wallet-first label, and add restrained editorial text shine.

@@ -214,6 +214,7 @@
   .hanka-header-action:hover { border-color: color-mix(in srgb, var(--hanka-accent) 66%, var(--hanka-line)); background: var(--hanka-panel-strong); color: var(--hanka-text); }
   .hanka-primary-button { position: relative; display: inline-flex; align-items: center; gap: .55rem; overflow: hidden; background: var(--hanka-accent); color: var(--hanka-accent-text); padding: .85rem 1.1rem; font-family: "Geist", sans-serif; font-size: .84rem; font-weight: 700; box-shadow: 0 13px 30px rgba(70, 155, 93, .18); }
   .hanka-primary-button::after { position: absolute; inset: 0; content: ""; transform: translateX(-125%); background: linear-gradient(100deg, transparent 22%, rgba(255,255,255,.6) 50%, transparent 76%); }
+  .hero-shine-text { color: var(--hanka-text); background: linear-gradient(112deg, var(--hanka-text) 20%, #f8fff5 46%, var(--hanka-text) 66%); background-size: 220% 100%; background-position: 100% 0; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
   .terms-stage { position: relative; min-height: 23rem; overflow: hidden; border: 1px solid var(--hanka-line); background: #112017; color: #f0f4ec; padding: 1.5rem; box-shadow: 0 26px 70px rgba(0,0,0,.18); isolation: isolate; }
   .terms-logo-bg { position: absolute; right: -1rem; bottom: -2.5rem; opacity: .1; transform: rotate(-10deg); }
   .terms-glow { position: absolute; inset: 0; background: radial-gradient(circle at 78% 18%, rgba(180, 243, 190, .17), transparent 24%), linear-gradient(135deg, transparent 36%, rgba(255,255,255,.06)); }
@@ -268,6 +269,11 @@
   52%, 100% { transform: translateX(125%); }
 }
 
+@keyframes hero-text-sheen {
+  0%, 24% { background-position: 100% 0; }
+  55%, 100% { background-position: 0 0; }
+}
+
 @keyframes logo-drift {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
@@ -304,6 +310,7 @@
   .hero-terms { animation-delay: 90ms; }
   .cta-primary::after { animation: home-sheen 3.6s var(--market-ease-out) 900ms infinite; }
   .hanka-primary-button::after { animation: home-sheen 3.8s var(--market-ease-out) 800ms infinite; }
+  .hero-shine-text { animation: hero-text-sheen 7.5s var(--market-ease-out) 900ms infinite; }
   .market-page [data-slot="button"]::after, .hanka-header [data-slot="button"]::after, [data-slot="dialog-content"] [data-slot="button"]::after { animation: home-sheen 4.2s var(--market-ease-out) 700ms infinite; }
   .status-orb { animation: logo-drift 2.4s var(--market-ease-out) infinite; }
   .terms-caret { animation: caret-pulse 900ms steps(2, start) infinite; }

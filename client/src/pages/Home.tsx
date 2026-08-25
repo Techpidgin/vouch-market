@@ -78,11 +78,10 @@ export default function Home() {
       <section className="market-shell relative grid gap-8 py-10 sm:py-14 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:py-18">
         <div className="home-copy">
           <p className="hanka-kicker"><Sparkles className="size-3" />HANKA · Social proof exchange</p>
-          <h1 className="mt-5 max-w-4xl font-display text-[clamp(4.1rem,11vw,8.6rem)] leading-[.78] tracking-[-.09em]">Trade what moves attention.</h1>
-          <p className="mt-6 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">A premium market for earned signals: <span className="ethos-inline"><EthosMark />Ethos vouch</span> and <span className="ethos-inline"><EthosMark />Ethos slash</span> today, then follows, reposts, comments, and X Space participation. Buyer and seller set the terms—HANKA verifies the flow.</p>
+          <h1 className="hero-shine-text mt-5 max-w-4xl font-display text-[clamp(4.1rem,11vw,8.6rem)] leading-[.78] tracking-[-.09em]">Trade what moves attention.</h1>
+          <p className="mt-6 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Looking for a little more signal? Start with an <span className="ethos-inline"><EthosMark />Ethos vouch</span> or <span className="ethos-inline"><EthosMark />Ethos slash</span>, then explore follows, reposts, comments, and X Spaces. You choose the target and the price—HANKA keeps the exchange simple.</p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link href="/market#market" className="hanka-primary-button">Buy or sell proof <ArrowUpRight className="size-4" /></Link>
-            <span className="hanka-micro">Wallet-first · USDC on Solana</span>
           </div>
         </div>
         <aside className="terms-stage">
