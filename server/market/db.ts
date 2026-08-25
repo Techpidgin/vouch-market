@@ -140,6 +140,7 @@ export async function getPublicMarket() {
         ethosScore: sellerCommitments.ethosScore,
         kaitoScore: sellerCommitments.kaitoScore,
         kaitoAura: sellerCommitments.kaitoAura,
+        metricsVerifiedAt: sellerCommitments.metricsVerifiedAt,
         pricePerVouch: sellerCommitments.pricePerVouch,
         status: sellerCommitments.status,
         archivedAt: sellerCommitments.archivedAt,
@@ -628,6 +629,16 @@ export async function getParticipantActivity(wallet: string) {
       .orderBy(desc(sellerCommitments.createdAt)),
   ]);
   return { requests, fills, purchases };
+}
+
+export async function verifySellerMetrics(input: { commitmentPublicId: string; adminOpenId: string }) {
+  const db = await dbOrThrow();
+  const commitment = (await db.select({ id: sellerCommitments.id, followerCount: sellerCommitments.followerCount, ethosScore: sellerCommitments.ethosScore, kaitoScore: sellerCommitments.kaitoScore, kaitoAura: sellerCommitments.kaitoAura }).from(sellerCommitments).where(eq(sellerCommitments.publicId, input.commitmentPublicId)).limit(1))[0];
+  if (!commitment) throw new Error("Seller listing was not found");
+  if ([commitment.followerCount, commitment.ethosScore, commitment.kaitoScore, commitment.kaitoAura].every(value => value == null)) throw new Error("This listing has no submitted metrics to verify");
+  await db.update(sellerCommitments).set({ metricsVerifiedAt: new Date() }).where(eq(sellerCommitments.id, commitment.id));
+  await logActivity({ entityType: "seller_commitment", entityPublicId: input.commitmentPublicId, eventType: "seller_metrics_verified", actorAdminOpenId: input.adminOpenId, detail: "Operator verified submitted source metrics" });
+  return { ok: true, commitmentPublicId: input.commitmentPublicId };
 }
 
 export async function recordPayoutDecision(input: {

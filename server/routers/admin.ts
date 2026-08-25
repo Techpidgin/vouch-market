@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { rateLimitedPublicProcedure, router } from "../_core/trpc";
-import { createMarketProject, getOperations, recordPayoutDecision, setLegacyOfferPoints } from "../market/db";
+import { createMarketProject, getOperations, recordPayoutDecision, setLegacyOfferPoints, verifySellerMetrics } from "../market/db";
 import { verifyWalletChallenge } from "../market/walletProof";
 import { runMarketArchive } from "../market/archive";
 
@@ -53,6 +53,17 @@ export const adminRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Point value could not be recorded" });
+      }
+    }),
+  verifySellerMetrics: rateLimitedPublicProcedure
+    .input(z.object({ commitmentPublicId: z.string().regex(/^(ASK|FILL)-/), wallet, proof }))
+    .mutation(async ({ input }) => {
+      try {
+        await verifyAdminWallet(input);
+        return await verifySellerMetrics({ commitmentPublicId: input.commitmentPublicId, adminOpenId: `wallet:${input.wallet}` });
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Seller metrics could not be verified" });
       }
     }),
   recordPayout: rateLimitedPublicProcedure

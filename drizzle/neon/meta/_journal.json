@@ -43,6 +43,13 @@
       "when": 1787667721389,
       "tag": "0005_short_ultimo",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787670142268,
+      "tag": "0006_narrow_vivisector",
+      "breakpoints": true
     }
   ]
 }

@@ -57139,6 +57139,7 @@ var sellerCommitments = pgTable(
     ethosScore: integer2("ethosScore"),
     kaitoScore: integer2("kaitoScore"),
     kaitoAura: integer2("kaitoAura"),
+    metricsVerifiedAt: utcTimestamp("metricsVerifiedAt"),
     pricePerVouch: numeric("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
     grossUsdc: numeric("grossUsdc", { precision: 16, scale: 6 }),
     platformFeeUsdc: numeric("platformFeeUsdc", { precision: 16, scale: 6 }),
@@ -63148,6 +63149,7 @@ async function getPublicMarket() {
       ethosScore: sellerCommitments.ethosScore,
       kaitoScore: sellerCommitments.kaitoScore,
       kaitoAura: sellerCommitments.kaitoAura,
+      metricsVerifiedAt: sellerCommitments.metricsVerifiedAt,
       pricePerVouch: sellerCommitments.pricePerVouch,
       status: sellerCommitments.status,
       archivedAt: sellerCommitments.archivedAt,
@@ -63564,6 +63566,15 @@ async function getParticipantActivity(wallet3) {
   ]);
   return { requests, fills, purchases };
 }
+async function verifySellerMetrics(input) {
+  const db = await dbOrThrow();
+  const commitment = (await db.select({ id: sellerCommitments.id, followerCount: sellerCommitments.followerCount, ethosScore: sellerCommitments.ethosScore, kaitoScore: sellerCommitments.kaitoScore, kaitoAura: sellerCommitments.kaitoAura }).from(sellerCommitments).where(eq(sellerCommitments.publicId, input.commitmentPublicId)).limit(1))[0];
+  if (!commitment) throw new Error("Seller listing was not found");
+  if ([commitment.followerCount, commitment.ethosScore, commitment.kaitoScore, commitment.kaitoAura].every((value) => value == null)) throw new Error("This listing has no submitted metrics to verify");
+  await db.update(sellerCommitments).set({ metricsVerifiedAt: /* @__PURE__ */ new Date() }).where(eq(sellerCommitments.id, commitment.id));
+  await logActivity({ entityType: "seller_commitment", entityPublicId: input.commitmentPublicId, eventType: "seller_metrics_verified", actorAdminOpenId: input.adminOpenId, detail: "Operator verified submitted source metrics" });
+  return { ok: true, commitmentPublicId: input.commitmentPublicId };
+}
 async function recordPayoutDecision(input) {
   const db = await dbOrThrow();
   const commitment = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, input.commitmentPublicId)).limit(1))[0];
@@ -63778,6 +63789,15 @@ var adminRouter = router({
     } catch (error46) {
       if (error46 instanceof TRPCError) throw error46;
       throw new TRPCError({ code: "BAD_REQUEST", message: error46 instanceof Error ? error46.message : "Point value could not be recorded" });
+    }
+  }),
+  verifySellerMetrics: rateLimitedPublicProcedure.input(external_exports.object({ commitmentPublicId: external_exports.string().regex(/^(ASK|FILL)-/), wallet, proof })).mutation(async ({ input }) => {
+    try {
+      await verifyAdminWallet(input);
+      return await verifySellerMetrics({ commitmentPublicId: input.commitmentPublicId, adminOpenId: `wallet:${input.wallet}` });
+    } catch (error46) {
+      if (error46 instanceof TRPCError) throw error46;
+      throw new TRPCError({ code: "BAD_REQUEST", message: error46 instanceof Error ? error46.message : "Seller metrics could not be verified" });
     }
   }),
   recordPayout: rateLimitedPublicProcedure.input(external_exports.object({ commitmentPublicId: external_exports.string().regex(/^(FILL|ASK)-/), status: external_exports.enum(["sent", "withheld"]), externalReference: external_exports.string().trim().max(160).optional(), adminNote: external_exports.string().trim().max(1e3).optional(), wallet, proof })).mutation(async ({ input }) => {
