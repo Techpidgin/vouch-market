@@ -31,11 +31,13 @@ describe("market form contract", () => {
     expect(marketFormSource).toContain("followerCount");
     expect(marketFormSource).toContain("ethosScore");
     expect(marketFormSource).toContain("kaitoScore");
+    expect(marketFormSource).toContain("kaitoAura");
     expect(marketFormSource).toContain("seller-declared source metrics");
     expect(marketFormSource).toContain("<Credibility row={row}");
     expect(schema).toContain("followerCount: integer");
     expect(schema).toContain("ethosScore: integer");
     expect(schema).toContain("kaitoScore: integer");
+    expect(schema).toContain("kaitoAura: integer");
   });
 
   it("uses the requested Vouch vocabulary and sharp HANKA marketplace control system", () => {

@@ -57138,6 +57138,7 @@ var sellerCommitments = pgTable(
     followerCount: integer2("followerCount"),
     ethosScore: integer2("ethosScore"),
     kaitoScore: integer2("kaitoScore"),
+    kaitoAura: integer2("kaitoAura"),
     pricePerVouch: numeric("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
     grossUsdc: numeric("grossUsdc", { precision: 16, scale: 6 }),
     platformFeeUsdc: numeric("platformFeeUsdc", { precision: 16, scale: 6 }),
@@ -63146,6 +63147,7 @@ async function getPublicMarket() {
       followerCount: sellerCommitments.followerCount,
       ethosScore: sellerCommitments.ethosScore,
       kaitoScore: sellerCommitments.kaitoScore,
+      kaitoAura: sellerCommitments.kaitoAura,
       pricePerVouch: sellerCommitments.pricePerVouch,
       status: sellerCommitments.status,
       archivedAt: sellerCommitments.archivedAt,
@@ -63285,6 +63287,7 @@ async function fillRequest(input) {
       followerCount: input.followerCount,
       ethosScore: input.ethosScore,
       kaitoScore: input.kaitoScore,
+      kaitoAura: input.kaitoAura,
       pricePerVouch: request.pricePerVouch,
       grossUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).grossUsdc,
       platformFeeUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).platformFeeUsdc,
@@ -63491,6 +63494,16 @@ async function getOperations() {
   ]);
   const sourceOffers = commitments.filter((item) => !item.requestId && !item.parentOfferId && item.status === "open");
   const tradeableSourceOffers = sourceOffers.filter((item) => Boolean(item.pointsPerUnit));
+  const requestById = new Map(requests.map((item) => [item.id, item]));
+  const payoutByCommitmentId = new Map(payouts.map((item) => [item.sellerCommitmentId, item]));
+  const transferQueue = commitments.filter((item) => {
+    if (item.status !== "under_review" || !item.sellerMarkedDoneAt || payoutByCommitmentId.has(item.id)) return false;
+    const request = item.requestId ? requestById.get(item.requestId) : void 0;
+    return Boolean(item.buyerMarkedDoneAt || request?.buyerMarkedDoneAt);
+  }).map((item) => {
+    const amounts = calculateMarketAmounts(item.quantity, Number(item.pricePerVouch));
+    return { publicId: item.publicId, sellerWallet: item.sellerWallet, quantity: item.quantity, instrument: item.instrument, profileHandle: item.profileHandle, sourceHandle: item.sourceHandle, targetHandle: item.targetHandle, grossUsdc: amounts.grossUsdc, platformFeeUsdc: amounts.platformFeeUsdc, sellerNetUsdc: amounts.sellerNetUsdc, buyerConfirmedAt: item.buyerMarkedDoneAt ?? (item.requestId ? requestById.get(item.requestId)?.buyerMarkedDoneAt : null), sellerMarkedDoneAt: item.sellerMarkedDoneAt };
+  });
   const activeAllocations = commitments.filter((item) => (item.requestId || item.parentOfferId) && ["awaiting_payment", "matched", "done", "under_review", "approved"].includes(item.status));
   const completedAllocations = commitments.filter((item) => (item.requestId || item.parentOfferId) && ["paid", "disputed"].includes(item.status));
   return {
@@ -63499,6 +63512,7 @@ async function getOperations() {
     payouts,
     logs,
     supportMessages: supportRows,
+    transferQueue,
     metrics: {
       openSourceOffers: sourceOffers.length,
       availableUnits: tradeableSourceOffers.reduce((sum, item) => sum + item.quantity, 0),
@@ -64007,20 +64021,20 @@ var marketRouter = router({
       marketError(error46);
     }
   }),
-  createSellerOffer: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, profileHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: external_exports.number().int().positive().max(1e6), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
+  createSellerOffer: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, profileHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: external_exports.number().int().positive().max(1e6), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoAura: external_exports.number().int().nonnegative().max(1e10).optional(), pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-      const created = await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, pricePerVouch: input.pricePerVouch });
+      const created = await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura, pricePerVouch: input.pricePerVouch });
       await grantReferralPoints(input.wallet, "seller_listing", `listing:${created.publicId}`);
       return created;
     } catch (error46) {
       marketError(error46);
     }
   }),
-  fillRequest: rateLimitedPublicProcedure.input(external_exports.object({ requestPublicId: external_exports.string().startsWith("REQ-"), wallet: wallet2, profileHandle: xHandle, quantity: external_exports.number().int().positive(), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), proof: proof2 })).mutation(async ({ input }) => {
+  fillRequest: rateLimitedPublicProcedure.input(external_exports.object({ requestPublicId: external_exports.string().startsWith("REQ-"), wallet: wallet2, profileHandle: xHandle, quantity: external_exports.number().int().positive(), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoAura: external_exports.number().int().nonnegative().max(1e10).optional(), proof: proof2 })).mutation(async ({ input }) => {
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_fill" });
-      return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore });
+      return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura });
     } catch (error46) {
       marketError(error46);
     }

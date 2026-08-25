@@ -117,6 +117,7 @@ export const sellerCommitments = pgTable(
     followerCount: integer("followerCount"),
     ethosScore: integer("ethosScore"),
     kaitoScore: integer("kaitoScore"),
+    kaitoAura: integer("kaitoAura"),
     pricePerVouch: numeric("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
     grossUsdc: numeric("grossUsdc", { precision: 16, scale: 6 }),
     platformFeeUsdc: numeric("platformFeeUsdc", { precision: 16, scale: 6 }),

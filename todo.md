@@ -175,3 +175,5 @@
 - [x] Add richer marketplace subject icons and detail fields, including supplied Kaito branding and honest seller follower, Ethos-score, and Kaito-score fields.
 - [x] Build a wallet-based referral system with ten direct referral slots, capped multilevel HANKA Point rewards, auditable point events, a paginated top-100 leaderboard, and HANKA Points marketplace support.
 - [x] Fix the /market Database is unavailable error and validate the Neon-backed board query in preview and Vercel builds.
+- [x] Add an operator-only Transfers section showing buyer-confirmed payout-ready seller wallets and exact post-fee USDC amounts, with duplicate-payout protection and no manual wallet re-entry.
+- [x] Add seller-declared Kaito Aura alongside Ethos score, X followers, and Kaito score on live-board listings with branded marks, and reduce marketplace hero text/spacing.

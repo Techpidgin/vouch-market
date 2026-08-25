@@ -139,6 +139,7 @@ export async function getPublicMarket() {
         followerCount: sellerCommitments.followerCount,
         ethosScore: sellerCommitments.ethosScore,
         kaitoScore: sellerCommitments.kaitoScore,
+        kaitoAura: sellerCommitments.kaitoAura,
         pricePerVouch: sellerCommitments.pricePerVouch,
         status: sellerCommitments.status,
         archivedAt: sellerCommitments.archivedAt,
@@ -252,6 +253,7 @@ export async function createSellerOffer(input: {
   followerCount?: number;
   ethosScore?: number;
   kaitoScore?: number;
+  kaitoAura?: number;
   pricePerVouch: number;
 }) {
   const db = await dbOrThrow();
@@ -274,7 +276,7 @@ export async function createSellerOffer(input: {
   return { publicId, unitsPosted: intent.quantity };
 }
 
-export async function fillRequest(input: { requestPublicId: string; sellerWallet: string; profileHandle: string; quantity: number; pointsPerUnit: number; followerCount?: number; ethosScore?: number; kaitoScore?: number }) {
+export async function fillRequest(input: { requestPublicId: string; sellerWallet: string; profileHandle: string; quantity: number; pointsPerUnit: number; followerCount?: number; ethosScore?: number; kaitoScore?: number; kaitoAura?: number }) {
   const db = await dbOrThrow();
   const request = (await db.select().from(marketRequests).where(eq(marketRequests.publicId, input.requestPublicId)).limit(1))[0];
   if (!request || request.status !== "open") throw new Error("This request is not open for fills");
@@ -324,6 +326,7 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
       followerCount: input.followerCount,
       ethosScore: input.ethosScore,
       kaitoScore: input.kaitoScore,
+      kaitoAura: input.kaitoAura,
       pricePerVouch: request.pricePerVouch,
       grossUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).grossUsdc,
       platformFeeUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).platformFeeUsdc,
@@ -543,6 +546,16 @@ export async function getOperations() {
   ]);
   const sourceOffers = commitments.filter(item => !item.requestId && !item.parentOfferId && item.status === "open");
   const tradeableSourceOffers = sourceOffers.filter(item => Boolean(item.pointsPerUnit));
+  const requestById = new Map(requests.map(item => [item.id, item]));
+  const payoutByCommitmentId = new Map(payouts.map(item => [item.sellerCommitmentId, item]));
+  const transferQueue = commitments.filter(item => {
+    if (item.status !== "under_review" || !item.sellerMarkedDoneAt || payoutByCommitmentId.has(item.id)) return false;
+    const request = item.requestId ? requestById.get(item.requestId) : undefined;
+    return Boolean(item.buyerMarkedDoneAt || request?.buyerMarkedDoneAt);
+  }).map(item => {
+    const amounts = calculateMarketAmounts(item.quantity, Number(item.pricePerVouch));
+    return { publicId: item.publicId, sellerWallet: item.sellerWallet, quantity: item.quantity, instrument: item.instrument, profileHandle: item.profileHandle, sourceHandle: item.sourceHandle, targetHandle: item.targetHandle, grossUsdc: amounts.grossUsdc, platformFeeUsdc: amounts.platformFeeUsdc, sellerNetUsdc: amounts.sellerNetUsdc, buyerConfirmedAt: item.buyerMarkedDoneAt ?? (item.requestId ? requestById.get(item.requestId)?.buyerMarkedDoneAt : null), sellerMarkedDoneAt: item.sellerMarkedDoneAt };
+  });
   const activeAllocations = commitments.filter(item => (item.requestId || item.parentOfferId) && ["awaiting_payment", "matched", "done", "under_review", "approved"].includes(item.status));
   const completedAllocations = commitments.filter(item => (item.requestId || item.parentOfferId) && ["paid", "disputed"].includes(item.status));
   return {
@@ -551,6 +564,7 @@ export async function getOperations() {
     payouts,
     logs,
     supportMessages: supportRows,
+    transferQueue,
     metrics: {
       openSourceOffers: sourceOffers.length,
       availableUnits: tradeableSourceOffers.reduce((sum, item) => sum + item.quantity, 0),

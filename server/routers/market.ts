@@ -111,11 +111,11 @@ export const marketRouter = router({
       }
     }),
   createSellerOffer: rateLimitedPublicProcedure
-    .input(z.object({ wallet, profileHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: z.number().int().positive().max(1_000_000), pointsPerUnit: z.number().int().positive().max(1_000_000_000), followerCount: z.number().int().nonnegative().max(10_000_000_000).optional(), ethosScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoScore: z.number().int().nonnegative().max(10_000_000_000).optional(), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, profileHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: z.number().int().positive().max(1_000_000), pointsPerUnit: z.number().int().positive().max(1_000_000_000), followerCount: z.number().int().nonnegative().max(10_000_000_000).optional(), ethosScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoAura: z.number().int().nonnegative().max(10_000_000_000).optional(), pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-        const created = await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, pricePerVouch: input.pricePerVouch });
+        const created = await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura, pricePerVouch: input.pricePerVouch });
         await grantReferralPoints(input.wallet, "seller_listing", `listing:${created.publicId}`);
         return created;
       } catch (error) {
@@ -123,11 +123,11 @@ export const marketRouter = router({
       }
     }),
   fillRequest: rateLimitedPublicProcedure
-    .input(z.object({ requestPublicId: z.string().startsWith("REQ-"), wallet, profileHandle: xHandle, quantity: z.number().int().positive(), pointsPerUnit: z.number().int().positive().max(1_000_000_000), followerCount: z.number().int().nonnegative().max(10_000_000_000).optional(), ethosScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoScore: z.number().int().nonnegative().max(10_000_000_000).optional(), proof }))
+    .input(z.object({ requestPublicId: z.string().startsWith("REQ-"), wallet, profileHandle: xHandle, quantity: z.number().int().positive(), pointsPerUnit: z.number().int().positive().max(1_000_000_000), followerCount: z.number().int().nonnegative().max(10_000_000_000).optional(), ethosScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoAura: z.number().int().nonnegative().max(10_000_000_000).optional(), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_fill" });
-        return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore });
+        return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura });
       } catch (error) {
         marketError(error);
       }

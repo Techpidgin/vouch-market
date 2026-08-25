@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { EvidenceTable, SupportInbox } from "../client/src/pages/Operations";
+import { EvidenceTable, SupportInbox, TransferQueue } from "../client/src/pages/Operations";
 
 describe("private operations payment evidence", () => {
   it("renders source-to-target account reconciliation for a completed allocation", () => {
@@ -23,6 +23,21 @@ describe("private operations payment evidence", () => {
     expect(html).toContain("@maker_one → @buyer_one");
     expect(html).toContain("Points / unit");
     expect(html).toContain("12,000 points per unit");
+  });
+
+  it("renders payout-ready transfers from the stored seller wallet", () => {
+    const html = renderToStaticMarkup(createElement(TransferQueue, {
+      pending: false,
+      onTransfer: async () => undefined,
+      transfers: [{ publicId: "FILL-READY", sellerWallet: "6SaEG13gzLSkYnam6gRkM2NGRctVLL5JZ9vEi5MgGydd", sourceHandle: "maker_one", grossUsdc: "1.040000", platformFeeUsdc: "0.052000", sellerNetUsdc: "0.988000", buyerConfirmedAt: new Date("2026-08-25T10:00:00.000Z"), sellerMarkedDoneAt: new Date("2026-08-25T10:02:00.000Z") }],
+    }));
+
+    expect(html).toContain("Payout-ready funds.");
+    expect(html).toContain("Recipient loaded: 6SaE…Gydd");
+    expect(html).toContain("1.04 USDC");
+    expect(html).toContain("0.052 USDC");
+    expect(html).toContain("0.988 USDC");
+    expect(html).toContain("Send exact net");
   });
 
   it("renders wallet-linked customer messages for an authorized operator", () => {
