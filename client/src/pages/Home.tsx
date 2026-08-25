@@ -11,7 +11,7 @@ import {
 
 import { Link } from "wouter";
 
-const ETHOS_LOGO_URL = "/manus-storage/ethos-logo_194cfccc.jpeg";
+const ETHOS_LOGO_URL = "/ethos%20logo.jpeg";
 
 function Mark({ large = false }: { large?: boolean }) {
   return (
@@ -72,7 +72,7 @@ export default function Home() {
           </div>
         </div>
         <aside className="transaction-terminal" aria-label="HANKA transaction terminal preview">
-          <div className="terminal-underlay" aria-hidden="true">
+          <div className="terminal-underlay" aria-hidden="true"><img className="terminal-opera-mark" src="/manus-storage/opera_803ecdcc.png" alt="" />
             <div className="terminal-underlay-tabs"><span className="terminal-tab terminal-tab-active">Transactions</span><span className="terminal-tab">Signals</span><span className="terminal-tab">Archive</span></div>
             <div className="terminal-underlay-grid">{[0, 1, 2, 3, 4].map(index => <span key={index} />)}</div>
           </div>

@@ -7,29 +7,55 @@ import { Buffer } from "buffer";
 
 type SolanaProvider = {
   isPhantom?: boolean;
+  isBackpack?: boolean;
+  isSolflare?: boolean;
   publicKey?: PublicKey;
   connect: () => Promise<{ publicKey: PublicKey }>;
   signMessage: (message: Uint8Array, display?: "utf8") => Promise<{ signature: Uint8Array }>;
   signAndSendTransaction: (transaction: Transaction) => Promise<{ signature: string }>;
 };
 
+export type WalletOption = { id: string; label: string; provider: SolanaProvider };
+
 declare global {
   interface Window {
-    solana?: SolanaProvider;
+    solana?: SolanaProvider & { providers?: SolanaProvider[] };
+    backpack?: { solana?: SolanaProvider };
+    solflare?: SolanaProvider;
+    okxwallet?: { solana?: SolanaProvider };
+    exodus?: { solana?: SolanaProvider };
+    braveSolana?: SolanaProvider;
+    opera?: { solana?: SolanaProvider };
   }
 }
 
 const publicRpc = "https://api.mainnet-beta.solana.com";
+let activeProvider: SolanaProvider | null = null;
 
-function installBufferShim() {
-  (globalThis as typeof globalThis & { Buffer?: typeof Buffer }).Buffer = Buffer;
+export function getWalletOptions(): WalletOption[] {
+  if (typeof window === "undefined") return [];
+  const candidates: Array<{ id: string; label: string; provider?: SolanaProvider }> = [
+    { id: "phantom", label: "Phantom", provider: window.solana?.isPhantom ? window.solana : undefined },
+    { id: "backpack", label: "Backpack", provider: window.backpack?.solana },
+    { id: "solflare", label: "Solflare", provider: window.solflare },
+    { id: "okx", label: "OKX Wallet", provider: window.okxwallet?.solana },
+    { id: "exodus", label: "Exodus", provider: window.exodus?.solana },
+    { id: "brave", label: "Brave Wallet", provider: window.braveSolana },
+    { id: "opera", label: "Opera Wallet", provider: window.opera?.solana },
+  ];
+  const discovered = window.solana?.providers?.map((provider, index) => ({ id: `provider-${index}`, label: "Solana Wallet", provider })) ?? [];
+  const options = [...candidates, ...discovered].filter((item): item is { id: string; label: string; provider: SolanaProvider } => Boolean(item.provider));
+  return options.filter((item, index) => options.findIndex(other => other.provider === item.provider) === index);
 }
 
 function providerOrThrow() {
-  if (!window.solana?.isPhantom) {
-    throw new Error("Install and unlock Phantom to continue");
-  }
-  return window.solana;
+  const provider = activeProvider ?? getWalletOptions()[0]?.provider;
+  if (!provider) throw new Error("Install a Solana wallet such as Phantom, Backpack, or Solflare to continue");
+  return provider;
+}
+
+function installBufferShim() {
+  (globalThis as typeof globalThis & { Buffer?: typeof Buffer }).Buffer = Buffer;
 }
 
 function toBase64(bytes: Uint8Array) {
@@ -51,9 +77,11 @@ function usdcStringToMicro(amountUsdc: string) {
   return micro;
 }
 
-export async function connectWallet() {
-  const provider = providerOrThrow();
-  const result = await provider.connect();
+export async function connectWallet(walletId?: string) {
+  const option = getWalletOptions().find(item => item.id === walletId) ?? getWalletOptions()[0];
+  if (!option) throw new Error("Install a Solana wallet such as Phantom, Backpack, or Solflare to continue");
+  activeProvider = option.provider;
+  const result = await activeProvider.connect();
   return result.publicKey.toBase58();
 }
 
@@ -79,15 +107,13 @@ export async function sendUsdcPayment(input: {
   const sender = provider.publicKey ?? (await provider.connect()).publicKey;
   const mint = new PublicKey(input.usdcMint);
   const recipient = new PublicKey(input.recipientWallet);
+  const amount = usdcStringToMicro(input.amountUsdc);
   const senderUsdc = await getAssociatedTokenAddress(mint, sender);
   const recipientUsdc = await getAssociatedTokenAddress(mint, recipient);
-  const amount = usdcStringToMicro(input.amountUsdc);
 
   const transaction = new Transaction();
   const recipientAccount = await connection.getAccountInfo(recipientUsdc, "confirmed");
-  if (!recipientAccount) {
-    transaction.add(createAssociatedTokenAccountInstruction(sender, recipientUsdc, recipient, mint));
-  }
+  if (!recipientAccount) transaction.add(createAssociatedTokenAccountInstruction(sender, recipientUsdc, recipient, mint));
   transaction.add(createTransferCheckedInstruction(senderUsdc, mint, recipientUsdc, sender, amount, 6));
   const { blockhash } = await connection.getLatestBlockhash("confirmed");
   transaction.recentBlockhash = blockhash;

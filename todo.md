@@ -181,3 +181,4 @@
 - [x] Add copyable referral link text, themed PNG social-card downloads with icons and shine, and slimmer multi-column live-board listing rolls based on the supplied reference.
 - [x] Add native X/Web Share actions for PNG cards, sortable live-board source-metric columns, and operator-controlled verified seller metric badges.
 - [x] Optimize live-board listings with narrower columns, a dedicated platform-scores column, and durable production logo URLs verified for Vercel.
+- [x] Animate the hero transaction terminal, use uploaded Ethos/Phantom/Kaito/Opera public assets with a faint Opera underlay, add a mobile-safe multi-wallet chooser, and compact live-board numbers and missing-score icons.

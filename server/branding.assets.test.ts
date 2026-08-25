@@ -22,10 +22,10 @@ describe("HANKA brand assets", () => {
 
   it("uses the uploaded Phantom mark in wallet-connect controls", () => {
     const market = readFileSync(resolve(process.cwd(), "client/src/components/MarketHome.tsx"), "utf8");
-    expect(market).toContain("/manus-storage/phantom-wallet_25796a99.png");
+    expect(market).toContain("/phantomwallettt.png");
     expect(market).toContain("function PhantomMark");
     expect(market).toContain("<PhantomMark");
-    expect(market).toContain("/manus-storage/kaito-mark_bfc88d67.png");
+    expect(market).toContain("/kaitopng.png");
     const proxy = readFileSync(resolve(process.cwd(), "api/manus-storage/[...path].js"), "utf8");
     expect(proxy).toContain("kaito-mark_bfc88d67.png");
     expect(proxy).toContain("phantom-wallet_25796a99.png");

@@ -27,7 +27,7 @@ describe("market form contract", () => {
 
   it("surfaces seller credibility inputs and Kaito branding without presenting them as verified facts", () => {
     const schema = readFileSync(resolve(process.cwd(), "drizzle/schema.ts"), "utf8");
-    expect(marketFormSource).toContain("kaito-mark_bfc88d67.png");
+    expect(marketFormSource).toContain("/kaitopng.png");
     expect(marketFormSource).toContain("followerCount");
     expect(marketFormSource).toContain("ethosScore");
     expect(marketFormSource).toContain("kaitoScore");

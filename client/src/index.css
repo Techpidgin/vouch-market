@@ -390,6 +390,7 @@
   border: 1px solid rgba(165, 229, 180, .12);
   background: linear-gradient(145deg, rgba(13, 25, 17, .96), rgba(5, 11, 8, .96));
 }
+.terminal-opera-mark { position: absolute; right: -3rem; bottom: -4rem; width: 18rem; height: 18rem; object-fit: contain; opacity: .045; filter: grayscale(1) brightness(1.8); transform: rotate(-12deg); }
 .terminal-underlay-tabs {
   display: flex;
   gap: 1.25rem;
@@ -466,6 +467,7 @@
 .terminal-code-row code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .terminal-code-dot { width: .3rem; height: .3rem; background: rgba(165, 229, 180, .72); box-shadow: none; }
 @media (prefers-reduced-motion: no-preference) {
+  .transaction-terminal { animation: terminal-float 7s ease-in-out infinite; }
   .terminal-underlay-grid span { animation: terminal-scan 5s ease-in-out infinite; }
   .terminal-underlay-grid span:nth-child(2) { animation-delay: .35s; }
   .terminal-underlay-grid span:nth-child(3) { animation-delay: .7s; }
@@ -477,6 +479,10 @@
   .terminal-code-row:nth-child(4) { animation-delay: 240ms; }
   .terminal-code-row:nth-child(5) { animation-delay: 320ms; }
   .terminal-live i { animation: terminal-pulse 1.6s ease-in-out infinite; }
+}
+@keyframes terminal-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-.35rem) rotate(.25deg); }
 }
 @keyframes terminal-scan {
   0%, 100% { opacity: .4; transform: translateX(-.35rem); }
@@ -494,5 +500,6 @@
   .transaction-terminal { min-height: 18.5rem; }
   .transaction-terminal::before { inset: 1rem .5rem -.5rem 1rem; }
   .terminal-window { inset: 1.8rem .9rem .9rem .9rem; }
+  .terminal-opera-mark { right: -4rem; bottom: -3rem; width: 14rem; height: 14rem; }
   .terminal-code-row { font-size: .58rem; }
 }

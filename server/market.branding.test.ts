@@ -44,8 +44,8 @@ describe("public market branding", () => {
   });
 
   it("uses the supplied Ethos mark alongside every public Ethos vouch and slash product identity", () => {
-    expect(homeSource).toContain('/manus-storage/ethos-logo_194cfccc.jpeg');
-    expect(marketSource).toContain('/manus-storage/ethos-logo_194cfccc.jpeg');
+    expect(homeSource).toContain('/ethos%20logo.jpeg');
+    expect(marketSource).toContain('/ethos%20logo.jpeg');
     expect(homeSource).toContain('EthosMark className="proof-icon"');
     expect(marketSource).toContain("InstrumentGlyph instrument={instrument}");
   });
@@ -65,6 +65,8 @@ describe("public market branding", () => {
     expect(homeSource).toContain("terminal-underlay-tabs");
     expect(homeSource).toContain("terminalLines");
     expect(styles).toContain("@keyframes terminal-row-in");
-    expect(styles).toContain("@media (prefers-reduced-motion: no-preference)");
+    expect(styles).toContain("@media (prefers-reduced-motion: no-preference");
+    expect(homeSource).toContain('src="/manus-storage/opera_803ecdcc.png"');
+    expect(styles).toContain("terminal-opera-mark");
   });
 });
