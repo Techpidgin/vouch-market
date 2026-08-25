@@ -17,4 +17,11 @@ describe("market form contract", () => {
     expect(marketFormSource).toContain("The account that will deliver this");
     expect(marketFormSource).toContain("different from your connected wallet");
   });
+
+  it("keeps public form surfaces in the dark marketplace system and exposes market price guidance", () => {
+    const styles = readFileSync(resolve(process.cwd(), "client/src/index.css"), "utf8");
+    expect(styles).toContain('[data-slot="dialog-content"]');
+    expect(styles).toContain("background: #0c130f !important");
+    expect(marketFormSource).toContain("MarketPriceGuide");
+  });
 });

@@ -155,3 +155,8 @@
 - [x] Apply Geist typography to compact interface text, retain HANKA display typography, and add a considered premium icon system.
 - [x] Redesign the terms panel as an overlayed HANKA mark treatment with reduced-motion-aware typed text.
 - [x] Add restrained shine, hover, and entry motion to market rows and primary actions without reducing list density or accessibility.
+- [x] Remove all public light-mode controls and light theme surfaces so HANKA is consistently dark-only.
+- [x] Redesign Buy and Sell forms for contrast, readability, and dark HANKA visual consistency.
+- [x] Make every landing-page proof catalogue item link to the matching filtered market view.
+- [x] Optimize complete-market discovery and add recommended pricing guidance for all proof types.
+- [x] Use singular Vouch terminology consistently in the market filters and public discovery labels.

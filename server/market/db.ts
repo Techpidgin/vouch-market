@@ -10,7 +10,7 @@ import {
   sellerCommitments,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, type MarketInstrument } from "./constants";
+import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, MARKET_INSTRUMENTS, type MarketInstrument } from "./constants";
 import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforcePointsPerUnit, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
 import { removeArchiveMetadata } from "./visibility";
 import { createDirectPurchaseIntent, createExactMarketIntent, createFillIntent } from "./instrumentLifecycle";
@@ -96,7 +96,7 @@ export async function getPublicMarket() {
         projects: [DEFAULT_PROJECT],
         requests: [],
         sellerOffers: [],
-        suggestedPriceByInstrument: { vouch: null, slash: null },
+        suggestedPriceByInstrument: Object.fromEntries(MARKET_INSTRUMENTS.map(({ value }) => [value, null])),
       };
     }
     throw new Error("Database is unavailable");
@@ -160,7 +160,7 @@ export async function getPublicMarket() {
     projects,
     requests: visibleRequests,
     sellerOffers: visibleSellerOffers,
-    suggestedPriceByInstrument: { vouch: midpointFor("vouch"), slash: midpointFor("slash") },
+    suggestedPriceByInstrument: Object.fromEntries(MARKET_INSTRUMENTS.map(({ value }) => [value, midpointFor(value)])),
   };
 }
 

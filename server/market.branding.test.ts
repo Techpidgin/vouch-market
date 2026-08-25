@@ -1,9 +1,11 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const homeSource = readFileSync(resolve(process.cwd(), "client/src/pages/Home.tsx"), "utf8");
 const marketSource = readFileSync(resolve(process.cwd(), "client/src/components/MarketHome.tsx"), "utf8");
+const appSource = readFileSync(resolve(process.cwd(), "client/src/App.tsx"), "utf8");
+const themeTogglePath = resolve(process.cwd(), "client/src/components/ThemeToggle.tsx");
 
 describe("public market branding", () => {
   it("removes CommonsMade-specific public marketing copy while retaining the actual project selector", () => {
@@ -32,5 +34,12 @@ describe("public market branding", () => {
     expect(homeSource).toContain("HANKA Social Proof Market · USDC on Solana");
     expect(marketSource).toContain("HANKA · Open market");
     expect(marketSource).toContain("HANKA Social Proof Market · USDC on Solana");
+  });
+
+  it("keeps the public product dark-only and lets each catalogue card open its matching proof market", () => {
+    expect(appSource).not.toContain("switchable");
+    expect(existsSync(themeTogglePath)).toBe(false);
+    expect(homeSource).toContain("?proof=${instrument}#market");
+    expect(homeSource).toContain("Browse market");
   });
 });
