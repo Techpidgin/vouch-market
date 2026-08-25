@@ -194,7 +194,7 @@
 - [x] Verify mobile wallet connection affordances and multiple injected Solana wallet options.
 - [x] Run regression tests, production builds, responsive screenshots, then publish and push GitHub main.
 
-- [ ] Diagnose and fix Vercel delivery of the latest Opera and Solana assets plus mobile Phantom wallet detection.
+- [x] Diagnose and fix Vercel delivery of the latest Opera and Solana assets plus mobile Phantom wallet detection.
 - [x] Restore visible Opera underlay treatment in the landing hero while preserving text readability.
 - [x] Replace the terminal-only Opera treatment with a full-screen landing-page background underlay.
 - [x] Replace the landing supporting paragraph with concise HANKA Exchange positioning.

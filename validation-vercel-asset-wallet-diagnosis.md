@@ -7,3 +7,5 @@ After moving the Opera image inside the opaque terminal window layer, the local 
 The final desktop and 390px previews confirm that Opera is now a full-page landing underlay rather than a terminal-only image. A dark directional overlay maintains readable headers, hero copy, market cards, and footer links across the full scrollable landing page.
 
 The revised value proposition renders as a single concise line on desktop and wraps naturally into two short lines at 390px without pushing the primary action or transaction terminal below the initial viewport.
+
+After the final GitHub/Vercel deployment, the live Vercel client bundle contains the public HANKA asset origin. Both Opera and Solana public storage routes return a 307 redirect, so the Vercel UI no longer depends on its unconfigured Manus storage proxy. The zero-wallet Connect flow opens the in-app-wallet chooser rather than emitting an immediate install-wallet error; injected-wallet discovery and mobile handoff links are covered by active tests.
