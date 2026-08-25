@@ -167,5 +167,5 @@
 - [x] Reduce the landing hero scale and rebalance first-screen spacing so the Buy or sell proof CTA remains visible at 100% desktop zoom.
 - [x] Let visitors submit a wallet-linked customer-support message that authorized operators can read privately.
 - [x] Optimize landing, market, forms, and support for a fast thumb-friendly mobile HANKA experience while preserving the dark modern theme.
-- [ ] Push the latest validated mobile HANKA refinement to the connected GitHub main branch.
+- [x] Push the latest validated mobile HANKA refinement to the connected GitHub main branch.
 - [x] Repair the Vite preview HMR WebSocket connection for the proxied /market development page.
