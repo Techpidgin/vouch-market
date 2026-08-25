@@ -149,3 +149,9 @@
 - [x] Refine the HANKA interface with tasteful logo motion, shine effects, and a modern SaaS visual system that respects reduced-motion preferences.
 - [x] Run a focused cleanup and security review covering dependency graph, server-only secrets, signed actions, input validation, and deployment configuration.
 - [x] Fix the local `/market` database-unavailable query error without accepting the legacy MySQL environment in production.
+- [x] Expand the social-proof catalogue beyond vouchers and slashes to include follows, reposts, comments, and X Space participation levels.
+- [x] Replace public Bid/List language with simpler Buy/Sell actions while retaining existing wallet and payment safeguards.
+- [x] Unify the landing page with the marketplace’s high-value dark SaaS visual system and add an accessible light/dark mode toggle.
+- [x] Apply Geist typography to compact interface text, retain HANKA display typography, and add a considered premium icon system.
+- [x] Redesign the terms panel as an overlayed HANKA mark treatment with reduced-motion-aware typed text.
+- [x] Add restrained shine, hover, and entry motion to market rows and primary actions without reducing list density or accessibility.

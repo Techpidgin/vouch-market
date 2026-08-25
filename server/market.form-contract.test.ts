@@ -9,12 +9,12 @@ describe("market form contract", () => {
     expect(marketFormSource).toContain('name="pointsPerUnit"');
     expect(marketFormSource).toContain("pointsPerUnit: unitPoints");
     expect(marketFormSource).not.toContain("pointsPerUnit: Number(pointsPerUnit)");
-    expect(marketFormSource).toContain("Enter the actual whole-number points carried by one");
+    expect(marketFormSource).toContain("Enter the actual whole-number signal value carried by one");
   });
 
   it("explains the target and source X-account roles where participants enter them", () => {
-    expect(marketFormSource).toContain("The X account to be vouched or slashed");
-    expect(marketFormSource).toContain("The X account that will give the vouch or slash");
-    expect(marketFormSource).toContain("It may be different from your connected wallet’s own X account");
+    expect(marketFormSource).toContain("The account that should receive this");
+    expect(marketFormSource).toContain("The account that will deliver this");
+    expect(marketFormSource).toContain("different from your connected wallet");
   });
 });

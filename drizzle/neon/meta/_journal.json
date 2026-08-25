@@ -8,6 +8,13 @@
       "when": 1787567210059,
       "tag": "0000_sad_lucky_pierre",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787649720723,
+      "tag": "0001_boring_agent_zero",
+      "breakpoints": true
     }
   ]
 }

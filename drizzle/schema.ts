@@ -38,7 +38,9 @@ export const requestStatus = pgEnum("request_status", [
 export const vouchBand = pgEnum("vouch_band", [
   "under_1k", "1k_5k", "5k_10k", "10k_25k", "5k_25k", "25k_50k", "50k_plus", "25k_plus",
 ]);
-export const marketInstrument = pgEnum("market_instrument", ["vouch", "slash"]);
+export const marketInstrument = pgEnum("market_instrument", [
+  "vouch", "slash", "follow", "repost", "comment", "space_listener", "space_speaker", "space_contributor",
+]);
 export const sellerCommitmentStatus = pgEnum("seller_commitment_status", [
   "open", "awaiting_payment", "matched", "done", "under_review", "approved", "paid", "cancelled", "disputed",
 ]);
@@ -67,6 +69,8 @@ export const marketRequests = pgTable(
     targetHandle: varchar("targetHandle", { length: 80 }).notNull(),
     projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
     instrument: marketInstrument("instrument").notNull().default("vouch"),
+    proofDetail: varchar("proofDetail", { length: 240 }),
+    spaceMinutes: integer("spaceMinutes"),
     vouchBand: vouchBand("vouchBand"),
     requestedQuantity: integer("requestedQuantity").notNull(),
     filledQuantity: integer("filledQuantity").notNull().default(0),
@@ -105,6 +109,8 @@ export const sellerCommitments = pgTable(
     allocationKey: varchar("allocationKey", { length: 255 }),
     projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
     instrument: marketInstrument("instrument").notNull().default("vouch"),
+    proofDetail: varchar("proofDetail", { length: 240 }),
+    spaceMinutes: integer("spaceMinutes"),
     vouchBand: vouchBand("vouchBand"),
     quantity: integer("quantity").notNull(),
     pointsPerUnit: integer("pointsPerUnit"),
