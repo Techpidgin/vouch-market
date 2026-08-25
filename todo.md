@@ -193,3 +193,5 @@
 - [x] Replace wallet-connect branding with the newly uploaded Solana PNG while preserving provider discovery and chooser behavior.
 - [x] Verify mobile wallet connection affordances and multiple injected Solana wallet options.
 - [x] Run regression tests, production builds, responsive screenshots, then publish and push GitHub main.
+
+- [ ] Diagnose and fix Vercel delivery of the latest Opera and Solana assets plus mobile Phantom wallet detection.

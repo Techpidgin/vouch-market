@@ -127,7 +127,7 @@ export default function MarketHome() {
 
   async function refresh() { await utils.market.board.invalidate(); }
   async function connect(walletId?: string) {
-    if (!walletId && walletOptions.length > 1) { setWalletChooserOpen(true); return; }
+    if (!walletId && walletOptions.length !== 1) { setWalletChooserOpen(true); return; }
     try { setBusy(true); setWallet(await connectWallet(walletId)); setWalletChooserOpen(false); toast.success("Wallet connected"); }
     catch (error) { toast.error(error instanceof Error ? error.message : "Wallet connection failed"); }
     finally { setBusy(false); }

@@ -34,5 +34,7 @@ describe("HANKA brand assets", () => {
     expect(proxy).toContain("kaito-mark_bfc88d67.png");
     expect(proxy).toContain("solana-mark-final_901eaff2.png");
     expect(proxy).toContain("opera-small_1fa074ba.png");
+    expect(proxy).toContain("function requestedAssetKey");
+    expect(proxy).toContain("req.url");
     expect(market).toContain("Platform scores");
   });

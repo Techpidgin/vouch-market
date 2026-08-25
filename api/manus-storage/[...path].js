@@ -2,6 +2,17 @@
 
 const ALLOWED_ASSET_KEYS = new Set(["ethos-logo_194cfccc.jpeg", "kaito-mark_bfc88d67.png", "phantom-wallet_25796a99.png", "opera_803ecdcc.png", "opera-small_1fa074ba.png", "solana-mark-final_901eaff2.png"]);
 
+function requestedAssetKey(req) {
+  const rawPath = req.query?.path;
+  if (Array.isArray(rawPath)) return rawPath.join("/");
+  if (typeof rawPath === "string" && rawPath) return rawPath;
+
+  const pathname = String(req.url ?? "").split("?")[0];
+  const marker = "/manus-storage/";
+  const markerIndex = pathname.indexOf(marker);
+  return markerIndex === -1 ? "" : decodeURIComponent(pathname.slice(markerIndex + marker.length));
+}
+
 module.exports = async function storageProxy(req, res) {
   if (req.method !== "GET" && req.method !== "HEAD") {
     res.setHeader("Allow", "GET, HEAD");
@@ -9,8 +20,7 @@ module.exports = async function storageProxy(req, res) {
     return;
   }
 
-  const rawPath = req.query?.path;
-  const key = Array.isArray(rawPath) ? rawPath.join("/") : typeof rawPath === "string" ? rawPath : "";
+  const key = requestedAssetKey(req);
   if (!ALLOWED_ASSET_KEYS.has(key)) {
     res.status(404).end("Asset not found");
     return;
