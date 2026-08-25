@@ -54,6 +54,7 @@ const terminalLines = [
 export default function Home() {
   return (
     <main className="hanka-home hanka-app relative min-h-screen overflow-hidden">
+      <div className="landing-opera-background" aria-hidden="true"><img src="/manus-storage/opera-small_1fa074ba.png" alt="" /></div>
       <div className="hanka-aurora pointer-events-none absolute inset-0" />
       <header className="hanka-header relative">
         <div className="market-shell flex h-16 items-center justify-between gap-3 sm:h-20">
@@ -77,7 +78,6 @@ export default function Home() {
             <div className="terminal-underlay-grid">{[0, 1, 2, 3, 4].map(index => <span key={index} />)}</div>
           </div>
           <div className="terminal-window">
-            <img className="terminal-opera-mark" src="/manus-storage/opera-small_1fa074ba.png" alt="" aria-hidden="true" />
             <div className="terminal-window-head"><span>hanka://market</span><span className="terminal-live"><i />LIVE</span></div>
             <div className="terminal-command"><span className="terminal-prompt">›</span> watch --market</div>
             <div className="terminal-code">{terminalLines.map((line, index) => <div className="terminal-code-row" key={line}><span className="terminal-code-index">0{index + 1}</span><code>{line}</code><span className="terminal-code-dot" /></div>)}</div>
