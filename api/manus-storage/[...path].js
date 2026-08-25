@@ -1,6 +1,6 @@
 "use strict";
 
-const ALLOWED_ASSET_KEYS = new Set(["ethos-logo_194cfccc.jpeg", "kaito-mark_bfc88d67.png", "phantom-wallet_25796a99.png", "opera_803ecdcc.png"]);
+const ALLOWED_ASSET_KEYS = new Set(["ethos-logo_194cfccc.jpeg", "kaito-mark_bfc88d67.png", "phantom-wallet_25796a99.png", "opera_803ecdcc.png", "opera-small_1fa074ba.png", "solana-mark_2f2e72a4.svg"]);
 
 module.exports = async function storageProxy(req, res) {
   if (req.method !== "GET" && req.method !== "HEAD") {

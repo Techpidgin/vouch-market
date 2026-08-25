@@ -66,7 +66,7 @@ describe("public market branding", () => {
     expect(homeSource).toContain("terminalLines");
     expect(styles).toContain("@keyframes terminal-row-in");
     expect(styles).toContain("@media (prefers-reduced-motion: no-preference");
-    expect(homeSource).toContain('src="/manus-storage/opera_803ecdcc.png"');
+    expect(homeSource).toContain('src="/manus-storage/opera-small_1fa074ba.png"');
     expect(styles).toContain("terminal-opera-mark");
   });
 });

@@ -182,3 +182,9 @@
 - [x] Add native X/Web Share actions for PNG cards, sortable live-board source-metric columns, and operator-controlled verified seller metric badges.
 - [x] Optimize live-board listings with narrower columns, a dedicated platform-scores column, and durable production logo URLs verified for Vercel.
 - [x] Animate the hero transaction terminal, use uploaded Ethos/Phantom/Kaito/Opera public assets with a faint Opera underlay, add a mobile-safe multi-wallet chooser, and compact live-board numbers and missing-score icons.
+
+- [x] Replace the Opera underlay with the newly supplied smaller asset through durable storage.
+- [x] Redesign HANKA social cards with clearer alignment, platform logos, and readable metric hierarchy.
+- [x] Use the full referral link in social cards instead of the referral code label.
+- [x] Replace Phantom branding with the supplied Solana logo on wallet-connect surfaces.
+- [x] Validate social-card PNG export, responsive marketplace branding, tests, builds, and publish to production/GitHub main.
