@@ -169,3 +169,4 @@
 - [x] Optimize landing, market, forms, and support for a fast thumb-friendly mobile HANKA experience while preserving the dark modern theme.
 - [x] Push the latest validated mobile HANKA refinement to the connected GitHub main branch.
 - [x] Repair the Vite preview HMR WebSocket connection for the proxied /market development page.
+- [x] Eliminate the residual Vite development-client WebSocket error from the active market preview.

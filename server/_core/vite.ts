@@ -23,6 +23,34 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  // The marketplace preview needs Vite's client-module exports for transformed
+  // modules, but the proxy cannot maintain its WebSocket. Serve compatible
+  // no-op exports so the app renders without starting an HMR reconnect loop.
+  app.get("/@vite/client", (_req, res) => {
+    res.type("application/javascript").send(`
+      export class ErrorOverlay extends HTMLElement {}
+      export const createHotContext = () => ({ accept() {}, dispose() {}, prune() {}, decline() {}, invalidate() {}, on() {}, send() {} });
+      export const injectQuery = (url) => url;
+      const styles = new Map();
+      export const updateStyle = (id, content) => {
+        let style = styles.get(id);
+        if (!style) {
+          style = document.createElement("style");
+          style.setAttribute("type", "text/css");
+          style.setAttribute("data-vite-dev-id", id);
+          document.head.appendChild(style);
+          styles.set(id, style);
+        }
+        style.textContent = content;
+      };
+      export const removeStyle = (id) => {
+        const style = styles.get(id);
+        if (style) style.remove();
+        styles.delete(id);
+      };
+    `);
+  });
+
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
@@ -41,11 +69,7 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
-      const transformedPage = await vite.transformIndexHtml(url, template);
-      // The managed preview proxy does not provide a stable Vite WebSocket
-      // upgrade. Remove the dev client after transforms so the application
-      // still loads normally without emitting a misleading HMR error.
-      const page = transformedPage.replace(/\s*<script type="module" src="\/@vite\/client"><\/script>/, "");
+      const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
