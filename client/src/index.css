@@ -393,7 +393,7 @@
   border: 1px solid rgba(165, 229, 180, .12);
   background: linear-gradient(145deg, rgba(13, 25, 17, .96), rgba(5, 11, 8, .96));
 }
-.terminal-opera-mark { position: absolute; right: -3rem; bottom: -4rem; width: 18rem; height: 18rem; object-fit: contain; opacity: .045; filter: grayscale(1) brightness(1.8); transform: rotate(-12deg); }
+.terminal-opera-mark { position: absolute; z-index: 0; right: -3rem; bottom: -4rem; width: 18rem; height: 18rem; object-fit: contain; opacity: .12; filter: grayscale(1) brightness(1.55) contrast(.9); transform: rotate(-12deg); pointer-events: none; }
 .terminal-underlay-tabs {
   display: flex;
   gap: 1.25rem;
@@ -427,6 +427,7 @@
   background: rgba(8, 17, 11, .96);
   box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, .32);
 }
+.terminal-window > :not(.terminal-opera-mark) { position: relative; z-index: 1; }
 .terminal-window-head,
 .terminal-window-foot {
   display: flex;
