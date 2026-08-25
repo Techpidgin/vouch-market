@@ -17,4 +17,20 @@ describe("market form contract", () => {
     expect(marketFormSource).toContain("The account that will deliver this");
     expect(marketFormSource).toContain("different from your connected wallet");
   });
+
+  it("keeps public form surfaces in the dark marketplace system and exposes market price guidance", () => {
+    const styles = readFileSync(resolve(process.cwd(), "client/src/index.css"), "utf8");
+    expect(styles).toContain('[data-slot="dialog-content"]');
+    expect(styles).toContain("background: #0c130f !important");
+    expect(marketFormSource).toContain("MarketPriceGuide");
+  });
+
+  it("uses the requested Vouch vocabulary and sharp HANKA marketplace control system", () => {
+    const styles = readFileSync(resolve(process.cwd(), "client/src/index.css"), "utf8");
+    expect(marketFormSource).toContain('label: "Ethos vouch"');
+    expect(marketFormSource).not.toContain('label: "Ethos voucher"');
+    expect(styles).toContain('border-radius: 0 !important');
+    expect(styles).toContain('animation: home-sheen 4.2s');
+    expect(styles).toContain('--primary: oklch(0.86 0.11 151)');
+  });
 });

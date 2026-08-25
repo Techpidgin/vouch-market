@@ -15,7 +15,7 @@ export const VOUCH_BANDS = [
 
 export type VouchBandValue = (typeof VOUCH_BANDS)[number]["value"];
 export const MARKET_INSTRUMENTS = [
-  { value: "vouch", label: "Ethos voucher", sourceLabel: "Voucher source" },
+  { value: "vouch", label: "Ethos vouch", sourceLabel: "Vouch source" },
   { value: "slash", label: "Ethos slash", sourceLabel: "Slash source" },
   { value: "follow", label: "X follow", sourceLabel: "Following account" },
   { value: "repost", label: "X repost", sourceLabel: "Reposting account" },

@@ -9,6 +9,10 @@
   },
   "rewrites": [
     {
+      "source": "/manus-storage/:path*",
+      "destination": "/api/manus-storage/:path*"
+    },
+    {
       "source": "/:path((?!api(?:/|$)).*)",
       "destination": "/index.html"
     }

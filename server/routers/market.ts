@@ -8,6 +8,7 @@ import {
   cancelUnpaidRequest,
   createRequest,
   createSellerOffer,
+  createSupportMessage,
   delistSellerOffer,
   fillRequest,
   getParticipantActivity,
@@ -49,10 +50,20 @@ export const marketRouter = router({
       } catch (error) { marketError(error); }
     }),
   walletChallenge: rateLimitedPublicProcedure
-    .input(z.object({ wallet, action: z.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "admin_access"]) }))
+    .input(z.object({ wallet, action: z.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "support_message", "admin_access"]) }))
     .mutation(async ({ input }) => {
       try {
         return await createWalletChallenge(input.wallet, input.action);
+      } catch (error) {
+        marketError(error);
+      }
+    }),
+  supportMessage: rateLimitedPublicProcedure
+    .input(z.object({ wallet, subject: z.string().trim().max(120).optional(), message: z.string().trim().min(4).max(2_000), proof }))
+    .mutation(async ({ input }) => {
+      try {
+        await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "support_message" });
+        return await createSupportMessage({ wallet: input.wallet, subject: input.subject || "Customer support", message: input.message });
       } catch (error) {
         marketError(error);
       }

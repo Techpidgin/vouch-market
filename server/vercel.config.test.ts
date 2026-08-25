@@ -25,4 +25,12 @@ describe("Vercel deployment configuration", () => {
       destination: "/index.html",
     });
   });
+
+  it("routes the user-supplied Ethos mark through a narrowly scoped production storage proxy", () => {
+    expect(existsSync(resolve(process.cwd(), "api/manus-storage/[...path].js"))).toBe(true);
+    expect(config.rewrites).toContainEqual({
+      source: "/manus-storage/:path*",
+      destination: "/api/manus-storage/:path*",
+    });
+  });
 });

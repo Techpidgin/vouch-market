@@ -155,3 +155,17 @@
 - [x] Apply Geist typography to compact interface text, retain HANKA display typography, and add a considered premium icon system.
 - [x] Redesign the terms panel as an overlayed HANKA mark treatment with reduced-motion-aware typed text.
 - [x] Add restrained shine, hover, and entry motion to market rows and primary actions without reducing list density or accessibility.
+- [x] Remove all public light-mode controls and light theme surfaces so HANKA is consistently dark-only.
+- [x] Redesign Buy and Sell forms for contrast, readability, and dark HANKA visual consistency.
+- [x] Make every landing-page proof catalogue item link to the matching filtered market view.
+- [x] Optimize complete-market discovery and add recommended pricing guidance for all proof types.
+- [x] Use singular Vouch terminology consistently in the market filters and public discovery labels.
+- [x] Replace remaining marketplace-form and dashboard references to plural vouchers with singular Vouch terminology.
+- [x] Remove off-palette blue button styling and standardize marketplace controls to sharp-edged HANKA colors with shine.
+- [x] Add the supplied Ethos logo consistently wherever public Ethos vouch and Ethos slash labels appear.
+- [x] Humanize the landing-page language, remove the wallet-first label, and add restrained editorial text shine.
+- [x] Reduce the landing hero scale and rebalance first-screen spacing so the Buy or sell proof CTA remains visible at 100% desktop zoom.
+- [x] Let visitors submit a wallet-linked customer-support message that authorized operators can read privately.
+- [x] Optimize landing, market, forms, and support for a fast thumb-friendly mobile HANKA experience while preserving the dark modern theme.
+- [ ] Push the latest validated mobile HANKA refinement to the connected GitHub main branch.
+- [x] Repair the Vite preview HMR WebSocket connection for the proxied /market development page.

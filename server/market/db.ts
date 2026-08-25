@@ -8,9 +8,10 @@ import {
   paymentSignatureClaims,
   payoutRecords,
   sellerCommitments,
+  supportMessages,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, type MarketInstrument } from "./constants";
+import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, MARKET_INSTRUMENTS, type MarketInstrument } from "./constants";
 import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforcePointsPerUnit, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
 import { removeArchiveMetadata } from "./visibility";
 import { createDirectPurchaseIntent, createExactMarketIntent, createFillIntent } from "./instrumentLifecycle";
@@ -24,7 +25,7 @@ async function dbOrThrow() {
 }
 
 export async function logActivity(input: {
-  entityType: "request" | "seller_commitment" | "payout";
+  entityType: "request" | "seller_commitment" | "payout" | "support_message";
   entityPublicId: string;
   eventType: string;
   actorWallet?: string;
@@ -96,7 +97,7 @@ export async function getPublicMarket() {
         projects: [DEFAULT_PROJECT],
         requests: [],
         sellerOffers: [],
-        suggestedPriceByInstrument: { vouch: null, slash: null },
+        suggestedPriceByInstrument: Object.fromEntries(MARKET_INSTRUMENTS.map(({ value }) => [value, null])),
       };
     }
     throw new Error("Database is unavailable");
@@ -160,7 +161,7 @@ export async function getPublicMarket() {
     projects,
     requests: visibleRequests,
     sellerOffers: visibleSellerOffers,
-    suggestedPriceByInstrument: { vouch: midpointFor("vouch"), slash: midpointFor("slash") },
+    suggestedPriceByInstrument: Object.fromEntries(MARKET_INSTRUMENTS.map(({ value }) => [value, midpointFor(value)])),
   };
 }
 
@@ -510,13 +511,23 @@ export async function cancelUnpaidRequest(publicId: string, wallet: string) {
   await logActivity({ entityType: "request", entityPublicId: publicId, eventType: "unpaid_request_cancelled", actorWallet: wallet });
 }
 
+export async function createSupportMessage(input: { wallet: string; subject: string; message: string }) {
+  const db = await dbOrThrow();
+  const publicId = `SUP-${nanoid(10).toUpperCase()}`;
+  const createdAt = new Date();
+  await db.insert(supportMessages).values({ ...input, publicId, createdAt });
+  await logActivity({ entityType: "support_message", entityPublicId: publicId, eventType: "support_message_submitted", actorWallet: input.wallet, detail: input.subject });
+  return { publicId, createdAt };
+}
+
 export async function getOperations() {
   const db = await dbOrThrow();
-  const [requests, commitments, payouts, logs] = await Promise.all([
+  const [requests, commitments, payouts, logs, supportRows] = await Promise.all([
     db.select().from(marketRequests).orderBy(desc(marketRequests.createdAt)),
     db.select().from(sellerCommitments).orderBy(desc(sellerCommitments.createdAt)),
     db.select().from(payoutRecords).orderBy(desc(payoutRecords.createdAt)),
     db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(80),
+    db.select().from(supportMessages).orderBy(desc(supportMessages.createdAt)).limit(100),
   ]);
   const sourceOffers = commitments.filter(item => !item.requestId && !item.parentOfferId && item.status === "open");
   const tradeableSourceOffers = sourceOffers.filter(item => Boolean(item.pointsPerUnit));
@@ -527,6 +538,7 @@ export async function getOperations() {
     commitments,
     payouts,
     logs,
+    supportMessages: supportRows,
     metrics: {
       openSourceOffers: sourceOffers.length,
       availableUnits: tradeableSourceOffers.reduce((sum, item) => sum + item.quantity, 0),

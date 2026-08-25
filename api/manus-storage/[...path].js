@@ -1,0 +1,47 @@
+"use strict";
+
+const ETHOS_MARK_KEY = "ethos-logo_194cfccc.jpeg";
+
+module.exports = async function storageProxy(req, res) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    res.setHeader("Allow", "GET, HEAD");
+    res.status(405).end("Method not allowed");
+    return;
+  }
+
+  const rawPath = req.query?.path;
+  const key = Array.isArray(rawPath) ? rawPath.join("/") : typeof rawPath === "string" ? rawPath : "";
+  if (key !== ETHOS_MARK_KEY) {
+    res.status(404).end("Asset not found");
+    return;
+  }
+
+  const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL;
+  const forgeApiKey = process.env.BUILT_IN_FORGE_API_KEY;
+  if (!forgeApiUrl || !forgeApiKey) {
+    res.status(500).end("Storage proxy not configured");
+    return;
+  }
+
+  try {
+    const forgeUrl = new URL("v1/storage/presign/get", forgeApiUrl.replace(/\/+$/, "") + "/");
+    forgeUrl.searchParams.set("path", key);
+    const forgeResponse = await fetch(forgeUrl, { headers: { Authorization: `Bearer ${forgeApiKey}` } });
+    if (!forgeResponse.ok) {
+      res.status(502).end("Storage backend error");
+      return;
+    }
+
+    const { url } = await forgeResponse.json();
+    if (!url) {
+      res.status(502).end("Storage backend returned no URL");
+      return;
+    }
+
+    res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+    res.redirect(307, url);
+  } catch (error) {
+    console.error("[StorageProxy] failed:", error);
+    res.status(502).end("Storage proxy error");
+  }
+};

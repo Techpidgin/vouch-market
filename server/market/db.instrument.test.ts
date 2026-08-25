@@ -83,7 +83,7 @@ describe("slash market service records", () => {
       projects: [{ slug: "commonsmade", name: "CommonsMade", description: "Trade CommonsMade vouches and slashes." }],
       requests: [],
       sellerOffers: [],
-      suggestedPriceByInstrument: { vouch: null, slash: null },
+      suggestedPriceByInstrument: { vouch: null, slash: null, follow: null, repost: null, comment: null, space_listener: null, space_speaker: null, space_contributor: null },
     });
 
     process.env.NODE_ENV = originalNodeEnv;
