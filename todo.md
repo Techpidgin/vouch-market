@@ -178,3 +178,4 @@
 - [x] Add an operator-only Transfers section showing buyer-confirmed payout-ready seller wallets and exact post-fee USDC amounts, with duplicate-payout protection and no manual wallet re-entry.
 - [x] Add seller-declared Kaito Aura alongside Ethos score, X followers, and Kaito score on live-board listings with branded marks, and reduce marketplace hero text/spacing.
 - [x] Add downloadable HANKA social cards for leaderboard top-100 wallets only, showing verified scores, referral link, completed sales, and completed purchases with privacy-safe wallet display.
+- [x] Add copyable referral link text, themed PNG social-card downloads with icons and shine, and slimmer multi-column live-board listing rolls based on the supplied reference.

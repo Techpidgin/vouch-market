@@ -35,5 +35,9 @@ describe("wallet referrals and HANKA Points", () => {
     expect(client).toContain("completedPurchases");
     expect(client).toContain("referralCode");
     expect(client).toContain("KAITO AURA");
+    expect(client).toContain("copyReferralLink");
+    expect(client).toContain('image/png');
+    expect(client).toContain('download = `hanka-top-');
+    expect(client).toContain("Source metrics");
   });
 });
