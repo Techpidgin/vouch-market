@@ -42,4 +42,11 @@ describe("public market branding", () => {
     expect(homeSource).toContain("?proof=${instrument}#market");
     expect(homeSource).toContain("Browse market");
   });
+
+  it("uses the supplied Ethos mark alongside every public Ethos vouch and slash product identity", () => {
+    expect(homeSource).toContain('/manus-storage/ethos-logo_194cfccc.jpeg');
+    expect(marketSource).toContain('/manus-storage/ethos-logo_194cfccc.jpeg');
+    expect(homeSource).toContain('EthosMark className="proof-icon"');
+    expect(marketSource).toContain("InstrumentGlyph instrument={instrument}");
+  });
 });

@@ -57046,7 +57046,16 @@ var vouchBand = pgEnum("vouch_band", [
   "50k_plus",
   "25k_plus"
 ]);
-var marketInstrument = pgEnum("market_instrument", ["vouch", "slash"]);
+var marketInstrument = pgEnum("market_instrument", [
+  "vouch",
+  "slash",
+  "follow",
+  "repost",
+  "comment",
+  "space_listener",
+  "space_speaker",
+  "space_contributor"
+]);
 var sellerCommitmentStatus = pgEnum("seller_commitment_status", [
   "open",
   "awaiting_payment",
@@ -57081,6 +57090,8 @@ var marketRequests = pgTable(
     targetHandle: varchar("targetHandle", { length: 80 }).notNull(),
     projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
     instrument: marketInstrument("instrument").notNull().default("vouch"),
+    proofDetail: varchar("proofDetail", { length: 240 }),
+    spaceMinutes: integer2("spaceMinutes"),
     vouchBand: vouchBand("vouchBand"),
     requestedQuantity: integer2("requestedQuantity").notNull(),
     filledQuantity: integer2("filledQuantity").notNull().default(0),
@@ -57118,6 +57129,8 @@ var sellerCommitments = pgTable(
     allocationKey: varchar("allocationKey", { length: 255 }),
     projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
     instrument: marketInstrument("instrument").notNull().default("vouch"),
+    proofDetail: varchar("proofDetail", { length: 240 }),
+    spaceMinutes: integer2("spaceMinutes"),
     vouchBand: vouchBand("vouchBand"),
     quantity: integer2("quantity").notNull(),
     pointsPerUnit: integer2("pointsPerUnit"),
@@ -62814,6 +62827,16 @@ var USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 var USDC_DECIMALS = 6;
 var ARCHIVE_AFTER_MS = 24 * 60 * 60 * 1e3;
 var PLATFORM_FEE_BPS = 500;
+var MARKET_INSTRUMENTS = [
+  { value: "vouch", label: "Ethos vouch", sourceLabel: "Vouch source" },
+  { value: "slash", label: "Ethos slash", sourceLabel: "Slash source" },
+  { value: "follow", label: "X follow", sourceLabel: "Following account" },
+  { value: "repost", label: "X repost", sourceLabel: "Reposting account" },
+  { value: "comment", label: "X comment", sourceLabel: "Commenting account" },
+  { value: "space_listener", label: "X Space listener", sourceLabel: "Hosting account" },
+  { value: "space_speaker", label: "X Space speaker", sourceLabel: "Hosting account" },
+  { value: "space_contributor", label: "X Space contributor", sourceLabel: "Hosting account" }
+];
 var DEFAULT_PROJECT = { slug: "commonsmade", name: "CommonsMade", description: "Trade CommonsMade vouches and slashes." };
 function toUsdcMicro(amount) {
   if (!Number.isFinite(amount) || amount < 0) {
@@ -62871,7 +62894,7 @@ function normalizeXHandle(handle) {
 }
 function enforceSingleUnitAllocation(quantity) {
   if (quantity !== 1) {
-    throw new Error("Each vouch or slash allocation must be exactly one unit for one target account");
+    throw new Error("Each social-proof allocation must be exactly one unit for one target account");
   }
 }
 function enforcePointsPerUnit(pointsPerUnit) {
@@ -62883,7 +62906,7 @@ function allocationKey(input) {
   const sourceHandle = normalizeXHandle(input.sourceHandle);
   const targetHandle = normalizeXHandle(input.targetHandle);
   if (sourceHandle === targetHandle) {
-    throw new Error("A source account cannot allocate a vouch or slash to itself");
+    throw new Error("A source account cannot allocate social proof to itself");
   }
   return [input.projectSlug.toLowerCase(), input.instrument, sourceHandle, targetHandle].join(":");
 }
@@ -63020,7 +63043,18 @@ async function createMarketProject(input) {
   return { slug: input.slug };
 }
 async function getPublicMarket() {
-  const db = await dbOrThrow();
+  const db = await getDb();
+  if (!db) {
+    if (process.env.NODE_ENV === "development") {
+      return {
+        projects: [DEFAULT_PROJECT],
+        requests: [],
+        sellerOffers: [],
+        suggestedPriceByInstrument: Object.fromEntries(MARKET_INSTRUMENTS.map(({ value }) => [value, null]))
+      };
+    }
+    throw new Error("Database is unavailable");
+  }
   await ensureDefaultProject();
   await releaseStaleDirectPurchaseReservations();
   const [projects, requests, sellerOffers] = await Promise.all([
@@ -63030,6 +63064,8 @@ async function getPublicMarket() {
       targetHandle: marketRequests.targetHandle,
       projectSlug: marketRequests.projectSlug,
       instrument: marketRequests.instrument,
+      proofDetail: marketRequests.proofDetail,
+      spaceMinutes: marketRequests.spaceMinutes,
       requestedQuantity: marketRequests.requestedQuantity,
       filledQuantity: marketRequests.filledQuantity,
       pricePerVouch: marketRequests.pricePerVouch,
@@ -63044,6 +63080,8 @@ async function getPublicMarket() {
       sourceHandle: sellerCommitments.sourceHandle,
       projectSlug: sellerCommitments.projectSlug,
       instrument: sellerCommitments.instrument,
+      proofDetail: sellerCommitments.proofDetail,
+      spaceMinutes: sellerCommitments.spaceMinutes,
       quantity: sellerCommitments.quantity,
       pointsPerUnit: sellerCommitments.pointsPerUnit,
       pricePerVouch: sellerCommitments.pricePerVouch,
@@ -63063,7 +63101,7 @@ async function getPublicMarket() {
     projects,
     requests: visibleRequests,
     sellerOffers: visibleSellerOffers,
-    suggestedPriceByInstrument: { vouch: midpointFor("vouch"), slash: midpointFor("slash") }
+    suggestedPriceByInstrument: Object.fromEntries(MARKET_INSTRUMENTS.map(({ value }) => [value, midpointFor(value)]))
   };
 }
 async function createRequest(input) {
@@ -63178,6 +63216,8 @@ async function fillRequest(input) {
       allocationKey: pairKey,
       projectSlug: request.projectSlug,
       instrument: fillIntent.instrument,
+      proofDetail: request.proofDetail,
+      spaceMinutes: request.spaceMinutes,
       quantity: fillIntent.quantity,
       pointsPerUnit: input.pointsPerUnit,
       pricePerVouch: request.pricePerVouch,
@@ -63226,6 +63266,8 @@ async function initiateOfferPurchase(input) {
       allocationKey: pairKey,
       projectSlug: offer.projectSlug,
       instrument: purchaseIntent.instrument,
+      proofDetail: offer.proofDetail,
+      spaceMinutes: offer.spaceMinutes,
       vouchBand: offer.vouchBand,
       quantity: 1,
       pointsPerUnit: offer.pointsPerUnit,
@@ -63724,7 +63766,9 @@ var wallet2 = external_exports.string().trim().min(32).max(64).refine((value) =>
     return false;
   }
 }, "Enter a valid Solana wallet address");
-var instrument = external_exports.enum(["vouch", "slash"]);
+var instrument = external_exports.enum(["vouch", "slash", "follow", "repost", "comment", "space_listener", "space_speaker", "space_contributor"]);
+var proofScope = external_exports.string().trim().max(240).optional();
+var spaceMinutes = external_exports.number().int().positive().max(720).optional();
 var proof2 = external_exports.object({ challengeId: external_exports.string().min(8), signature: external_exports.string().min(20) });
 var xHandle = external_exports.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle");
 function marketError(error46) {
@@ -63747,10 +63791,10 @@ var marketRouter = router({
       marketError(error46);
     }
   }),
-  createRequest: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, targetHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: external_exports.number().int().positive().max(1e6), pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
+  createRequest: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, targetHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: external_exports.number().int().positive().max(1e6), pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "buyer_request" });
-      const created = await createRequest({ buyerWallet: input.wallet, targetHandle: input.targetHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, requestedQuantity: input.quantity, pricePerVouch: input.pricePerVouch, totalUsdc: input.quantity * input.pricePerVouch });
+      const created = await createRequest({ buyerWallet: input.wallet, targetHandle: input.targetHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, requestedQuantity: input.quantity, pricePerVouch: input.pricePerVouch, totalUsdc: input.quantity * input.pricePerVouch });
       return { ...created, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
     } catch (error46) {
       marketError(error46);
@@ -63774,10 +63818,10 @@ var marketRouter = router({
       marketError(error46);
     }
   }),
-  createSellerOffer: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, profileHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: external_exports.number().int().positive().max(1e6), pointsPerUnit: external_exports.number().int().positive().max(1e9), pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
+  createSellerOffer: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, profileHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: external_exports.number().int().positive().max(1e6), pointsPerUnit: external_exports.number().int().positive().max(1e9), pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-      return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, pricePerVouch: input.pricePerVouch });
+      return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, pricePerVouch: input.pricePerVouch });
     } catch (error46) {
       marketError(error46);
     }

@@ -3,6 +3,7 @@ import { createServer } from "http";
 import net from "net";
 import { serveStatic, setupVite } from "./vite";
 import { createVouchApp } from "./app";
+import { registerStorageProxy } from "./storageProxy";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -25,6 +26,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   const app = createVouchApp();
+  registerStorageProxy(app);
   const server = createServer(app);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {

@@ -11,6 +11,8 @@ import {
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 
+const ETHOS_LOGO_URL = "/manus-storage/ethos-logo_194cfccc.jpeg";
+
 function Mark({ large = false }: { large?: boolean }) {
   return (
     <span className={`brand-mark grid grid-cols-2 gap-[2px] ${large ? "size-36 sm:size-48" : "size-9"}`} aria-hidden>
@@ -28,13 +30,17 @@ function Wordmark() {
   );
 }
 
+function EthosMark({ className = "" }: { className?: string }) {
+  return <img src={ETHOS_LOGO_URL} alt="" aria-hidden className={`ethos-mark ${className}`} />;
+}
+
 const proofTypes = [
-  { instrument: "vouch", icon: BadgeCheck, title: "Ethos vouch", note: "Credibility, priced by source strength." },
-  { instrument: "slash", icon: CircleUserRound, title: "Ethos slash", note: "A distinct social-proof signal." },
-  { instrument: "follow", icon: UsersRound, title: "X follow", note: "Audience access from a named account." },
-  { instrument: "repost", icon: Repeat2, title: "Repost", note: "Distribution that travels through a source." },
-  { instrument: "comment", icon: MessageCircleMore, title: "Comment", note: "Contextual engagement with a brief." },
-  { instrument: "space_listener", icon: Mic2, title: "X Spaces", note: "Listen, speak, or contribute—time has value." },
+  { instrument: "vouch", icon: BadgeCheck, ethos: true, title: "Ethos vouch", note: "Credibility, priced by source strength." },
+  { instrument: "slash", icon: CircleUserRound, ethos: true, title: "Ethos slash", note: "A distinct social-proof signal." },
+  { instrument: "follow", icon: UsersRound, ethos: false, title: "X follow", note: "Audience access from a named account." },
+  { instrument: "repost", icon: Repeat2, ethos: false, title: "Repost", note: "Distribution that travels through a source." },
+  { instrument: "comment", icon: MessageCircleMore, ethos: false, title: "Comment", note: "Contextual engagement with a brief." },
+  { instrument: "space_listener", icon: Mic2, ethos: false, title: "X Spaces", note: "Listen, speak, or contribute—time has value." },
 ] as const;
 
 function TypingTerms() {
@@ -73,7 +79,7 @@ export default function Home() {
         <div className="home-copy">
           <p className="hanka-kicker"><Sparkles className="size-3" />HANKA · Social proof exchange</p>
           <h1 className="mt-5 max-w-4xl font-display text-[clamp(4.1rem,11vw,8.6rem)] leading-[.78] tracking-[-.09em]">Trade what moves attention.</h1>
-          <p className="mt-6 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">A premium market for earned signals: Ethos vouch and slash today, then follows, reposts, comments, and X Space participation. Buyer and seller set the terms—HANKA verifies the flow.</p>
+          <p className="mt-6 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">A premium market for earned signals: <span className="ethos-inline"><EthosMark />Ethos vouch</span> and <span className="ethos-inline"><EthosMark />Ethos slash</span> today, then follows, reposts, comments, and X Space participation. Buyer and seller set the terms—HANKA verifies the flow.</p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link href="/market#market" className="hanka-primary-button">Buy or sell proof <ArrowUpRight className="size-4" /></Link>
             <span className="hanka-micro">Wallet-first · USDC on Solana</span>
@@ -102,10 +108,10 @@ export default function Home() {
           <Link href="/market#market" className="hidden hanka-text-link sm:inline-flex">View live market <ArrowUpRight className="size-3" /></Link>
         </div>
         <div className="mt-5 grid gap-px overflow-hidden border border-[var(--hanka-line)] bg-[var(--hanka-line)] sm:grid-cols-2 lg:grid-cols-3">
-          {proofTypes.map(({ instrument, icon: Icon, title, note }, index) => (
+          {proofTypes.map(({ instrument, icon: Icon, ethos, title, note }, index) => (
             <Link key={instrument} href={`/market?proof=${instrument}#market`} className="proof-card group" aria-label={`Browse ${title} markets`}>
               <span className="proof-index">0{index + 1}</span>
-              <Icon className="proof-icon" strokeWidth={1.5} />
+              {ethos ? <EthosMark className="proof-icon" /> : <Icon className="proof-icon" strokeWidth={1.5} />}
               <h3 className="mt-7 font-display text-3xl tracking-[-.055em]">{title}</h3>
               <p className="mt-2 max-w-xs text-sm leading-6 text-[var(--hanka-muted)]">{note}</p>
               <span className="proof-browse">Browse market</span>
