@@ -164,3 +164,5 @@
 - [x] Remove off-palette blue button styling and standardize marketplace controls to sharp-edged HANKA colors with shine.
 - [x] Add the supplied Ethos logo consistently wherever public Ethos vouch and Ethos slash labels appear.
 - [x] Humanize the landing-page language, remove the wallet-first label, and add restrained editorial text shine.
+- [x] Reduce the landing hero scale and rebalance first-screen spacing so the Buy or sell proof CTA remains visible at 100% desktop zoom.
+- [x] Let visitors submit a wallet-linked customer-support message that authorized operators can read privately.

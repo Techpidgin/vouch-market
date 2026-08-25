@@ -57170,6 +57170,21 @@ var walletChallenges = pgTable(
   },
   (table) => [index("walletChallenges_wallet_action_idx").on(table.wallet, table.action)]
 );
+var supportMessages = pgTable(
+  "supportMessages",
+  {
+    id: serial("id").primaryKey(),
+    publicId: varchar("publicId", { length: 24 }).notNull(),
+    wallet: varchar("wallet", { length: 64 }).notNull(),
+    subject: varchar("subject", { length: 120 }).notNull(),
+    message: text("message").notNull(),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull()
+  },
+  (table) => [
+    uniqueIndex("supportMessages_publicId_unique").on(table.publicId),
+    index("supportMessages_createdAt_idx").on(table.createdAt)
+  ]
+);
 var activityLogs = pgTable(
   "activityLogs",
   {
@@ -63404,13 +63419,22 @@ async function cancelUnpaidRequest(publicId, wallet3) {
   await db.update(marketRequests).set({ status: "cancelled" }).where(eq(marketRequests.id, request.id));
   await logActivity({ entityType: "request", entityPublicId: publicId, eventType: "unpaid_request_cancelled", actorWallet: wallet3 });
 }
+async function createSupportMessage(input) {
+  const db = await dbOrThrow();
+  const publicId = `SUP-${nanoid3(10).toUpperCase()}`;
+  const createdAt = /* @__PURE__ */ new Date();
+  await db.insert(supportMessages).values({ ...input, publicId, createdAt });
+  await logActivity({ entityType: "support_message", entityPublicId: publicId, eventType: "support_message_submitted", actorWallet: input.wallet, detail: input.subject });
+  return { publicId, createdAt };
+}
 async function getOperations() {
   const db = await dbOrThrow();
-  const [requests, commitments, payouts, logs] = await Promise.all([
+  const [requests, commitments, payouts, logs, supportRows] = await Promise.all([
     db.select().from(marketRequests).orderBy(desc(marketRequests.createdAt)),
     db.select().from(sellerCommitments).orderBy(desc(sellerCommitments.createdAt)),
     db.select().from(payoutRecords).orderBy(desc(payoutRecords.createdAt)),
-    db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(80)
+    db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(80),
+    db.select().from(supportMessages).orderBy(desc(supportMessages.createdAt)).limit(100)
   ]);
   const sourceOffers = commitments.filter((item) => !item.requestId && !item.parentOfferId && item.status === "open");
   const tradeableSourceOffers = sourceOffers.filter((item) => Boolean(item.pointsPerUnit));
@@ -63421,6 +63445,7 @@ async function getOperations() {
     commitments,
     payouts,
     logs,
+    supportMessages: supportRows,
     metrics: {
       openSourceOffers: sourceOffers.length,
       availableUnits: tradeableSourceOffers.reduce((sum, item) => sum + item.quantity, 0),
@@ -63784,9 +63809,17 @@ var marketRouter = router({
       marketError(error46);
     }
   }),
-  walletChallenge: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, action: external_exports.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "admin_access"]) })).mutation(async ({ input }) => {
+  walletChallenge: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, action: external_exports.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "support_message", "admin_access"]) })).mutation(async ({ input }) => {
     try {
       return await createWalletChallenge(input.wallet, input.action);
+    } catch (error46) {
+      marketError(error46);
+    }
+  }),
+  supportMessage: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, subject: external_exports.string().trim().max(120).optional(), message: external_exports.string().trim().min(4).max(2e3), proof: proof2 })).mutation(async ({ input }) => {
+    try {
+      await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "support_message" });
+      return await createSupportMessage({ wallet: input.wallet, subject: input.subject || "Customer support", message: input.message });
     } catch (error46) {
       marketError(error46);
     }

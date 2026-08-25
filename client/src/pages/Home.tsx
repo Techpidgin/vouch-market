@@ -75,12 +75,12 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="market-shell relative grid gap-8 py-10 sm:py-14 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:py-18">
+      <section className="market-shell relative grid gap-6 py-8 sm:py-10 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:py-10">
         <div className="home-copy">
           <p className="hanka-kicker"><Sparkles className="size-3" />HANKA · Social proof exchange</p>
-          <h1 className="hero-shine-text mt-5 max-w-4xl font-display text-[clamp(4.1rem,11vw,8.6rem)] leading-[.78] tracking-[-.09em]">Trade what moves attention.</h1>
-          <p className="mt-6 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Looking for a little more signal? Start with an <span className="ethos-inline"><EthosMark />Ethos vouch</span> or <span className="ethos-inline"><EthosMark />Ethos slash</span>, then explore follows, reposts, comments, and X Spaces. You choose the target and the price—HANKA keeps the exchange simple.</p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <h1 className="hero-shine-text mt-4 max-w-4xl font-display text-[clamp(3.4rem,6vw,5rem)] leading-[.78] tracking-[-.09em]">Trade what moves attention.</h1>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Looking for a little more signal? Start with an <span className="ethos-inline"><EthosMark />Ethos vouch</span> or <span className="ethos-inline"><EthosMark />Ethos slash</span>, then explore follows, reposts, comments, and X Spaces. You choose the target and the price—HANKA keeps the exchange simple.</p>
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link href="/market#market" className="hanka-primary-button">Buy or sell proof <ArrowUpRight className="size-4" /></Link>
           </div>
         </div>
@@ -123,7 +123,7 @@ export default function Home() {
       <footer className="relative border-t border-[var(--hanka-line)]">
         <div className="market-shell flex flex-wrap items-center justify-between gap-4 py-5 text-xs text-[var(--hanka-muted)]">
           <span>HANKA Social Proof Market · USDC on Solana</span>
-          <nav className="flex items-center gap-4"><Link href="/market#terms" className="hanka-text-link">Terms</Link><Link href="/ops" className="hanka-text-link">Operations</Link></nav>
+          <nav className="flex items-center gap-4"><Link href="/market?support=1#support" className="hanka-text-link">Support</Link><Link href="/market#terms" className="hanka-text-link">Terms</Link><Link href="/ops" className="hanka-text-link">Operations</Link></nav>
         </div>
       </footer>
     </main>

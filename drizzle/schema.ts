@@ -152,6 +152,22 @@ export const walletChallenges = pgTable(
   table => [index("walletChallenges_wallet_action_idx").on(table.wallet, table.action)],
 );
 
+export const supportMessages = pgTable(
+  "supportMessages",
+  {
+    id: serial("id").primaryKey(),
+    publicId: varchar("publicId", { length: 24 }).notNull(),
+    wallet: varchar("wallet", { length: 64 }).notNull(),
+    subject: varchar("subject", { length: 120 }).notNull(),
+    message: text("message").notNull(),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("supportMessages_publicId_unique").on(table.publicId),
+    index("supportMessages_createdAt_idx").on(table.createdAt),
+  ],
+);
+
 export const activityLogs = pgTable(
   "activityLogs",
   {
@@ -203,3 +219,4 @@ export const payoutRecords = pgTable(
 
 export type MarketRequest = typeof marketRequests.$inferSelect;
 export type SellerCommitment = typeof sellerCommitments.$inferSelect;
+export type SupportMessage = typeof supportMessages.$inferSelect;

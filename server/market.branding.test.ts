@@ -22,7 +22,7 @@ describe("public market branding", () => {
     expect(homeSource).toContain('href="/ops"');
     expect(marketSource).toContain('href="#terms"');
     expect(marketSource).toContain('href="/ops"');
-    expect(homeSource).toContain("text-[clamp(4.1rem,11vw,8.6rem)]");
+    expect(homeSource).toContain("text-[clamp(3.4rem,6vw,5rem)]");
     expect(homeSource).toContain("lg:grid-cols-[1.08fr_.92fr]");
   });
 
