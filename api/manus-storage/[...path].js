@@ -1,6 +1,6 @@
 "use strict";
 
-const ETHOS_MARK_KEY = "ethos-logo_194cfccc.jpeg";
+const ALLOWED_ASSET_KEYS = new Set(["ethos-logo_194cfccc.jpeg", "kaito-mark_bfc88d67.png", "phantom-wallet_25796a99.png"]);
 
 module.exports = async function storageProxy(req, res) {
   if (req.method !== "GET" && req.method !== "HEAD") {
@@ -11,7 +11,7 @@ module.exports = async function storageProxy(req, res) {
 
   const rawPath = req.query?.path;
   const key = Array.isArray(rawPath) ? rawPath.join("/") : typeof rawPath === "string" ? rawPath : "";
-  if (key !== ETHOS_MARK_KEY) {
+  if (!ALLOWED_ASSET_KEYS.has(key)) {
     res.status(404).end("Asset not found");
     return;
   }

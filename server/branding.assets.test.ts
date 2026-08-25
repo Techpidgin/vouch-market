@@ -25,4 +25,9 @@ describe("HANKA brand assets", () => {
     expect(market).toContain("/manus-storage/phantom-wallet_25796a99.png");
     expect(market).toContain("function PhantomMark");
     expect(market).toContain("<PhantomMark");
+    expect(market).toContain("/manus-storage/kaito-mark_bfc88d67.png");
+    const proxy = readFileSync(resolve(process.cwd(), "api/manus-storage/[...path].js"), "utf8");
+    expect(proxy).toContain("kaito-mark_bfc88d67.png");
+    expect(proxy).toContain("phantom-wallet_25796a99.png");
+    expect(market).toContain("Platform scores");
   });

@@ -38,7 +38,7 @@ describe("wallet referrals and HANKA Points", () => {
     expect(client).toContain("copyReferralLink");
     expect(client).toContain('image/png');
     expect(client).toContain('download = `hanka-top-');
-    expect(client).toContain("Source metrics");
+    expect(client).toContain("Platform scores");
     expect(client).toContain("shareSocialCard");
     expect(client).toContain("shareOnX");
     expect(client).toContain("metricSort");

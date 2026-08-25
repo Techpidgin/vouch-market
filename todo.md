@@ -180,3 +180,4 @@
 - [x] Add downloadable HANKA social cards for leaderboard top-100 wallets only, showing verified scores, referral link, completed sales, and completed purchases with privacy-safe wallet display.
 - [x] Add copyable referral link text, themed PNG social-card downloads with icons and shine, and slimmer multi-column live-board listing rolls based on the supplied reference.
 - [x] Add native X/Web Share actions for PNG cards, sortable live-board source-metric columns, and operator-controlled verified seller metric badges.
+- [x] Optimize live-board listings with narrower columns, a dedicated platform-scores column, and durable production logo URLs verified for Vercel.
