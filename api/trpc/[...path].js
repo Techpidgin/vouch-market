@@ -63923,8 +63923,25 @@ async function getReferralLeaderboard(page = 1, pageSize = 20) {
   }
   const offset = (safePage - 1) * safePageSize;
   if (offset >= LEADERBOARD_MAX_ENTRIES) return { page: safePage, pageSize: safePageSize, entries: [], hasNextPage: false };
-  const entries = await db.select({ wallet: referralProfiles.wallet, points: referralProfiles.pointsTotal, directReferrals: referralProfiles.directReferrals }).from(referralProfiles).orderBy(desc(referralProfiles.pointsTotal), desc(referralProfiles.createdAt)).limit(safePageSize).offset(offset);
-  return { page: safePage, pageSize: safePageSize, entries: entries.map((entry, index2) => ({ rank: offset + index2 + 1, ...entry })), hasNextPage: offset + entries.length < LEADERBOARD_MAX_ENTRIES && entries.length === safePageSize };
+  const entries = await db.select({ wallet: referralProfiles.wallet, referralCode: referralProfiles.referralCode, points: referralProfiles.pointsTotal, directReferrals: referralProfiles.directReferrals }).from(referralProfiles).orderBy(desc(referralProfiles.pointsTotal), desc(referralProfiles.createdAt)).limit(safePageSize).offset(offset);
+  const wallets = entries.map((entry) => entry.wallet);
+  const commitments = wallets.length ? await db.select({ sellerWallet: sellerCommitments.sellerWallet, buyerWallet: sellerCommitments.buyerWallet, status: sellerCommitments.status, followerCount: sellerCommitments.followerCount, ethosScore: sellerCommitments.ethosScore, kaitoScore: sellerCommitments.kaitoScore, kaitoAura: sellerCommitments.kaitoAura, createdAt: sellerCommitments.createdAt }).from(sellerCommitments).where(sql`${sellerCommitments.sellerWallet} IN (${sql.join(wallets.map((wallet3) => sql`${wallet3}`), sql`, `)}) OR ${sellerCommitments.buyerWallet} IN (${sql.join(wallets.map((wallet3) => sql`${wallet3}`), sql`, `)})`).orderBy(desc(sellerCommitments.createdAt)) : [];
+  const stats = new Map(wallets.map((wallet3) => [wallet3, { completedSales: 0, completedPurchases: 0, followerCount: null, ethosScore: null, kaitoScore: null, kaitoAura: null }]));
+  for (const commitment of commitments) {
+    const current = stats.get(commitment.sellerWallet);
+    if (current) {
+      if (commitment.status === "paid") current.completedSales += 1;
+      if (current.followerCount == null && commitment.followerCount != null) current.followerCount = commitment.followerCount;
+      if (current.ethosScore == null && commitment.ethosScore != null) current.ethosScore = commitment.ethosScore;
+      if (current.kaitoScore == null && commitment.kaitoScore != null) current.kaitoScore = commitment.kaitoScore;
+      if (current.kaitoAura == null && commitment.kaitoAura != null) current.kaitoAura = commitment.kaitoAura;
+    }
+    if (commitment.buyerWallet && commitment.status === "paid") {
+      const buyer = stats.get(commitment.buyerWallet);
+      if (buyer) buyer.completedPurchases += 1;
+    }
+  }
+  return { page: safePage, pageSize: safePageSize, entries: entries.map((entry, index2) => ({ rank: offset + index2 + 1, ...entry, ...stats.get(entry.wallet) })), hasNextPage: offset + entries.length < LEADERBOARD_MAX_ENTRIES && entries.length === safePageSize };
 }
 
 // server/routers/market.ts

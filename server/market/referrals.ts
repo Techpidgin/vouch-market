@@ -1,6 +1,6 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { pointLedger, referralProfiles } from "../../drizzle/schema";
+import { pointLedger, referralProfiles, sellerCommitments } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { LEADERBOARD_MAX_ENTRIES, REFERRAL_DIRECT_LIMIT, REFERRAL_REWARDS } from "./constants";
 
@@ -87,6 +87,14 @@ export async function getReferralLeaderboard(page = 1, pageSize = 20) {
   }
   const offset = (safePage - 1) * safePageSize;
   if (offset >= LEADERBOARD_MAX_ENTRIES) return { page: safePage, pageSize: safePageSize, entries: [], hasNextPage: false };
-  const entries = await db.select({ wallet: referralProfiles.wallet, points: referralProfiles.pointsTotal, directReferrals: referralProfiles.directReferrals }).from(referralProfiles).orderBy(desc(referralProfiles.pointsTotal), desc(referralProfiles.createdAt)).limit(safePageSize).offset(offset);
-  return { page: safePage, pageSize: safePageSize, entries: entries.map((entry, index) => ({ rank: offset + index + 1, ...entry })), hasNextPage: offset + entries.length < LEADERBOARD_MAX_ENTRIES && entries.length === safePageSize };
+  const entries = await db.select({ wallet: referralProfiles.wallet, referralCode: referralProfiles.referralCode, points: referralProfiles.pointsTotal, directReferrals: referralProfiles.directReferrals }).from(referralProfiles).orderBy(desc(referralProfiles.pointsTotal), desc(referralProfiles.createdAt)).limit(safePageSize).offset(offset);
+  const wallets = entries.map(entry => entry.wallet);
+  const commitments = wallets.length ? await db.select({ sellerWallet: sellerCommitments.sellerWallet, buyerWallet: sellerCommitments.buyerWallet, status: sellerCommitments.status, followerCount: sellerCommitments.followerCount, ethosScore: sellerCommitments.ethosScore, kaitoScore: sellerCommitments.kaitoScore, kaitoAura: sellerCommitments.kaitoAura, createdAt: sellerCommitments.createdAt }).from(sellerCommitments).where(sql`${sellerCommitments.sellerWallet} IN (${sql.join(wallets.map(wallet => sql`${wallet}`), sql`, `)}) OR ${sellerCommitments.buyerWallet} IN (${sql.join(wallets.map(wallet => sql`${wallet}`), sql`, `)})`).orderBy(desc(sellerCommitments.createdAt)) : [];
+  const stats = new Map(wallets.map(wallet => [wallet, { completedSales: 0, completedPurchases: 0, followerCount: null as number | null, ethosScore: null as number | null, kaitoScore: null as number | null, kaitoAura: null as number | null }]));
+  for (const commitment of commitments) {
+    const current = stats.get(commitment.sellerWallet);
+    if (current) { if (commitment.status === "paid") current.completedSales += 1; if (current.followerCount == null && commitment.followerCount != null) current.followerCount = commitment.followerCount; if (current.ethosScore == null && commitment.ethosScore != null) current.ethosScore = commitment.ethosScore; if (current.kaitoScore == null && commitment.kaitoScore != null) current.kaitoScore = commitment.kaitoScore; if (current.kaitoAura == null && commitment.kaitoAura != null) current.kaitoAura = commitment.kaitoAura; }
+    if (commitment.buyerWallet && commitment.status === "paid") { const buyer = stats.get(commitment.buyerWallet); if (buyer) buyer.completedPurchases += 1; }
+  }
+  return { page: safePage, pageSize: safePageSize, entries: entries.map((entry, index) => ({ rank: offset + index + 1, ...entry, ...stats.get(entry.wallet) })), hasNextPage: offset + entries.length < LEADERBOARD_MAX_ENTRIES && entries.length === safePageSize };
 }

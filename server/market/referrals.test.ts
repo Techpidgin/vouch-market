@@ -30,5 +30,10 @@ describe("wallet referrals and HANKA Points", () => {
     expect(client).toContain("HANKA Points network");
     expect(client).toContain("Top 100");
     expect(client).toContain('value: "hanka_points"');
+    expect(client).toContain("downloadSocialCard");
+    expect(client).toContain("completedSales");
+    expect(client).toContain("completedPurchases");
+    expect(client).toContain("referralCode");
+    expect(client).toContain("KAITO AURA");
   });
 });
