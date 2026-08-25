@@ -173,3 +173,4 @@
 - [x] Add the supplied Phantom logo to wallet-connect buttons across responsive HANKA surfaces.
 - [x] Replace the verbose landing terms panel with a compact animated transaction terminal and Transactions-tab underlay.
 - [x] Add richer marketplace subject icons and detail fields, including supplied Kaito branding and honest seller follower, Ethos-score, and Kaito-score fields.
+- [x] Build a wallet-based referral system with ten direct referral slots, capped multilevel HANKA Point rewards, auditable point events, a paginated top-100 leaderboard, and HANKA Points marketplace support.

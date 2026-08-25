@@ -25,11 +25,12 @@ import {
 import { verifyUsdcPayment } from "../market/solana";
 import { USDC_MINT } from "../market/constants";
 import { createWalletChallenge, verifyWalletChallenge } from "../market/walletProof";
+import { awardReferralPoints, getReferralDashboard, getReferralLeaderboard, joinReferral } from "../market/referrals";
 
 const wallet = z.string().trim().min(32).max(64).refine(value => {
   try { new PublicKey(value); return true; } catch { return false; }
 }, "Enter a valid Solana wallet address");
-const instrument = z.enum(["vouch", "slash", "follow", "repost", "comment", "space_listener", "space_speaker", "space_contributor"]);
+const instrument = z.enum(["vouch", "slash", "follow", "repost", "comment", "space_listener", "space_speaker", "space_contributor", "hanka_points"]);
 const proofScope = z.string().trim().max(240).optional();
 const spaceMinutes = z.number().int().positive().max(720).optional();
 const proof = z.object({ challengeId: z.string().min(8), signature: z.string().min(20) });
@@ -39,8 +40,15 @@ function marketError(error: unknown): never {
   throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "The request could not be processed" });
 }
 
+async function grantReferralPoints(wallet: string, event: "seller_listing" | "buyer_purchase" | "seller_completion", eventKey: string) {
+  try { await awardReferralPoints(wallet, event, eventKey); } catch (error) { console.warn(`[Referrals] Could not award ${event} for ${wallet.slice(0, 6)}…`, error); }
+}
+
 export const marketRouter = router({
   board: publicProcedure.query(async () => getPublicMarket()),
+  referralLeaderboard: publicProcedure.input(z.object({ page: z.number().int().positive().default(1), pageSize: z.number().int().positive().max(20).default(20) }).optional()).query(async ({ input }) => getReferralLeaderboard(input?.page ?? 1, input?.pageSize ?? 20)),
+  joinReferral: rateLimitedPublicProcedure.input(z.object({ wallet, referralCode: z.string().trim().min(4).max(24).optional(), proof })).mutation(async ({ input }) => { try { await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "referral_join" }); return await joinReferral({ wallet: input.wallet, referralCode: input.referralCode }); } catch (error) { marketError(error); } }),
+  referralDashboard: rateLimitedPublicProcedure.input(z.object({ wallet, proof })).mutation(async ({ input }) => { try { await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "referral_view" }); return await getReferralDashboard(input.wallet); } catch (error) { marketError(error); } }),
   activity: rateLimitedPublicProcedure
     .input(z.object({ wallet, proof }))
     .mutation(async ({ input }) => {
@@ -50,7 +58,7 @@ export const marketRouter = router({
       } catch (error) { marketError(error); }
     }),
   walletChallenge: rateLimitedPublicProcedure
-    .input(z.object({ wallet, action: z.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "support_message", "admin_access"]) }))
+    .input(z.object({ wallet, action: z.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "support_message", "admin_access", "referral_join", "referral_view"]) }))
     .mutation(async ({ input }) => {
       try {
         return await createWalletChallenge(input.wallet, input.action);
@@ -96,6 +104,7 @@ export const marketRouter = router({
         const request = await activatePaidRequest({ publicId: input.publicId, signature: input.signature, buyerWallet: input.wallet });
         await verifyUsdcPayment({ signature: input.signature, buyerWallet: input.wallet, expectedUsdc: request.totalUsdc, earliestAllowedAt: request.createdAt });
         await recordVerifiedPayment(input.publicId, input.signature, input.wallet);
+        await grantReferralPoints(input.wallet, "buyer_purchase", `payment:${input.publicId}`);
         return { ok: true };
       } catch (error) {
         marketError(error);
@@ -106,7 +115,9 @@ export const marketRouter = router({
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-        return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, pricePerVouch: input.pricePerVouch });
+        const created = await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, pricePerVouch: input.pricePerVouch });
+        await grantReferralPoints(input.wallet, "seller_listing", `listing:${created.publicId}`);
+        return created;
       } catch (error) {
         marketError(error);
       }
@@ -145,6 +156,7 @@ export const marketRouter = router({
         const offer = await activateOfferPurchase({ publicId: input.publicId, signature: input.signature, buyerWallet: input.wallet });
         await verifyUsdcPayment({ signature: input.signature, buyerWallet: input.wallet, expectedUsdc: offer.grossUsdc!, earliestAllowedAt: offer.createdAt });
         await recordVerifiedOfferPurchase(input.publicId, input.signature, input.wallet);
+        await grantReferralPoints(input.wallet, "buyer_purchase", `offer-payment:${input.publicId}`);
         return { ok: true };
       } catch (error) { marketError(error); }
     }),
@@ -174,6 +186,7 @@ export const marketRouter = router({
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_done" });
         await markSellerDone(input.publicId, input.wallet);
+        await grantReferralPoints(input.wallet, "seller_completion", `completion:${input.publicId}`);
         return { ok: true };
       } catch (error) {
         marketError(error);

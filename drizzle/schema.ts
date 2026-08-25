@@ -39,7 +39,7 @@ export const vouchBand = pgEnum("vouch_band", [
   "under_1k", "1k_5k", "5k_10k", "10k_25k", "5k_25k", "25k_50k", "50k_plus", "25k_plus",
 ]);
 export const marketInstrument = pgEnum("market_instrument", [
-  "vouch", "slash", "follow", "repost", "comment", "space_listener", "space_speaker", "space_contributor",
+  "vouch", "slash", "follow", "repost", "comment", "space_listener", "space_speaker", "space_contributor", "hanka_points",
 ]);
 export const sellerCommitmentStatus = pgEnum("seller_commitment_status", [
   "open", "awaiting_payment", "matched", "done", "under_review", "approved", "paid", "cancelled", "disputed",
@@ -153,6 +153,44 @@ export const walletChallenges = pgTable(
     createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
   },
   table => [index("walletChallenges_wallet_action_idx").on(table.wallet, table.action)],
+);
+
+export const referralProfiles = pgTable(
+  "referralProfiles",
+  {
+    id: serial("id").primaryKey(),
+    wallet: varchar("wallet", { length: 64 }).notNull(),
+    referralCode: varchar("referralCode", { length: 24 }).notNull(),
+    referrerWallet: varchar("referrerWallet", { length: 64 }),
+    directReferrals: integer("directReferrals").notNull().default(0),
+    bonusReferralSlots: integer("bonusReferralSlots").notNull().default(0),
+    pointsTotal: integer("pointsTotal").notNull().default(0),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp(),
+  },
+  table => [
+    uniqueIndex("referralProfiles_wallet_unique").on(table.wallet),
+    uniqueIndex("referralProfiles_code_unique").on(table.referralCode),
+    index("referralProfiles_points_idx").on(table.pointsTotal, table.createdAt),
+  ],
+);
+
+export const pointLedger = pgTable(
+  "pointLedger",
+  {
+    id: serial("id").primaryKey(),
+    wallet: varchar("wallet", { length: 64 }).notNull(),
+    amount: integer("amount").notNull(),
+    eventType: varchar("eventType", { length: 48 }).notNull(),
+    eventKey: varchar("eventKey", { length: 160 }).notNull(),
+    sourceWallet: varchar("sourceWallet", { length: 64 }),
+    level: integer("level").notNull().default(0),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("pointLedger_event_unique").on(table.eventKey, table.wallet),
+    index("pointLedger_wallet_createdAt_idx").on(table.wallet, table.createdAt),
+  ],
 );
 
 export const supportMessages = pgTable(

@@ -23,6 +23,7 @@ export const MARKET_INSTRUMENTS = [
   { value: "space_listener", label: "X Space listener", sourceLabel: "Hosting account" },
   { value: "space_speaker", label: "X Space speaker", sourceLabel: "Hosting account" },
   { value: "space_contributor", label: "X Space contributor", sourceLabel: "Hosting account" },
+  { value: "hanka_points", label: "HANKA Points", sourceLabel: "HANKA wallet" },
 ] as const;
 export type MarketInstrument = (typeof MARKET_INSTRUMENTS)[number]["value"];
 export function instrumentLabel(instrument: MarketInstrument) {
@@ -31,6 +32,10 @@ export function instrumentLabel(instrument: MarketInstrument) {
 export function isSpaceInstrument(instrument: MarketInstrument) {
   return instrument.startsWith("space_");
 }
+
+export const REFERRAL_DIRECT_LIMIT = 10;
+export const LEADERBOARD_MAX_ENTRIES = 100;
+export const REFERRAL_REWARDS = { directJoin: 10, levelTwoJoin: 5, sellerListing: 3, buyerPurchase: 5, sellerCompletion: 5 } as const;
 export const DEFAULT_PROJECT = { slug: "commonsmade", name: "CommonsMade", description: "Trade CommonsMade vouches and slashes." } as const;
 
 export function toUsdcMicro(amount: number): number {

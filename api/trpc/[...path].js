@@ -57054,7 +57054,8 @@ var marketInstrument = pgEnum("market_instrument", [
   "comment",
   "space_listener",
   "space_speaker",
-  "space_contributor"
+  "space_contributor",
+  "hanka_points"
 ]);
 var sellerCommitmentStatus = pgEnum("seller_commitment_status", [
   "open",
@@ -57172,6 +57173,42 @@ var walletChallenges = pgTable(
     createdAt: utcTimestamp("createdAt").defaultNow().notNull()
   },
   (table) => [index("walletChallenges_wallet_action_idx").on(table.wallet, table.action)]
+);
+var referralProfiles = pgTable(
+  "referralProfiles",
+  {
+    id: serial("id").primaryKey(),
+    wallet: varchar("wallet", { length: 64 }).notNull(),
+    referralCode: varchar("referralCode", { length: 24 }).notNull(),
+    referrerWallet: varchar("referrerWallet", { length: 64 }),
+    directReferrals: integer2("directReferrals").notNull().default(0),
+    bonusReferralSlots: integer2("bonusReferralSlots").notNull().default(0),
+    pointsTotal: integer2("pointsTotal").notNull().default(0),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp()
+  },
+  (table) => [
+    uniqueIndex("referralProfiles_wallet_unique").on(table.wallet),
+    uniqueIndex("referralProfiles_code_unique").on(table.referralCode),
+    index("referralProfiles_points_idx").on(table.pointsTotal, table.createdAt)
+  ]
+);
+var pointLedger = pgTable(
+  "pointLedger",
+  {
+    id: serial("id").primaryKey(),
+    wallet: varchar("wallet", { length: 64 }).notNull(),
+    amount: integer2("amount").notNull(),
+    eventType: varchar("eventType", { length: 48 }).notNull(),
+    eventKey: varchar("eventKey", { length: 160 }).notNull(),
+    sourceWallet: varchar("sourceWallet", { length: 64 }),
+    level: integer2("level").notNull().default(0),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull()
+  },
+  (table) => [
+    uniqueIndex("pointLedger_event_unique").on(table.eventKey, table.wallet),
+    index("pointLedger_wallet_createdAt_idx").on(table.wallet, table.createdAt)
+  ]
 );
 var supportMessages = pgTable(
   "supportMessages",
@@ -62853,8 +62890,12 @@ var MARKET_INSTRUMENTS = [
   { value: "comment", label: "X comment", sourceLabel: "Commenting account" },
   { value: "space_listener", label: "X Space listener", sourceLabel: "Hosting account" },
   { value: "space_speaker", label: "X Space speaker", sourceLabel: "Hosting account" },
-  { value: "space_contributor", label: "X Space contributor", sourceLabel: "Hosting account" }
+  { value: "space_contributor", label: "X Space contributor", sourceLabel: "Hosting account" },
+  { value: "hanka_points", label: "HANKA Points", sourceLabel: "HANKA wallet" }
 ];
+var REFERRAL_DIRECT_LIMIT = 10;
+var LEADERBOARD_MAX_ENTRIES = 100;
+var REFERRAL_REWARDS = { directJoin: 10, levelTwoJoin: 5, sellerListing: 3, buyerPurchase: 5, sellerCompletion: 5 };
 var DEFAULT_PROJECT = { slug: "commonsmade", name: "CommonsMade", description: "Trade CommonsMade vouches and slashes." };
 function toUsdcMicro(amount) {
   if (!Number.isFinite(amount) || amount < 0) {
@@ -63794,6 +63835,79 @@ async function verifyUsdcPayment(input) {
   return { signature: input.signature, receivedUsdc: input.expectedUsdc };
 }
 
+// server/market/referrals.ts
+function referralCode() {
+  return `H-${nanoid3(10).toUpperCase()}`;
+}
+async function dbOrThrow2() {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  return db;
+}
+async function ensureProfile(wallet3) {
+  const db = await dbOrThrow2();
+  const current = (await db.select().from(referralProfiles).where(eq(referralProfiles.wallet, wallet3)).limit(1))[0];
+  if (current) return current;
+  const created = await db.insert(referralProfiles).values({ wallet: wallet3, referralCode: referralCode() }).returning();
+  return created[0];
+}
+function eventAmount(eventType) {
+  return REFERRAL_REWARDS[eventType === "direct_join" ? "directJoin" : eventType === "level_two_join" ? "levelTwoJoin" : eventType === "seller_listing" ? "sellerListing" : eventType === "buyer_purchase" ? "buyerPurchase" : "sellerCompletion"];
+}
+async function addPointEvent(tx, wallet3, eventType, eventKey, sourceWallet, level = 0) {
+  const amount = eventAmount(eventType);
+  const inserted = await tx.insert(pointLedger).values({ wallet: wallet3, amount, eventType, eventKey, sourceWallet, level }).onConflictDoNothing({ target: [pointLedger.eventKey, pointLedger.wallet] }).returning({ id: pointLedger.id });
+  if (!inserted.length) return false;
+  await tx.update(referralProfiles).set({ pointsTotal: sql`${referralProfiles.pointsTotal} + ${amount}` }).where(eq(referralProfiles.wallet, wallet3));
+  if ((eventType === "seller_listing" || eventType === "buyer_purchase") && level === 0) {
+    await tx.update(referralProfiles).set({ bonusReferralSlots: sql`LEAST(${referralProfiles.bonusReferralSlots} + 1, 10)` }).where(eq(referralProfiles.wallet, wallet3));
+  }
+  return true;
+}
+async function joinReferral(input) {
+  const db = await dbOrThrow2();
+  let profile = await ensureProfile(input.wallet);
+  if (profile.referrerWallet || !input.referralCode?.trim()) return { profile, joined: false };
+  const referrer = (await db.select().from(referralProfiles).where(eq(referralProfiles.referralCode, input.referralCode.trim().toUpperCase())).limit(1))[0];
+  if (!referrer || referrer.wallet === input.wallet) throw new Error("That referral code is invalid");
+  if (referrer.directReferrals >= REFERRAL_DIRECT_LIMIT + referrer.bonusReferralSlots) throw new Error("That referral code has no open referral slots");
+  const parent = referrer.referrerWallet ? (await db.select().from(referralProfiles).where(eq(referralProfiles.wallet, referrer.referrerWallet)).limit(1))[0] : void 0;
+  await db.transaction(async (tx) => {
+    const updated = await tx.update(referralProfiles).set({ referrerWallet: referrer.wallet }).where(and(eq(referralProfiles.wallet, input.wallet), sql`${referralProfiles.referrerWallet} IS NULL`)).returning();
+    if (!updated.length) return;
+    await tx.update(referralProfiles).set({ directReferrals: sql`${referralProfiles.directReferrals} + 1` }).where(eq(referralProfiles.wallet, referrer.wallet));
+    await addPointEvent(tx, referrer.wallet, "direct_join", `join:${input.wallet}`, input.wallet, 1);
+    if (parent) await addPointEvent(tx, parent.wallet, "level_two_join", `join:${input.wallet}`, input.wallet, 2);
+  });
+  profile = (await db.select().from(referralProfiles).where(eq(referralProfiles.wallet, input.wallet)).limit(1))[0];
+  return { profile, joined: true };
+}
+async function awardReferralPoints(wallet3, eventType, eventKey) {
+  const db = await dbOrThrow2();
+  const profile = await ensureProfile(wallet3);
+  await db.transaction(async (tx) => {
+    await addPointEvent(tx, wallet3, eventType, `${eventKey}:${wallet3}`, wallet3, 0);
+    if (profile.referrerWallet) await addPointEvent(tx, profile.referrerWallet, eventType, `${eventKey}:${wallet3}:l1`, wallet3, 1);
+    const parent = profile.referrerWallet ? (await tx.select().from(referralProfiles).where(eq(referralProfiles.wallet, profile.referrerWallet)).limit(1))[0] : void 0;
+    if (parent?.referrerWallet) await addPointEvent(tx, parent.referrerWallet, eventType, `${eventKey}:${wallet3}:l2`, wallet3, 2);
+  });
+}
+async function getReferralDashboard(wallet3) {
+  const db = await dbOrThrow2();
+  const profile = await ensureProfile(wallet3);
+  const events = await db.select({ amount: pointLedger.amount, eventType: pointLedger.eventType, level: pointLedger.level, createdAt: pointLedger.createdAt }).from(pointLedger).where(eq(pointLedger.wallet, wallet3)).orderBy(desc(pointLedger.createdAt)).limit(12);
+  return { profile, directLimit: REFERRAL_DIRECT_LIMIT + profile.bonusReferralSlots, openSlots: Math.max(0, REFERRAL_DIRECT_LIMIT + profile.bonusReferralSlots - profile.directReferrals), events };
+}
+async function getReferralLeaderboard(page = 1, pageSize = 20) {
+  const db = await dbOrThrow2();
+  const safePageSize = Math.min(Math.max(Math.floor(pageSize), 1), 20);
+  const safePage = Math.max(Math.floor(page), 1);
+  const offset = (safePage - 1) * safePageSize;
+  if (offset >= LEADERBOARD_MAX_ENTRIES) return { page: safePage, pageSize: safePageSize, entries: [], hasNextPage: false };
+  const entries = await db.select({ wallet: referralProfiles.wallet, points: referralProfiles.pointsTotal, directReferrals: referralProfiles.directReferrals }).from(referralProfiles).orderBy(desc(referralProfiles.pointsTotal), desc(referralProfiles.createdAt)).limit(safePageSize).offset(offset);
+  return { page: safePage, pageSize: safePageSize, entries: entries.map((entry, index2) => ({ rank: offset + index2 + 1, ...entry })), hasNextPage: offset + entries.length < LEADERBOARD_MAX_ENTRIES && entries.length === safePageSize };
+}
+
 // server/routers/market.ts
 var wallet2 = external_exports.string().trim().min(32).max(64).refine((value) => {
   try {
@@ -63803,7 +63917,7 @@ var wallet2 = external_exports.string().trim().min(32).max(64).refine((value) =>
     return false;
   }
 }, "Enter a valid Solana wallet address");
-var instrument = external_exports.enum(["vouch", "slash", "follow", "repost", "comment", "space_listener", "space_speaker", "space_contributor"]);
+var instrument = external_exports.enum(["vouch", "slash", "follow", "repost", "comment", "space_listener", "space_speaker", "space_contributor", "hanka_points"]);
 var proofScope = external_exports.string().trim().max(240).optional();
 var spaceMinutes = external_exports.number().int().positive().max(720).optional();
 var proof2 = external_exports.object({ challengeId: external_exports.string().min(8), signature: external_exports.string().min(20) });
@@ -63811,8 +63925,32 @@ var xHandle = external_exports.string().trim().min(1).max(16).regex(/^@?[A-Za-z0
 function marketError(error46) {
   throw new TRPCError({ code: "BAD_REQUEST", message: error46 instanceof Error ? error46.message : "The request could not be processed" });
 }
+async function grantReferralPoints(wallet3, event, eventKey) {
+  try {
+    await awardReferralPoints(wallet3, event, eventKey);
+  } catch (error46) {
+    console.warn(`[Referrals] Could not award ${event} for ${wallet3.slice(0, 6)}\u2026`, error46);
+  }
+}
 var marketRouter = router({
   board: publicProcedure.query(async () => getPublicMarket()),
+  referralLeaderboard: publicProcedure.input(external_exports.object({ page: external_exports.number().int().positive().default(1), pageSize: external_exports.number().int().positive().max(20).default(20) }).optional()).query(async ({ input }) => getReferralLeaderboard(input?.page ?? 1, input?.pageSize ?? 20)),
+  joinReferral: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, referralCode: external_exports.string().trim().min(4).max(24).optional(), proof: proof2 })).mutation(async ({ input }) => {
+    try {
+      await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "referral_join" });
+      return await joinReferral({ wallet: input.wallet, referralCode: input.referralCode });
+    } catch (error46) {
+      marketError(error46);
+    }
+  }),
+  referralDashboard: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, proof: proof2 })).mutation(async ({ input }) => {
+    try {
+      await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "referral_view" });
+      return await getReferralDashboard(input.wallet);
+    } catch (error46) {
+      marketError(error46);
+    }
+  }),
   activity: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, proof: proof2 })).mutation(async ({ input }) => {
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "activity_view" });
@@ -63821,7 +63959,7 @@ var marketRouter = router({
       marketError(error46);
     }
   }),
-  walletChallenge: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, action: external_exports.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "support_message", "admin_access"]) })).mutation(async ({ input }) => {
+  walletChallenge: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, action: external_exports.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "support_message", "admin_access", "referral_join", "referral_view"]) })).mutation(async ({ input }) => {
     try {
       return await createWalletChallenge(input.wallet, input.action);
     } catch (error46) {
@@ -63858,6 +63996,7 @@ var marketRouter = router({
       const request = await activatePaidRequest({ publicId: input.publicId, signature: input.signature, buyerWallet: input.wallet });
       await verifyUsdcPayment({ signature: input.signature, buyerWallet: input.wallet, expectedUsdc: request.totalUsdc, earliestAllowedAt: request.createdAt });
       await recordVerifiedPayment(input.publicId, input.signature, input.wallet);
+      await grantReferralPoints(input.wallet, "buyer_purchase", `payment:${input.publicId}`);
       return { ok: true };
     } catch (error46) {
       marketError(error46);
@@ -63866,7 +64005,9 @@ var marketRouter = router({
   createSellerOffer: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, profileHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: external_exports.number().int().positive().max(1e6), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-      return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, pricePerVouch: input.pricePerVouch });
+      const created = await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, pricePerVouch: input.pricePerVouch });
+      await grantReferralPoints(input.wallet, "seller_listing", `listing:${created.publicId}`);
+      return created;
     } catch (error46) {
       marketError(error46);
     }
@@ -63901,6 +64042,7 @@ var marketRouter = router({
       const offer = await activateOfferPurchase({ publicId: input.publicId, signature: input.signature, buyerWallet: input.wallet });
       await verifyUsdcPayment({ signature: input.signature, buyerWallet: input.wallet, expectedUsdc: offer.grossUsdc, earliestAllowedAt: offer.createdAt });
       await recordVerifiedOfferPurchase(input.publicId, input.signature, input.wallet);
+      await grantReferralPoints(input.wallet, "buyer_purchase", `offer-payment:${input.publicId}`);
       return { ok: true };
     } catch (error46) {
       marketError(error46);
@@ -63928,6 +64070,7 @@ var marketRouter = router({
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_done" });
       await markSellerDone(input.publicId, input.wallet);
+      await grantReferralPoints(input.wallet, "seller_completion", `completion:${input.publicId}`);
       return { ok: true };
     } catch (error46) {
       marketError(error46);

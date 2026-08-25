@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   recordVerifiedPayment: vi.fn(),
   verifyUsdcPayment: vi.fn(),
   verifyWalletChallenge: vi.fn(),
+  awardReferralPoints: vi.fn(),
 }));
 
 vi.mock("./market/db", () => ({
@@ -46,6 +47,12 @@ vi.mock("./market/solana", () => ({ verifyUsdcPayment: mocks.verifyUsdcPayment }
 vi.mock("./market/walletProof", () => ({
   createWalletChallenge: vi.fn(),
   verifyWalletChallenge: mocks.verifyWalletChallenge,
+}));
+vi.mock("./market/referrals", () => ({
+  awardReferralPoints: mocks.awardReferralPoints,
+  getReferralDashboard: vi.fn(),
+  getReferralLeaderboard: vi.fn(),
+  joinReferral: vi.fn(),
 }));
 
 import { appRouter } from "./routers";
