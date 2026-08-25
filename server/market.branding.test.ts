@@ -58,4 +58,13 @@ describe("public market branding", () => {
     expect(homeSource).toContain("hero-shine-text");
     expect(styles).toContain("@keyframes hero-text-sheen");
   });
+
+  it("uses the compact transaction terminal instead of a verbose terms panel", () => {
+    const styles = readFileSync(resolve(process.cwd(), "client/src/index.css"), "utf8");
+    expect(homeSource).toContain("transaction-terminal");
+    expect(homeSource).toContain("terminal-underlay-tabs");
+    expect(homeSource).toContain("terminalLines");
+    expect(styles).toContain("@keyframes terminal-row-in");
+    expect(styles).toContain("@media (prefers-reduced-motion: no-preference)");
+  });
 });

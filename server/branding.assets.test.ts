@@ -19,3 +19,10 @@ describe("HANKA brand assets", () => {
     expect(styles).toContain("home-sheen");
   });
 });
+
+  it("uses the uploaded Phantom mark in wallet-connect controls", () => {
+    const market = readFileSync(resolve(process.cwd(), "client/src/components/MarketHome.tsx"), "utf8");
+    expect(market).toContain("/manus-storage/phantom-wallet_25796a99.png");
+    expect(market).toContain("function PhantomMark");
+    expect(market).toContain("<PhantomMark");
+  });

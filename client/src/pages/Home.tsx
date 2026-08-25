@@ -8,7 +8,7 @@ import {
   Sparkles,
   UsersRound,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+
 import { Link } from "wouter";
 
 const ETHOS_LOGO_URL = "/manus-storage/ethos-logo_194cfccc.jpeg";
@@ -43,26 +43,13 @@ const proofTypes = [
   { instrument: "space_listener", icon: Mic2, ethos: false, title: "X Spaces", note: "Listen, speak, or contribute—time has value." },
 ] as const;
 
-function TypingTerms() {
-  const message = "Buy a signal. Sell a contribution. Set the terms together.";
-  const [value, setValue] = useState("");
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setValue(message);
-      return;
-    }
-    let index = 0;
-    const timer = window.setInterval(() => {
-      index += 1;
-      setValue(message.slice(0, index));
-      if (index >= message.length) window.clearInterval(timer);
-    }, 24);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  return <p className="terms-typing" aria-label={message}>{value}<span aria-hidden className="terms-caret" /></p>;
-}
+const terminalLines = [
+  "watch / social-proof",
+  "match   Ethos vouch      ready",
+  "quote   USDC / unit      live",
+  "proof   source -> target signed",
+  "route   buy | sell       open",
+] as const;
 
 export default function Home() {
   return (
@@ -84,19 +71,16 @@ export default function Home() {
             <Link href="/market#market" className="hanka-primary-button">Buy or sell proof <ArrowUpRight className="size-4" /></Link>
           </div>
         </div>
-        <aside className="terms-stage">
-          <div className="terms-logo-bg"><Mark large /></div>
-          <div className="terms-glow" />
-          <div className="relative z-10 flex h-full flex-col justify-between">
-            <div className="flex items-center justify-between gap-3"><p className="hanka-kicker">Simple terms</p><span className="status-orb" aria-label="Market ready" /></div>
-            <div>
-              <TypingTerms />
-              <div className="mt-6 grid gap-3 border-t border-white/15 pt-5 text-sm leading-6 text-[#d4ded2]">
-                <p><strong className="text-white">Buy.</strong> Request a specific social proof outcome for a named target.</p>
-                <p><strong className="text-white">Sell.</strong> Offer a verified contribution from a named source.</p>
-                <p><strong className="text-white">Price together.</strong> Scope, source strength, and time determine the quote.</p>
-              </div>
-            </div>
+        <aside className="transaction-terminal" aria-label="HANKA transaction terminal preview">
+          <div className="terminal-underlay" aria-hidden="true">
+            <div className="terminal-underlay-tabs"><span className="terminal-tab terminal-tab-active">Transactions</span><span className="terminal-tab">Signals</span><span className="terminal-tab">Archive</span></div>
+            <div className="terminal-underlay-grid">{[0, 1, 2, 3, 4].map(index => <span key={index} />)}</div>
+          </div>
+          <div className="terminal-window">
+            <div className="terminal-window-head"><span>hanka://market</span><span className="terminal-live"><i />LIVE</span></div>
+            <div className="terminal-command"><span className="terminal-prompt">›</span> watch --market</div>
+            <div className="terminal-code">{terminalLines.map((line, index) => <div className="terminal-code-row" key={line}><span className="terminal-code-index">0{index + 1}</span><code>{line}</code><span className="terminal-code-dot" /></div>)}</div>
+            <div className="terminal-window-foot"><span>tx stream</span><span>preview mode</span></div>
           </div>
         </aside>
       </section>

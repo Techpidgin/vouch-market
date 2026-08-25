@@ -170,3 +170,5 @@
 - [x] Push the latest validated mobile HANKA refinement to the connected GitHub main branch.
 - [x] Repair the Vite preview HMR WebSocket connection for the proxied /market development page.
 - [x] Eliminate the residual Vite development-client WebSocket error from the active market preview.
+- [x] Add the supplied Phantom logo to wallet-connect buttons across responsive HANKA surfaces.
+- [x] Replace the verbose landing terms panel with a compact animated transaction terminal and Transactions-tab underlay.
