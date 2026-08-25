@@ -28,8 +28,8 @@ describe("Vouch Market core rules", () => {
     expect(() => decimalToUsdcMicro("0.5000001")).toThrow("up to six decimal places");
   });
 
-  it("supports vouch and slash instruments with exact-quantity fee calculations", () => {
-    expect(MARKET_INSTRUMENTS.map(item => item.value)).toEqual(["vouch", "slash"]);
+  it("supports HANKA's social-proof instruments with exact-quantity fee calculations", () => {
+    expect(MARKET_INSTRUMENTS.map(item => item.value)).toEqual(expect.arrayContaining(["vouch", "slash", "follow", "repost", "comment", "space_speaker"]));
     expect(calculateMarketAmounts(100, 0.5)).toEqual({ grossUsdc: "50.000000", platformFeeUsdc: "2.500000", sellerNetUsdc: "47.500000" });
   });
 

@@ -185,7 +185,7 @@
   }
 
   .font-display { font-family: "DM Serif Display", Georgia, serif; }
-  .eyebrow { font-family: "IBM Plex Mono", monospace; font-size: 0.65rem; letter-spacing: 0.15em; line-height: 1.2; text-transform: uppercase; }
+  .eyebrow { font-family: "Geist", "IBM Plex Mono", sans-serif; font-size: 0.65rem; letter-spacing: 0.15em; line-height: 1.2; text-transform: uppercase; font-weight: 600; }
   .paper-grid { background-image: linear-gradient(to right, rgba(27,27,25,.14) 1px, transparent 1px), linear-gradient(to bottom, rgba(27,27,25,.14) 1px, transparent 1px), radial-gradient(circle at 24% 22%, rgba(255,255,255,.8), transparent 25%); background-size: 34px 34px, 34px 34px, 100% 100%; }
   .home-ambient { background: radial-gradient(circle at 8% 16%, rgba(213,79,40,.13), transparent 26%), radial-gradient(circle at 92% 78%, rgba(40,82,62,.16), transparent 31%); }
   .home-header { backdrop-filter: blur(12px); }
@@ -199,6 +199,36 @@
   @media (min-width: 640px) {
     .market-shell { padding-inline: 2rem; }
   }
+}
+
+@layer components {
+  .hanka-app { --hanka-bg: #f4f2ea; --hanka-panel: #fffefa; --hanka-panel-strong: #e9eee4; --hanka-text: #122018; --hanka-muted: #5d6a61; --hanka-line: rgba(18, 32, 24, .16); --hanka-accent: #a7e3b4; --hanka-accent-text: #102016; background: var(--hanka-bg); color: var(--hanka-text); }
+  .dark .hanka-app { --hanka-bg: #0b120e; --hanka-panel: #111b14; --hanka-panel-strong: #17251b; --hanka-text: #f0f4ec; --hanka-muted: #a7b2a6; --hanka-line: rgba(232, 242, 230, .14); --hanka-accent: #a5e5b4; --hanka-accent-text: #102016; }
+  .hanka-home { background: var(--hanka-bg); color: var(--hanka-text); }
+  .hanka-aurora { background: radial-gradient(circle at 72% 22%, rgba(88, 155, 106, .23), transparent 28%), radial-gradient(circle at 11% 84%, rgba(164, 227, 180, .13), transparent 25%), linear-gradient(180deg, transparent, rgba(13, 29, 17, .03)); }
+  .dark .hanka-aurora { background: radial-gradient(circle at 72% 22%, rgba(79, 157, 98, .22), transparent 28%), radial-gradient(circle at 10% 82%, rgba(148, 218, 164, .1), transparent 27%), linear-gradient(180deg, transparent, rgba(0, 0, 0, .25)); }
+  .hanka-header { border-bottom: 1px solid var(--hanka-line); background: color-mix(in srgb, var(--hanka-bg) 88%, transparent); backdrop-filter: blur(18px); }
+  .hanka-micro, .hanka-kicker { font-family: "Geist", "IBM Plex Mono", sans-serif; font-size: .66rem; font-weight: 600; letter-spacing: .13em; line-height: 1.2; text-transform: uppercase; }
+  .hanka-micro { color: var(--hanka-muted); }
+  .hanka-kicker { display: inline-flex; align-items: center; gap: .5rem; color: var(--hanka-accent); }
+  .hanka-header-action, .hanka-theme-toggle { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 2.25rem; border: 1px solid var(--hanka-line); padding: 0 .75rem; color: var(--hanka-text); font-family: "Geist", sans-serif; font-size: .72rem; font-weight: 600; letter-spacing: .03em; }
+  .hanka-header-action { background: var(--hanka-panel); }
+  .hanka-theme-toggle { background: transparent; color: var(--hanka-muted); }
+  .hanka-header-action:hover, .hanka-theme-toggle:hover { border-color: color-mix(in srgb, var(--hanka-accent) 66%, var(--hanka-line)); background: var(--hanka-panel-strong); color: var(--hanka-text); }
+  .hanka-primary-button { position: relative; display: inline-flex; align-items: center; gap: .55rem; overflow: hidden; background: var(--hanka-accent); color: var(--hanka-accent-text); padding: .85rem 1.1rem; font-family: "Geist", sans-serif; font-size: .84rem; font-weight: 700; box-shadow: 0 13px 30px rgba(70, 155, 93, .18); }
+  .hanka-primary-button::after { position: absolute; inset: 0; content: ""; transform: translateX(-125%); background: linear-gradient(100deg, transparent 22%, rgba(255,255,255,.6) 50%, transparent 76%); }
+  .terms-stage { position: relative; min-height: 23rem; overflow: hidden; border: 1px solid var(--hanka-line); background: #112017; color: #f0f4ec; padding: 1.5rem; box-shadow: 0 26px 70px rgba(0,0,0,.18); isolation: isolate; }
+  .terms-logo-bg { position: absolute; right: -1rem; bottom: -2.5rem; opacity: .1; transform: rotate(-10deg); }
+  .terms-glow { position: absolute; inset: 0; background: radial-gradient(circle at 78% 18%, rgba(180, 243, 190, .17), transparent 24%), linear-gradient(135deg, transparent 36%, rgba(255,255,255,.06)); }
+  .terms-typing { min-height: 5.5rem; max-width: 20rem; font-family: "DM Serif Display", Georgia, serif; font-size: clamp(2rem, 5vw, 3.4rem); line-height: .92; letter-spacing: -.06em; color: #fff; }
+  .terms-caret { display: inline-block; height: .78em; width: 2px; margin-left: .12em; background: var(--hanka-accent); vertical-align: -.05em; }
+  .proof-card { position: relative; min-height: 14.5rem; background: var(--hanka-panel); padding: 1.35rem; transition: background-color 180ms var(--market-ease-out), transform 180ms var(--market-ease-out); }
+  .proof-index { font-family: "Geist", sans-serif; font-size: .66rem; font-weight: 600; letter-spacing: .13em; color: var(--hanka-muted); }
+  .proof-icon { position: absolute; right: 1.3rem; top: 1.3rem; color: var(--hanka-accent); }
+  .proof-arrow { position: absolute; right: 1.35rem; bottom: 1.35rem; color: var(--hanka-muted); transition: transform 180ms var(--market-ease-out), color 180ms var(--market-ease-out); }
+  .hanka-text-link { display: inline-flex; align-items: center; gap: .35rem; color: var(--hanka-muted); font-family: "Geist", sans-serif; font-size: .75rem; font-weight: 600; }
+  .proof-card:hover { background: var(--hanka-panel-strong); transform: translateY(-2px); }
+  .proof-card:hover .proof-arrow { transform: translate(2px, -2px); color: var(--hanka-text); }
 }
 
 @keyframes market-rise {
@@ -220,6 +250,8 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-2px); }
 }
+
+@keyframes caret-pulse { 50% { opacity: 0; } }
 
 @media (prefers-reduced-motion: no-preference) {
   :root {
@@ -249,7 +281,9 @@
   .home-copy, .hero-terms { animation: market-rise 520ms var(--market-ease-out) both; }
   .hero-terms { animation-delay: 90ms; }
   .cta-primary::after { animation: home-sheen 3.6s var(--market-ease-out) 900ms infinite; }
+  .hanka-primary-button::after { animation: home-sheen 3.8s var(--market-ease-out) 800ms infinite; }
   .status-orb { animation: logo-drift 2.4s var(--market-ease-out) infinite; }
+  .terms-caret { animation: caret-pulse 900ms steps(2, start) infinite; }
 
   .market-page > section:first-child .market-shell > .mt-5 > *,
   .market-page > #market,

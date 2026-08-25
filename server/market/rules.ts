@@ -17,7 +17,7 @@ export function normalizeXHandle(handle: string) {
 
 export function enforceSingleUnitAllocation(quantity: number) {
   if (quantity !== 1) {
-    throw new Error("Each vouch or slash allocation must be exactly one unit for one target account");
+    throw new Error("Each social-proof allocation must be exactly one unit for one target account");
   }
 }
 
@@ -27,11 +27,11 @@ export function enforcePointsPerUnit(pointsPerUnit: number) {
   }
 }
 
-export function allocationKey(input: { sourceHandle: string; targetHandle: string; projectSlug: string; instrument: "vouch" | "slash" }) {
+export function allocationKey(input: { sourceHandle: string; targetHandle: string; projectSlug: string; instrument: MarketInstrument }) {
   const sourceHandle = normalizeXHandle(input.sourceHandle);
   const targetHandle = normalizeXHandle(input.targetHandle);
   if (sourceHandle === targetHandle) {
-    throw new Error("A source account cannot allocate a vouch or slash to itself");
+    throw new Error("A source account cannot allocate social proof to itself");
   }
   return [input.projectSlug.toLowerCase(), input.instrument, sourceHandle, targetHandle].join(":");
 }
@@ -94,3 +94,4 @@ export function transitionDirectPurchase(progress: DirectPurchaseProgress, event
   if (progress.status !== "matched") throw new Error("This fill cannot be marked complete yet");
   return { ...progress, sellerMarkedDone: true, status: nextDirectPurchaseStatus(progress.buyerMarkedDone, true) };
 }
+import type { MarketInstrument } from "./constants";

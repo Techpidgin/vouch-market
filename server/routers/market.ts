@@ -28,7 +28,9 @@ import { createWalletChallenge, verifyWalletChallenge } from "../market/walletPr
 const wallet = z.string().trim().min(32).max(64).refine(value => {
   try { new PublicKey(value); return true; } catch { return false; }
 }, "Enter a valid Solana wallet address");
-const instrument = z.enum(["vouch", "slash"]);
+const instrument = z.enum(["vouch", "slash", "follow", "repost", "comment", "space_listener", "space_speaker", "space_contributor"]);
+const proofScope = z.string().trim().max(240).optional();
+const spaceMinutes = z.number().int().positive().max(720).optional();
 const proof = z.object({ challengeId: z.string().min(8), signature: z.string().min(20) });
 const xHandle = z.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle");
 
@@ -56,11 +58,11 @@ export const marketRouter = router({
       }
     }),
   createRequest: rateLimitedPublicProcedure
-    .input(z.object({ wallet, targetHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, targetHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "buyer_request" });
-        const created = await createRequest({ buyerWallet: input.wallet, targetHandle: input.targetHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, requestedQuantity: input.quantity, pricePerVouch: input.pricePerVouch, totalUsdc: input.quantity * input.pricePerVouch });
+        const created = await createRequest({ buyerWallet: input.wallet, targetHandle: input.targetHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, requestedQuantity: input.quantity, pricePerVouch: input.pricePerVouch, totalUsdc: input.quantity * input.pricePerVouch });
         return { ...created, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
       } catch (error) {
         marketError(error);
@@ -89,11 +91,11 @@ export const marketRouter = router({
       }
     }),
   createSellerOffer: rateLimitedPublicProcedure
-    .input(z.object({ wallet, profileHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), quantity: z.number().int().positive().max(1_000_000), pointsPerUnit: z.number().int().positive().max(1_000_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, profileHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: z.number().int().positive().max(1_000_000), pointsPerUnit: z.number().int().positive().max(1_000_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-        return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, pricePerVouch: input.pricePerVouch });
+        return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, pricePerVouch: input.pricePerVouch });
       } catch (error) {
         marketError(error);
       }

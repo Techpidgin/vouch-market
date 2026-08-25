@@ -15,11 +15,22 @@ export const VOUCH_BANDS = [
 
 export type VouchBandValue = (typeof VOUCH_BANDS)[number]["value"];
 export const MARKET_INSTRUMENTS = [
-  { value: "vouch", label: "Vouches" },
-  { value: "slash", label: "Slashes" },
+  { value: "vouch", label: "Ethos voucher", sourceLabel: "Voucher source" },
+  { value: "slash", label: "Ethos slash", sourceLabel: "Slash source" },
+  { value: "follow", label: "X follow", sourceLabel: "Following account" },
+  { value: "repost", label: "X repost", sourceLabel: "Reposting account" },
+  { value: "comment", label: "X comment", sourceLabel: "Commenting account" },
+  { value: "space_listener", label: "X Space listener", sourceLabel: "Hosting account" },
+  { value: "space_speaker", label: "X Space speaker", sourceLabel: "Hosting account" },
+  { value: "space_contributor", label: "X Space contributor", sourceLabel: "Hosting account" },
 ] as const;
 export type MarketInstrument = (typeof MARKET_INSTRUMENTS)[number]["value"];
-export function instrumentLabel(instrument: MarketInstrument) { return instrument === "slash" ? "slashes" : "vouches"; }
+export function instrumentLabel(instrument: MarketInstrument) {
+  return MARKET_INSTRUMENTS.find(item => item.value === instrument)?.label.toLowerCase() ?? "social proof";
+}
+export function isSpaceInstrument(instrument: MarketInstrument) {
+  return instrument.startsWith("space_");
+}
 export const DEFAULT_PROJECT = { slug: "commonsmade", name: "CommonsMade", description: "Trade CommonsMade vouches and slashes." } as const;
 
 export function toUsdcMicro(amount: number): number {

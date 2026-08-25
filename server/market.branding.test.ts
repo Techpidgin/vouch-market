@@ -15,22 +15,22 @@ describe("public market branding", () => {
     expect(marketSource).not.toContain("Vouch Market · CommonsMade first");
   });
 
-  it("keeps terms and operations in footers and uses a smaller responsive landing hero", () => {
+  it("keeps terms and operations in footers and uses an intentional responsive landing hero", () => {
     expect(homeSource).toContain('href="/market#terms"');
     expect(homeSource).toContain('href="/ops"');
     expect(marketSource).toContain('href="#terms"');
     expect(marketSource).toContain('href="/ops"');
-    expect(homeSource).toContain("text-[clamp(3.7rem,11vw,7.5rem)]");
-    expect(homeSource).toContain("py-8 sm:gap-10 sm:py-10");
+    expect(homeSource).toContain("text-[clamp(4.1rem,11vw,8.6rem)]");
+    expect(homeSource).toContain("lg:grid-cols-[1.08fr_.92fr]");
   });
 
-  it("uses the HANKA Vouch & Slash Market name and positions the product for compatible proof instruments", () => {
+  it("uses the HANKA product identity and positions the market for an expanded social-proof catalogue", () => {
     const documentSource = readFileSync(resolve(process.cwd(), "client/index.html"), "utf8");
     expect(documentSource).toContain("HANKA Vouch &amp; Slash Market");
-    expect(homeSource).toContain("HANKA · Social proof market");
-    expect(homeSource).toContain("compatible social-proof instruments");
-    expect(homeSource).toContain("HANKA Vouch &amp; Slash Market · USDC on Solana");
+    expect(homeSource).toContain("HANKA · Social proof exchange");
+    expect(homeSource).toContain("follows, reposts, comments, and X Space participation");
+    expect(homeSource).toContain("HANKA Social Proof Market · USDC on Solana");
     expect(marketSource).toContain("HANKA · Open market");
-    expect(marketSource).toContain("HANKA Vouch &amp; Slash Market · USDC on Solana");
+    expect(marketSource).toContain("HANKA Social Proof Market · USDC on Solana");
   });
 });

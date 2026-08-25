@@ -111,6 +111,8 @@ export async function getPublicMarket() {
         targetHandle: marketRequests.targetHandle,
         projectSlug: marketRequests.projectSlug,
         instrument: marketRequests.instrument,
+        proofDetail: marketRequests.proofDetail,
+        spaceMinutes: marketRequests.spaceMinutes,
         requestedQuantity: marketRequests.requestedQuantity,
         filledQuantity: marketRequests.filledQuantity,
         pricePerVouch: marketRequests.pricePerVouch,
@@ -129,6 +131,8 @@ export async function getPublicMarket() {
         sourceHandle: sellerCommitments.sourceHandle,
         projectSlug: sellerCommitments.projectSlug,
         instrument: sellerCommitments.instrument,
+        proofDetail: sellerCommitments.proofDetail,
+        spaceMinutes: sellerCommitments.spaceMinutes,
         quantity: sellerCommitments.quantity,
         pointsPerUnit: sellerCommitments.pointsPerUnit,
         pricePerVouch: sellerCommitments.pricePerVouch,
@@ -165,6 +169,8 @@ export async function createRequest(input: {
   targetHandle: string;
   projectSlug: string;
   instrument: MarketInstrument;
+  proofDetail?: string;
+  spaceMinutes?: number;
   requestedQuantity: number;
   pricePerVouch: number;
   totalUsdc: number;
@@ -235,6 +241,8 @@ export async function createSellerOffer(input: {
   profileHandle: string;
   projectSlug: string;
   instrument: MarketInstrument;
+  proofDetail?: string;
+  spaceMinutes?: number;
   quantity: number;
   pointsPerUnit: number;
   pricePerVouch: number;
@@ -302,6 +310,8 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
       allocationKey: pairKey,
       projectSlug: request.projectSlug,
       instrument: fillIntent.instrument,
+      proofDetail: request.proofDetail,
+      spaceMinutes: request.spaceMinutes,
       quantity: fillIntent.quantity,
       pointsPerUnit: input.pointsPerUnit,
       pricePerVouch: request.pricePerVouch,
@@ -351,6 +361,8 @@ export async function initiateOfferPurchase(input: { offerPublicId: string; buye
       allocationKey: pairKey,
       projectSlug: offer.projectSlug,
       instrument: purchaseIntent.instrument,
+      proofDetail: offer.proofDetail,
+      spaceMinutes: offer.spaceMinutes,
       vouchBand: offer.vouchBand,
       quantity: 1,
       pointsPerUnit: offer.pointsPerUnit,
