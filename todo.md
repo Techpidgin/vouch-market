@@ -188,3 +188,8 @@
 - [x] Use the full referral link in social cards instead of the referral code label.
 - [x] Replace Phantom branding with the supplied Solana logo on wallet-connect surfaces.
 - [x] Validate social-card PNG export, responsive marketplace branding, tests, builds, and publish to production/GitHub main.
+
+- [x] Replace the current hero Opera underlay with the newly uploaded Opera 1 PNG in the landing terminal and marketplace hero.
+- [x] Replace wallet-connect branding with the newly uploaded Solana PNG while preserving provider discovery and chooser behavior.
+- [x] Verify mobile wallet connection affordances and multiple injected Solana wallet options.
+- [x] Run regression tests, production builds, responsive screenshots, then publish and push GitHub main.

@@ -20,6 +20,7 @@ export type WalletOption = { id: string; label: string; provider: SolanaProvider
 declare global {
   interface Window {
     solana?: SolanaProvider & { providers?: SolanaProvider[] };
+    phantom?: { solana?: SolanaProvider };
     backpack?: { solana?: SolanaProvider };
     solflare?: SolanaProvider;
     okxwallet?: { solana?: SolanaProvider };
@@ -32,10 +33,17 @@ declare global {
 const publicRpc = "https://api.mainnet-beta.solana.com";
 let activeProvider: SolanaProvider | null = null;
 
+function providerLabel(provider: SolanaProvider) {
+  if (provider.isPhantom) return "Phantom";
+  if (provider.isBackpack) return "Backpack";
+  if (provider.isSolflare) return "Solflare";
+  return "Solana wallet";
+}
+
 export function getWalletOptions(): WalletOption[] {
   if (typeof window === "undefined") return [];
   const candidates: Array<{ id: string; label: string; provider?: SolanaProvider }> = [
-    { id: "phantom", label: "Phantom", provider: window.solana?.isPhantom ? window.solana : undefined },
+    { id: "phantom", label: "Phantom", provider: window.phantom?.solana ?? (window.solana?.isPhantom ? window.solana : undefined) },
     { id: "backpack", label: "Backpack", provider: window.backpack?.solana },
     { id: "solflare", label: "Solflare", provider: window.solflare },
     { id: "okx", label: "OKX Wallet", provider: window.okxwallet?.solana },
@@ -43,9 +51,18 @@ export function getWalletOptions(): WalletOption[] {
     { id: "brave", label: "Brave Wallet", provider: window.braveSolana },
     { id: "opera", label: "Opera Wallet", provider: window.opera?.solana },
   ];
-  const discovered = window.solana?.providers?.map((provider, index) => ({ id: `provider-${index}`, label: "Solana Wallet", provider })) ?? [];
+  const discovered = window.solana?.providers?.map((provider, index) => ({ id: `provider-${index}`, label: providerLabel(provider), provider })) ?? [];
   const options = [...candidates, ...discovered].filter((item): item is { id: string; label: string; provider: SolanaProvider } => Boolean(item.provider));
   return options.filter((item, index) => options.findIndex(other => other.provider === item.provider) === index);
+}
+
+export function getMobileWalletLinks(url: string) {
+  const encodedUrl = encodeURIComponent(url);
+  return [
+    { id: "phantom", label: "Open in Phantom", href: `https://phantom.app/ul/browse/${encodedUrl}?ref=hanka` },
+    { id: "solflare", label: "Open in Solflare", href: `https://solflare.com/ul/v1/browse/${encodedUrl}` },
+    { id: "backpack", label: "Open in Backpack", href: `https://backpack.app/ul/v1/browse/${encodedUrl}` },
+  ];
 }
 
 function providerOrThrow() {

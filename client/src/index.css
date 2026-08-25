@@ -369,6 +369,9 @@
 }
 
 
+.market-hero { position: relative; overflow: hidden; isolation: isolate; background: radial-gradient(circle at 72% 18%, rgba(79, 157, 98, .22), transparent 34%), #0b120e; }
+.market-hero-opera { position: absolute; z-index: -1; right: -5rem; top: -7rem; width: min(46rem, 58vw); height: 30rem; object-fit: cover; opacity: .075; filter: grayscale(1) brightness(1.35) contrast(.9); transform: rotate(-3deg); pointer-events: none; }
+.market-hero > .market-shell { position: relative; z-index: 1; }
 .transaction-terminal {
   position: relative;
   min-height: 22rem;
@@ -501,5 +504,6 @@
   .transaction-terminal::before { inset: 1rem .5rem -.5rem 1rem; }
   .terminal-window { inset: 1.8rem .9rem .9rem .9rem; }
   .terminal-opera-mark { right: -4rem; bottom: -3rem; width: 14rem; height: 14rem; }
+  .market-hero-opera { right: -9rem; top: -4rem; width: 38rem; height: 24rem; opacity: .055; }
   .terminal-code-row { font-size: .58rem; }
 }
