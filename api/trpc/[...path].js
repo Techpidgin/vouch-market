@@ -57134,6 +57134,9 @@ var sellerCommitments = pgTable(
     vouchBand: vouchBand("vouchBand"),
     quantity: integer2("quantity").notNull(),
     pointsPerUnit: integer2("pointsPerUnit"),
+    followerCount: integer2("followerCount"),
+    ethosScore: integer2("ethosScore"),
+    kaitoScore: integer2("kaitoScore"),
     pricePerVouch: numeric("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
     grossUsdc: numeric("grossUsdc", { precision: 16, scale: 6 }),
     platformFeeUsdc: numeric("platformFeeUsdc", { precision: 16, scale: 6 }),
@@ -63099,6 +63102,9 @@ async function getPublicMarket() {
       spaceMinutes: sellerCommitments.spaceMinutes,
       quantity: sellerCommitments.quantity,
       pointsPerUnit: sellerCommitments.pointsPerUnit,
+      followerCount: sellerCommitments.followerCount,
+      ethosScore: sellerCommitments.ethosScore,
+      kaitoScore: sellerCommitments.kaitoScore,
       pricePerVouch: sellerCommitments.pricePerVouch,
       status: sellerCommitments.status,
       archivedAt: sellerCommitments.archivedAt,
@@ -63235,6 +63241,9 @@ async function fillRequest(input) {
       spaceMinutes: request.spaceMinutes,
       quantity: fillIntent.quantity,
       pointsPerUnit: input.pointsPerUnit,
+      followerCount: input.followerCount,
+      ethosScore: input.ethosScore,
+      kaitoScore: input.kaitoScore,
       pricePerVouch: request.pricePerVouch,
       grossUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).grossUsdc,
       platformFeeUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).platformFeeUsdc,
@@ -63286,6 +63295,9 @@ async function initiateOfferPurchase(input) {
       vouchBand: offer.vouchBand,
       quantity: 1,
       pointsPerUnit: offer.pointsPerUnit,
+      followerCount: offer.followerCount,
+      ethosScore: offer.ethosScore,
+      kaitoScore: offer.kaitoScore,
       pricePerVouch: offer.pricePerVouch,
       grossUsdc: amounts.grossUsdc,
       platformFeeUsdc: amounts.platformFeeUsdc,
@@ -63851,18 +63863,18 @@ var marketRouter = router({
       marketError(error46);
     }
   }),
-  createSellerOffer: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, profileHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: external_exports.number().int().positive().max(1e6), pointsPerUnit: external_exports.number().int().positive().max(1e9), pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
+  createSellerOffer: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, profileHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: external_exports.number().int().positive().max(1e6), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-      return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, pricePerVouch: input.pricePerVouch });
+      return await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, pricePerVouch: input.pricePerVouch });
     } catch (error46) {
       marketError(error46);
     }
   }),
-  fillRequest: rateLimitedPublicProcedure.input(external_exports.object({ requestPublicId: external_exports.string().startsWith("REQ-"), wallet: wallet2, profileHandle: xHandle, quantity: external_exports.number().int().positive(), pointsPerUnit: external_exports.number().int().positive().max(1e9), proof: proof2 })).mutation(async ({ input }) => {
+  fillRequest: rateLimitedPublicProcedure.input(external_exports.object({ requestPublicId: external_exports.string().startsWith("REQ-"), wallet: wallet2, profileHandle: xHandle, quantity: external_exports.number().int().positive(), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), proof: proof2 })).mutation(async ({ input }) => {
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_fill" });
-      return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit });
+      return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore });
     } catch (error46) {
       marketError(error46);
     }

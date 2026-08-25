@@ -136,6 +136,9 @@ export async function getPublicMarket() {
         spaceMinutes: sellerCommitments.spaceMinutes,
         quantity: sellerCommitments.quantity,
         pointsPerUnit: sellerCommitments.pointsPerUnit,
+        followerCount: sellerCommitments.followerCount,
+        ethosScore: sellerCommitments.ethosScore,
+        kaitoScore: sellerCommitments.kaitoScore,
         pricePerVouch: sellerCommitments.pricePerVouch,
         status: sellerCommitments.status,
         archivedAt: sellerCommitments.archivedAt,
@@ -246,6 +249,9 @@ export async function createSellerOffer(input: {
   spaceMinutes?: number;
   quantity: number;
   pointsPerUnit: number;
+  followerCount?: number;
+  ethosScore?: number;
+  kaitoScore?: number;
   pricePerVouch: number;
 }) {
   const db = await dbOrThrow();
@@ -268,7 +274,7 @@ export async function createSellerOffer(input: {
   return { publicId, unitsPosted: intent.quantity };
 }
 
-export async function fillRequest(input: { requestPublicId: string; sellerWallet: string; profileHandle: string; quantity: number; pointsPerUnit: number }) {
+export async function fillRequest(input: { requestPublicId: string; sellerWallet: string; profileHandle: string; quantity: number; pointsPerUnit: number; followerCount?: number; ethosScore?: number; kaitoScore?: number }) {
   const db = await dbOrThrow();
   const request = (await db.select().from(marketRequests).where(eq(marketRequests.publicId, input.requestPublicId)).limit(1))[0];
   if (!request || request.status !== "open") throw new Error("This request is not open for fills");
@@ -315,6 +321,9 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
       spaceMinutes: request.spaceMinutes,
       quantity: fillIntent.quantity,
       pointsPerUnit: input.pointsPerUnit,
+      followerCount: input.followerCount,
+      ethosScore: input.ethosScore,
+      kaitoScore: input.kaitoScore,
       pricePerVouch: request.pricePerVouch,
       grossUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).grossUsdc,
       platformFeeUsdc: calculateMarketAmounts(fillIntent.quantity, Number(request.pricePerVouch)).platformFeeUsdc,
@@ -367,6 +376,9 @@ export async function initiateOfferPurchase(input: { offerPublicId: string; buye
       vouchBand: offer.vouchBand,
       quantity: 1,
       pointsPerUnit: offer.pointsPerUnit,
+      followerCount: offer.followerCount,
+      ethosScore: offer.ethosScore,
+      kaitoScore: offer.kaitoScore,
       pricePerVouch: offer.pricePerVouch,
       grossUsdc: amounts.grossUsdc,
       platformFeeUsdc: amounts.platformFeeUsdc,

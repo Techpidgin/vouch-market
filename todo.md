@@ -172,3 +172,4 @@
 - [x] Eliminate the residual Vite development-client WebSocket error from the active market preview.
 - [x] Add the supplied Phantom logo to wallet-connect buttons across responsive HANKA surfaces.
 - [x] Replace the verbose landing terms panel with a compact animated transaction terminal and Transactions-tab underlay.
+- [x] Add richer marketplace subject icons and detail fields, including supplied Kaito branding and honest seller follower, Ethos-score, and Kaito-score fields.

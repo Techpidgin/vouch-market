@@ -25,6 +25,19 @@ describe("market form contract", () => {
     expect(marketFormSource).toContain("MarketPriceGuide");
   });
 
+  it("surfaces seller credibility inputs and Kaito branding without presenting them as verified facts", () => {
+    const schema = readFileSync(resolve(process.cwd(), "drizzle/schema.ts"), "utf8");
+    expect(marketFormSource).toContain("kaito-mark_bfc88d67.png");
+    expect(marketFormSource).toContain("followerCount");
+    expect(marketFormSource).toContain("ethosScore");
+    expect(marketFormSource).toContain("kaitoScore");
+    expect(marketFormSource).toContain("seller-declared source metrics");
+    expect(marketFormSource).toContain("<Credibility row={row}");
+    expect(schema).toContain("followerCount: integer");
+    expect(schema).toContain("ethosScore: integer");
+    expect(schema).toContain("kaitoScore: integer");
+  });
+
   it("uses the requested Vouch vocabulary and sharp HANKA marketplace control system", () => {
     const styles = readFileSync(resolve(process.cwd(), "client/src/index.css"), "utf8");
     expect(marketFormSource).toContain('label: "Ethos vouch"');

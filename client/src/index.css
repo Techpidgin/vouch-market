@@ -231,6 +231,7 @@
   .proof-card:focus-visible { outline: 2px solid var(--hanka-accent); outline-offset: -3px; }
   .ethos-mark { display: inline-block; width: 1em; height: 1em; object-fit: contain; filter: grayscale(1) contrast(1.18) brightness(1.28); mix-blend-mode: screen; }
   .phantom-mark { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; object-fit: cover; border-radius: .2rem; }
+  .kaito-mark { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; object-fit: contain; }
   .ethos-inline { display: inline-flex; align-items: center; gap: .28em; white-space: nowrap; }
   .ethos-inline .ethos-mark { width: 1.1em; height: 1.1em; vertical-align: -.08em; }
   .proof-card .ethos-mark { width: 2.35rem; height: 2.35rem; }
