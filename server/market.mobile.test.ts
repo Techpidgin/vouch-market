@@ -24,7 +24,8 @@ describe("mobile HANKA experience", () => {
 
   it("keeps the market hero underlay and mobile wallet fallback available", () => {
     expect(marketSource).toContain("market-hero-opera");
-    expect(marketSource).toContain("opera-small_1fa074ba.png");
+    expect(marketSource).toContain("OPERA_UNDERLAY_URL");
+    expect(marketSource).toContain("@/lib/brandAssets");
     expect(marketSource).toContain("mobileWalletLinks");
     expect(marketSource).toContain("Open HANKA inside a mobile wallet");
     expect(marketSource).toContain("walletOptions.length !== 1");

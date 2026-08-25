@@ -67,7 +67,8 @@ describe("public market branding", () => {
     expect(styles).toContain("@keyframes terminal-row-in");
     expect(styles).toContain("@media (prefers-reduced-motion: no-preference");
     expect(homeSource).toContain('className="landing-opera-background"');
-    expect(homeSource).toContain('src="/manus-storage/opera-small_1fa074ba.png"');
+    expect(homeSource).toContain("OPERA_UNDERLAY_URL");
+    expect(homeSource).toContain("@/lib/brandAssets");
     expect(styles).toContain(".landing-opera-background");
     expect(styles).toContain(".hanka-home > :not(.landing-opera-background):not(.hanka-aurora)");
   });

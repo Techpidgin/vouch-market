@@ -22,7 +22,8 @@ describe("HANKA brand assets", () => {
 
   it("uses Solana branding in wallet-connect controls and the durable asset proxy", () => {
     const market = readFileSync(resolve(process.cwd(), "client/src/components/MarketHome.tsx"), "utf8");
-    expect(market).toContain("/manus-storage/solana-mark-final_901eaff2.png");
+    expect(market).toContain("SOLANA_LOGO_URL");
+    expect(market).toContain("@/lib/brandAssets");
     expect(market).toContain("function SolanaMark");
     expect(market).toContain("<SolanaMark");
     expect(market).not.toContain("PhantomMark");

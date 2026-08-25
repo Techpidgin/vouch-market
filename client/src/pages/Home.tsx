@@ -9,6 +9,7 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import { OPERA_UNDERLAY_URL } from "@/lib/brandAssets";
 import { Link } from "wouter";
 
 const ETHOS_LOGO_URL = "/ethos%20logo.jpeg";
@@ -54,7 +55,7 @@ const terminalLines = [
 export default function Home() {
   return (
     <main className="hanka-home hanka-app relative min-h-screen overflow-hidden">
-      <div className="landing-opera-background" aria-hidden="true"><img src="/manus-storage/opera-small_1fa074ba.png" alt="" /></div>
+      <div className="landing-opera-background" aria-hidden="true"><img src={OPERA_UNDERLAY_URL} alt="" /></div>
       <div className="hanka-aurora pointer-events-none absolute inset-0" />
       <header className="hanka-header relative">
         <div className="market-shell flex h-16 items-center justify-between gap-3 sm:h-20">
