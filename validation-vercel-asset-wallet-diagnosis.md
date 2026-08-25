@@ -5,3 +5,5 @@ The known Vercel marketplace URL returned the prior HANKA page content without t
 After moving the Opera image inside the opaque terminal window layer, the local desktop preview visibly shows the artwork behind the terminal rows while preserving contrast. The 390px landing preview retains the artwork as a bottom-right underlay without hiding the terminal controls or hero call to action.
 
 The final desktop and 390px previews confirm that Opera is now a full-page landing underlay rather than a terminal-only image. A dark directional overlay maintains readable headers, hero copy, market cards, and footer links across the full scrollable landing page.
+
+The revised value proposition renders as a single concise line on desktop and wraps naturally into two short lines at 390px without pushing the primary action or transaction terminal below the initial viewport.

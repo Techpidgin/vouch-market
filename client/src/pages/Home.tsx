@@ -68,7 +68,7 @@ export default function Home() {
         <div className="home-copy">
           <p className="hanka-kicker"><Sparkles className="size-3" />HANKA · Social proof exchange</p>
           <h1 className="hero-shine-text mt-4 max-w-4xl font-display text-[clamp(3.4rem,6vw,5rem)] leading-[.78] tracking-[-.09em]">Trade what moves attention.</h1>
-          <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Looking for a little more signal? Start with an <span className="ethos-inline"><EthosMark />Ethos vouch</span> or <span className="ethos-inline"><EthosMark />Ethos slash</span>, then explore follows, reposts, comments, and X Spaces. You choose the target and the price—HANKA keeps the exchange simple.</p>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Trade Ethos reputation and social proof on HANKA Exchange.</p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link href="/market#market" className="hanka-primary-button">Buy or sell proof <ArrowUpRight className="size-4" /></Link>
           </div>

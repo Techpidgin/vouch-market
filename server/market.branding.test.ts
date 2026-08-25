@@ -30,7 +30,7 @@ describe("public market branding", () => {
     const documentSource = readFileSync(resolve(process.cwd(), "client/index.html"), "utf8");
     expect(documentSource).toContain("HANKA Vouch &amp; Slash Market");
     expect(homeSource).toContain("HANKA · Social proof exchange");
-    expect(homeSource).toContain("then explore follows, reposts, comments, and X Spaces");
+    expect(homeSource).toContain("Trade Ethos reputation and social proof on HANKA Exchange.");
     expect(homeSource).toContain("HANKA Social Proof Market · USDC on Solana");
     expect(marketSource).toContain("HANKA · Open market");
     expect(marketSource).toContain("HANKA Social Proof Market · USDC on Solana");
@@ -52,8 +52,8 @@ describe("public market branding", () => {
 
   it("uses a more human landing introduction, removes wallet-first framing, and retains editorial text shine", () => {
     const styles = readFileSync(resolve(process.cwd(), "client/src/index.css"), "utf8");
-    expect(homeSource).toContain("Looking for a little more signal?");
-    expect(homeSource).toContain("HANKA keeps the exchange simple.");
+    expect(homeSource).toContain("Trade Ethos reputation and social proof on HANKA Exchange.");
+    expect(homeSource).not.toContain("Looking for a little more signal?");
     expect(homeSource).not.toContain("Wallet-first");
     expect(homeSource).toContain("hero-shine-text");
     expect(styles).toContain("@keyframes hero-text-sheen");
