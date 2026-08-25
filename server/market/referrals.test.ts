@@ -21,6 +21,8 @@ describe("wallet referrals and HANKA Points", () => {
     expect(router).toContain("action: \"referral_join\"");
     expect(router).toContain("verifyWalletChallenge");
     expect(referrals).toContain("LEADERBOARD_MAX_ENTRIES");
+    expect(referrals).toContain('process.env.NODE_ENV !== "production"');
+    expect(referrals).toContain('throw new Error("Database is unavailable")');
     expect(referrals).toContain("directReferrals >= REFERRAL_DIRECT_LIMIT");
     expect(schema).toContain("referralProfiles");
     expect(schema).toContain("pointLedger");

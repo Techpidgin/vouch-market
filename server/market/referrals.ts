@@ -77,9 +77,14 @@ export async function getReferralDashboard(wallet: string) {
 }
 
 export async function getReferralLeaderboard(page = 1, pageSize = 20) {
-  const db = await dbOrThrow();
   const safePageSize = Math.min(Math.max(Math.floor(pageSize), 1), 20);
   const safePage = Math.max(Math.floor(page), 1);
+  const empty = { page: safePage, pageSize: safePageSize, entries: [], hasNextPage: false };
+  const db = await getDb();
+  if (!db) {
+    if (process.env.NODE_ENV !== "production") return empty;
+    throw new Error("Database is unavailable");
+  }
   const offset = (safePage - 1) * safePageSize;
   if (offset >= LEADERBOARD_MAX_ENTRIES) return { page: safePage, pageSize: safePageSize, entries: [], hasNextPage: false };
   const entries = await db.select({ wallet: referralProfiles.wallet, points: referralProfiles.pointsTotal, directReferrals: referralProfiles.directReferrals }).from(referralProfiles).orderBy(desc(referralProfiles.pointsTotal), desc(referralProfiles.createdAt)).limit(safePageSize).offset(offset);
