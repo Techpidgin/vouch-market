@@ -18,5 +18,6 @@ describe("payment network selector", () => {
     expect(marketSource).toContain("disabled aria-disabled=\"true\"");
     expect(marketSource.indexOf("USDC · Arc EVM")).toBeLessThan(marketSource.indexOf("USDC · Solana"));
     expect(marketSource).not.toContain("PaymentNetworkDock");
+    expect(marketSource).not.toContain("Solana USDC is the active settlement rail.");
   });
 });

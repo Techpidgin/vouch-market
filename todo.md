@@ -206,3 +206,4 @@
 - [x] Show the terminal blinking cursor only on the actively typing line.
 - [x] Make Opera underlays more visible across the landing and full marketplace hero with responsive mobile placement.
 - [x] Move Arc to the top of the Connect dropdown as a disabled Mainnet-soon option while keeping Solana functional.
+- [x] Remove the explanatory sentence from the Connect payment dropdown.
