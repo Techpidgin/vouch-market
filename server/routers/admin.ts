@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { rateLimitedPublicProcedure, router } from "../_core/trpc";
-import { createMarketProject, getOperations, recordPayoutDecision, setLegacyOfferPoints, verifySellerMetrics } from "../market/db";
+import { createMarketProject, getOperations, recordPayoutDecision, setLegacyOfferPoints, verifyEarlyRemovalAndBanSource, verifySellerMetrics } from "../market/db";
 import { verifyWalletChallenge } from "../market/walletProof";
 import { runMarketArchive } from "../market/archive";
 
@@ -64,6 +64,17 @@ export const adminRouter = router({
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "Seller metrics could not be verified" });
+      }
+    }),
+  verifyEarlyRemovalAndBanSource: rateLimitedPublicProcedure
+    .input(z.object({ commitmentPublicId: z.string().regex(/^(ASK|FILL)-/), reason: z.string().trim().min(8).max(1_000), wallet, proof }))
+    .mutation(async ({ input }) => {
+      try {
+        await verifyAdminWallet(input);
+        return await verifyEarlyRemovalAndBanSource({ commitmentPublicId: input.commitmentPublicId, reason: input.reason, adminOpenId: `wallet:${input.wallet}` });
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "The retention violation could not be verified" });
       }
     }),
   recordPayout: rateLimitedPublicProcedure

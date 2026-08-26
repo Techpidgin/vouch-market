@@ -21,6 +21,7 @@ import {
   markSellerDone,
   recordVerifiedOfferPurchase,
   recordVerifiedPayment,
+  reportEarlyRemoval,
 } from "../market/db";
 import { verifyUsdcPayment } from "../market/solana";
 import { USDC_MINT } from "../market/constants";
@@ -35,6 +36,7 @@ const proofScope = z.string().trim().max(240).optional();
 const spaceMinutes = z.number().int().positive().max(720).optional();
 const proof = z.object({ challengeId: z.string().min(8), signature: z.string().min(20) });
 const xHandle = z.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle");
+const retentionDays = z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(60), z.literal(90)]);
 
 function marketError(error: unknown): never {
   throw new TRPCError({ code: "BAD_REQUEST", message: error instanceof Error ? error.message : "The request could not be processed" });
@@ -58,7 +60,7 @@ export const marketRouter = router({
       } catch (error) { marketError(error); }
     }),
   walletChallenge: rateLimitedPublicProcedure
-    .input(z.object({ wallet, action: z.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "support_message", "admin_access", "referral_join", "referral_view"]) }))
+    .input(z.object({ wallet, action: z.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "support_message", "retention_report", "admin_access", "referral_join", "referral_view"]) }))
     .mutation(async ({ input }) => {
       try {
         return await createWalletChallenge(input.wallet, input.action);
@@ -72,6 +74,16 @@ export const marketRouter = router({
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "support_message" });
         return await createSupportMessage({ wallet: input.wallet, subject: input.subject || "Customer support", message: input.message });
+      } catch (error) {
+        marketError(error);
+      }
+    }),
+  reportEarlyRemoval: rateLimitedPublicProcedure
+    .input(z.object({ commitmentPublicId: z.string().regex(/^(ASK|FILL)-/), wallet, evidence: z.string().trim().min(8).max(2_000), proof }))
+    .mutation(async ({ input }) => {
+      try {
+        await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "retention_report" });
+        return await reportEarlyRemoval({ commitmentPublicId: input.commitmentPublicId, reporterWallet: input.wallet, evidence: input.evidence });
       } catch (error) {
         marketError(error);
       }
@@ -111,11 +123,11 @@ export const marketRouter = router({
       }
     }),
   createSellerOffer: rateLimitedPublicProcedure
-    .input(z.object({ wallet, profileHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: z.number().int().positive().max(1_000_000), pointsPerUnit: z.number().int().positive().max(1_000_000_000), followerCount: z.number().int().nonnegative().max(10_000_000_000).optional(), ethosScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoAura: z.number().int().nonnegative().max(10_000_000_000).optional(), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, profileHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: z.number().int().positive().max(1_000_000), pointsPerUnit: z.number().int().positive().max(1_000_000_000), followerCount: z.number().int().nonnegative().max(10_000_000_000).optional(), ethosScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoAura: z.number().int().nonnegative().max(10_000_000_000).optional(), retentionDays, pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-        const created = await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura, pricePerVouch: input.pricePerVouch });
+        const created = await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura, retentionDays: input.retentionDays, pricePerVouch: input.pricePerVouch });
         await grantReferralPoints(input.wallet, "seller_listing", `listing:${created.publicId}`);
         return created;
       } catch (error) {
@@ -123,11 +135,11 @@ export const marketRouter = router({
       }
     }),
   fillRequest: rateLimitedPublicProcedure
-    .input(z.object({ requestPublicId: z.string().startsWith("REQ-"), wallet, profileHandle: xHandle, quantity: z.number().int().positive(), pointsPerUnit: z.number().int().positive().max(1_000_000_000), followerCount: z.number().int().nonnegative().max(10_000_000_000).optional(), ethosScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoAura: z.number().int().nonnegative().max(10_000_000_000).optional(), proof }))
+    .input(z.object({ requestPublicId: z.string().startsWith("REQ-"), wallet, profileHandle: xHandle, quantity: z.number().int().positive(), pointsPerUnit: z.number().int().positive().max(1_000_000_000), followerCount: z.number().int().nonnegative().max(10_000_000_000).optional(), ethosScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoScore: z.number().int().nonnegative().max(10_000_000_000).optional(), kaitoAura: z.number().int().nonnegative().max(10_000_000_000).optional(), retentionDays, proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_fill" });
-        return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura });
+        return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura, retentionDays: input.retentionDays });
       } catch (error) {
         marketError(error);
       }

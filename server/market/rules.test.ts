@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateMarketAmounts, decimalToUsdcMicro, MARKET_INSTRUMENTS, toUsdcMicro } from "./constants";
-import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforcePointsPerUnit, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
+import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforcePointsPerUnit, enforceRetentionDays, enforceSingleUnitAllocation, enforceSourceNotRestricted, enforceVerifiableEarlyRemoval, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, retentionEndsAt, retentionWindowIsActive, transitionDirectPurchase } from "./rules";
 
 describe("Vouch Market core rules", () => {
   it("prevents fills that exceed the remaining request quantity", () => {
@@ -20,6 +20,27 @@ describe("Vouch Market core rules", () => {
     expect(() => enforcePointsPerUnit(12_000)).not.toThrow();
     expect(() => enforcePointsPerUnit(0)).toThrow("positive whole number");
     expect(() => enforcePointsPerUnit(12.5)).toThrow("positive whole number");
+  });
+
+  it("allows only clear seller-selected retention periods and starts the clock when the seller marks proof done", () => {
+    const completedAt = new Date("2026-08-26T10:00:00.000Z");
+    expect(() => enforceRetentionDays(30)).not.toThrow();
+    expect(() => enforceRetentionDays(21)).toThrow("Choose a retention period");
+    expect(retentionEndsAt(completedAt, 14).toISOString()).toBe("2026-09-09T10:00:00.000Z");
+  });
+
+  it("treats a proof as eligible for an early-removal violation only before its retention expiry", () => {
+    const completedAt = new Date("2026-08-26T10:00:00.000Z");
+    const expiresAt = retentionEndsAt(completedAt, 7);
+    expect(retentionWindowIsActive(expiresAt, new Date("2026-09-02T09:59:59.999Z"))).toBe(true);
+    expect(retentionWindowIsActive(expiresAt, new Date("2026-09-02T10:00:00.000Z"))).toBe(false);
+    expect(() => enforceVerifiableEarlyRemoval({ sellerMarkedDoneAt: completedAt, retentionEndsAt: expiresAt, now: new Date("2026-09-02T09:59:59.999Z") })).not.toThrow();
+    expect(() => enforceVerifiableEarlyRemoval({ sellerMarkedDoneAt: completedAt, retentionEndsAt: expiresAt, now: new Date("2026-09-02T10:00:00.000Z") })).toThrow("already expired");
+  });
+
+  it("blocks a verified restricted source from new marketplace activity", () => {
+    expect(() => enforceSourceNotRestricted(false)).not.toThrow();
+    expect(() => enforceSourceNotRestricted(true)).toThrow("restricted from new HANKA listings");
   });
 
   it("converts USDC exactly to six-decimal micro-units", () => {

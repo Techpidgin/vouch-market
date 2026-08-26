@@ -207,3 +207,6 @@
 - [x] Make Opera underlays more visible across the landing and full marketplace hero with responsive mobile placement.
 - [x] Move Arc to the top of the Connect dropdown as a disabled Mainnet-soon option while keeping Solana functional.
 - [x] Remove the explanatory sentence from the Connect payment dropdown.
+- [x] Add seller-selected proof-retention periods to offers and completed proof commitments.
+- [x] Display the retention commitment and its expiry across marketplace, buyer activity, and operations views.
+- [x] Allow operators to record verified early removal and ban the violating source from new HANKA listings.

@@ -50,6 +50,13 @@
       "when": 1787670142268,
       "tag": "0006_narrow_vivisector",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787735444150,
+      "tag": "0007_retention_source_bans",
+      "breakpoints": true
     }
   ]
 }

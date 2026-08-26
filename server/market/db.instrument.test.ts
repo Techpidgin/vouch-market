@@ -123,6 +123,7 @@ describe("slash market service records", () => {
       instrument: "slash",
       quantity: 24,
       pointsPerUnit: 12000,
+      retentionDays: 30,
       pricePerVouch: 1.2,
     });
 
@@ -156,9 +157,9 @@ describe("slash market service records", () => {
       projectSlug: "commonsmade",
       targetHandle: "buyer_target",
       pricePerVouch: "0.750000",
-    }], []];
+    }], [], []];
 
-    await fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash_seller", quantity: 1, pointsPerUnit: 12000 });
+    await fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash_seller", quantity: 1, pointsPerUnit: 12000, retentionDays: 30 });
     const fill = state.inserts.find(entry => entry.table === sellerCommitments && entry.values.profileHandle === "slash_seller")?.values;
     expect(fill).toMatchObject({ instrument: "slash", quantity: 1, pointsPerUnit: 12000, sourceHandle: "slash_seller", targetHandle: "buyer_target", allocationKey: "commonsmade:slash:slash_seller:buyer_target", projectSlug: "commonsmade" });
   });
@@ -208,9 +209,9 @@ describe("slash market service records", () => {
       projectSlug: "commonsmade",
       targetHandle: "buyer_target",
       pricePerVouch: "0.750000",
-    }], [{ publicId: "FILL-OLD", allocationKey: "commonsmade:slash:slash_seller:buyer_target" }]];
+    }], [], [{ publicId: "FILL-OLD", allocationKey: "commonsmade:slash:slash_seller:buyer_target" }]];
 
-    await expect(fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash_seller", quantity: 1, pointsPerUnit: 12000 })).rejects.toThrow("already allocated");
+    await expect(fillRequest({ requestPublicId: "REQ-SLASH", sellerWallet: "seller-wallet", profileHandle: "slash_seller", quantity: 1, pointsPerUnit: 12000, retentionDays: 30 })).rejects.toThrow("already allocated");
   });
 
   it("allows one buyer wallet to reserve the same source offer for different target handles", async () => {
@@ -227,7 +228,7 @@ describe("slash market service records", () => {
       pointsPerUnit: 12000,
       pricePerVouch: "1.200000",
     };
-    state.selectResponses = [[], [offer], [], [], [offer], []];
+    state.selectResponses = [[], [offer], [], [], [], [offer], [], []];
 
     await initiateOfferPurchase({ offerPublicId: "ASK-SLASH", buyerWallet: "same-wallet", targetHandle: "target_one" });
     await initiateOfferPurchase({ offerPublicId: "ASK-SLASH", buyerWallet: "same-wallet", targetHandle: "target_two" });

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { lt } from "drizzle-orm";
 import {
@@ -8,11 +8,12 @@ import {
   paymentSignatureClaims,
   payoutRecords,
   sellerCommitments,
+  sourceBans,
   supportMessages,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { ARCHIVE_AFTER_MS, calculateMarketAmounts, DEFAULT_PROJECT, MARKET_INSTRUMENTS, type MarketInstrument } from "./constants";
-import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforcePointsPerUnit, enforceSingleUnitAllocation, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, transitionDirectPurchase } from "./rules";
+import { allocationKey, assertUnusedPaymentSignature, enforceAvailableFill, enforceDelistableOffer, enforcePointsPerUnit, enforceRetentionDays, enforceSingleUnitAllocation, enforceSourceNotRestricted, enforceVerifiableEarlyRemoval, enforceWalletOwnership, nextDirectPurchaseStatus, nextRequestStatusAfterCompletions, nextRequestStatusAfterPayouts, normalizeXHandle, retentionEndsAt, transitionDirectPurchase } from "./rules";
 import { removeArchiveMetadata } from "./visibility";
 import { createDirectPurchaseIntent, createExactMarketIntent, createFillIntent } from "./instrumentLifecycle";
 
@@ -22,6 +23,15 @@ async function dbOrThrow() {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
   return db;
+}
+
+async function assertSourceCanParticipate(sourceHandle: string, sellerWallet: string) {
+  const db = await dbOrThrow();
+  const restriction = (await db.select({ id: sourceBans.id }).from(sourceBans).where(or(
+    eq(sourceBans.sourceHandle, sourceHandle),
+    eq(sourceBans.sellerWallet, sellerWallet),
+  )).limit(1))[0];
+  enforceSourceNotRestricted(Boolean(restriction));
 }
 
 export async function logActivity(input: {
@@ -141,6 +151,7 @@ export async function getPublicMarket() {
         kaitoScore: sellerCommitments.kaitoScore,
         kaitoAura: sellerCommitments.kaitoAura,
         metricsVerifiedAt: sellerCommitments.metricsVerifiedAt,
+        retentionDays: sellerCommitments.retentionDays,
         pricePerVouch: sellerCommitments.pricePerVouch,
         status: sellerCommitments.status,
         archivedAt: sellerCommitments.archivedAt,
@@ -256,11 +267,14 @@ export async function createSellerOffer(input: {
   kaitoScore?: number;
   kaitoAura?: number;
   pricePerVouch: number;
+  retentionDays: number;
 }) {
   const db = await dbOrThrow();
   const intent = createExactMarketIntent(input.instrument, input.quantity);
   enforcePointsPerUnit(input.pointsPerUnit);
+  enforceRetentionDays(input.retentionDays);
   const sourceHandle = normalizeXHandle(input.profileHandle);
+  await assertSourceCanParticipate(sourceHandle, input.sellerWallet);
   const publicId = `ASK-${nanoid(8).toUpperCase()}`;
   await db.insert(sellerCommitments).values({
     ...input,
@@ -269,6 +283,7 @@ export async function createSellerOffer(input: {
     instrument: intent.instrument,
     quantity: intent.quantity,
     pointsPerUnit: input.pointsPerUnit,
+    retentionDays: input.retentionDays,
     publicId,
     pricePerVouch: input.pricePerVouch.toFixed(6),
     archiveEligibleAt: new Date(Date.now() + ARCHIVE_AFTER_MS),
@@ -277,15 +292,17 @@ export async function createSellerOffer(input: {
   return { publicId, unitsPosted: intent.quantity };
 }
 
-export async function fillRequest(input: { requestPublicId: string; sellerWallet: string; profileHandle: string; quantity: number; pointsPerUnit: number; followerCount?: number; ethosScore?: number; kaitoScore?: number; kaitoAura?: number }) {
+export async function fillRequest(input: { requestPublicId: string; sellerWallet: string; profileHandle: string; quantity: number; pointsPerUnit: number; followerCount?: number; ethosScore?: number; kaitoScore?: number; kaitoAura?: number; retentionDays: number }) {
   const db = await dbOrThrow();
   const request = (await db.select().from(marketRequests).where(eq(marketRequests.publicId, input.requestPublicId)).limit(1))[0];
   if (!request || request.status !== "open") throw new Error("This request is not open for fills");
   enforceSingleUnitAllocation(input.quantity);
   enforcePointsPerUnit(input.pointsPerUnit);
+  enforceRetentionDays(input.retentionDays);
   enforceAvailableFill(request.requestedQuantity - request.filledQuantity, input.quantity);
   const fillIntent = createFillIntent({ instrument: request.instrument, quantity: request.requestedQuantity - request.filledQuantity }, input.quantity);
   const sourceHandle = normalizeXHandle(input.profileHandle);
+  await assertSourceCanParticipate(sourceHandle, input.sellerWallet);
   const targetHandle = normalizeXHandle(request.targetHandle);
   const pairKey = allocationKey({ sourceHandle, targetHandle, projectSlug: request.projectSlug, instrument: fillIntent.instrument });
   const existingAllocation = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.allocationKey, pairKey)).limit(1))[0];
@@ -324,6 +341,7 @@ export async function fillRequest(input: { requestPublicId: string; sellerWallet
       spaceMinutes: request.spaceMinutes,
       quantity: fillIntent.quantity,
       pointsPerUnit: input.pointsPerUnit,
+      retentionDays: input.retentionDays,
       followerCount: input.followerCount,
       ethosScore: input.ethosScore,
       kaitoScore: input.kaitoScore,
@@ -347,6 +365,7 @@ export async function initiateOfferPurchase(input: { offerPublicId: string; buye
   if (!offer || offer.requestId || offer.parentOfferId || offer.status !== "open" || offer.quantity < 1) throw new Error("This seller offer is no longer available");
   const purchaseIntent = createDirectPurchaseIntent({ instrument: offer.instrument, quantity: 1 });
   const sourceHandle = normalizeXHandle(offer.sourceHandle ?? offer.profileHandle);
+  await assertSourceCanParticipate(sourceHandle, offer.sellerWallet);
   const targetHandle = normalizeXHandle(input.targetHandle);
   const pairKey = allocationKey({ sourceHandle, targetHandle, projectSlug: offer.projectSlug, instrument: purchaseIntent.instrument });
   const existingAllocation = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.allocationKey, pairKey)).limit(1))[0];
@@ -383,6 +402,8 @@ export async function initiateOfferPurchase(input: { offerPublicId: string; buye
       followerCount: offer.followerCount,
       ethosScore: offer.ethosScore,
       kaitoScore: offer.kaitoScore,
+      kaitoAura: offer.kaitoAura,
+      retentionDays: offer.retentionDays,
       pricePerVouch: offer.pricePerVouch,
       grossUsdc: amounts.grossUsdc,
       platformFeeUsdc: amounts.platformFeeUsdc,
@@ -494,7 +515,13 @@ export async function markSellerDone(publicId: string, wallet: string) {
   const commitment = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, publicId)).limit(1))[0];
   if (!commitment || commitment.status !== "matched") throw new Error("This fill cannot be marked complete yet");
   enforceWalletOwnership(commitment.sellerWallet, wallet);
-  await db.update(sellerCommitments).set({ sellerMarkedDoneAt: new Date(), status: "done" }).where(eq(sellerCommitments.id, commitment.id));
+  const retentionStartsAt = new Date();
+  await db.update(sellerCommitments).set({
+    sellerMarkedDoneAt: retentionStartsAt,
+    retentionStartsAt,
+    retentionEndsAt: retentionEndsAt(retentionStartsAt, commitment.retentionDays),
+    status: "done",
+  }).where(eq(sellerCommitments.id, commitment.id));
   await logActivity({ entityType: "seller_commitment", entityPublicId: publicId, eventType: "seller_marked_done", actorWallet: wallet });
   if (commitment.requestId) await requestReadyForReview(commitment.requestId);
   else if (nextDirectPurchaseStatus(Boolean(commitment.buyerMarkedDoneAt), true) === "under_review") {
@@ -536,14 +563,74 @@ export async function createSupportMessage(input: { wallet: string; subject: str
   return { publicId, createdAt };
 }
 
+export async function reportEarlyRemoval(input: { commitmentPublicId: string; reporterWallet: string; evidence: string }) {
+  const db = await dbOrThrow();
+  const commitment = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, input.commitmentPublicId)).limit(1))[0];
+  if (!commitment) throw new Error("This proof commitment was not found");
+  const linkedRequest = commitment.requestId
+    ? (await db.select({ buyerWallet: marketRequests.buyerWallet }).from(marketRequests).where(eq(marketRequests.id, commitment.requestId)).limit(1))[0]
+    : undefined;
+  if (commitment.buyerWallet !== input.reporterWallet && linkedRequest?.buyerWallet !== input.reporterWallet) {
+    throw new Error("Only the buyer for this proof can report an early removal");
+  }
+  if (commitment.retentionViolationReportedAt) throw new Error("This early-removal report is already awaiting operator review");
+  enforceVerifiableEarlyRemoval({ sellerMarkedDoneAt: commitment.sellerMarkedDoneAt, retentionEndsAt: commitment.retentionEndsAt });
+  const reportedAt = new Date();
+  await db.update(sellerCommitments).set({
+    retentionViolationReportedAt: reportedAt,
+    retentionViolationEvidence: input.evidence,
+  }).where(eq(sellerCommitments.id, commitment.id));
+  await logActivity({ entityType: "seller_commitment", entityPublicId: commitment.publicId, eventType: "retention_removal_reported", actorWallet: input.reporterWallet, detail: "Private evidence submitted for operator review" });
+  return { publicId: commitment.publicId, reportedAt };
+}
+
+export async function verifyEarlyRemovalAndBanSource(input: { commitmentPublicId: string; adminOpenId: string; reason: string }) {
+  const db = await dbOrThrow();
+  const commitment = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, input.commitmentPublicId)).limit(1))[0];
+  if (!commitment) throw new Error("This proof commitment was not found");
+  if (commitment.retentionViolationVerifiedAt) throw new Error("This retention violation has already been verified");
+  enforceVerifiableEarlyRemoval({ sellerMarkedDoneAt: commitment.sellerMarkedDoneAt, retentionEndsAt: commitment.retentionEndsAt });
+  const sourceHandle = normalizeXHandle(commitment.sourceHandle ?? commitment.profileHandle);
+  const bannedAt = new Date();
+  try {
+    await db.transaction(async tx => {
+      await tx.update(sellerCommitments).set({
+        retentionViolationReportedAt: commitment.retentionViolationReportedAt ?? bannedAt,
+        retentionViolationVerifiedAt: bannedAt,
+        retentionViolationNote: input.reason,
+      }).where(eq(sellerCommitments.id, commitment.id));
+      await tx.insert(sourceBans).values({
+        sourceHandle,
+        sellerWallet: commitment.sellerWallet,
+        commitmentPublicId: commitment.publicId,
+        reason: input.reason,
+        bannedByOpenId: input.adminOpenId,
+        bannedAt,
+      });
+      await tx.update(sellerCommitments).set({ status: "cancelled" }).where(and(
+        eq(sellerCommitments.sourceHandle, sourceHandle),
+        isNull(sellerCommitments.requestId),
+        isNull(sellerCommitments.parentOfferId),
+        eq(sellerCommitments.status, "open"),
+      ));
+    });
+  } catch (error) {
+    if ((error as { code?: string }).code === "23505") throw new Error("This source is already banned from HANKA listings");
+    throw error;
+  }
+  await logActivity({ entityType: "seller_commitment", entityPublicId: commitment.publicId, eventType: "retention_violation_verified_source_banned", actorAdminOpenId: input.adminOpenId, detail: `@${sourceHandle}: ${input.reason}` });
+  return { sourceHandle, bannedAt };
+}
+
 export async function getOperations() {
   const db = await dbOrThrow();
-  const [requests, commitments, payouts, logs, supportRows] = await Promise.all([
+  const [requests, commitments, payouts, logs, supportRows, bans] = await Promise.all([
     db.select().from(marketRequests).orderBy(desc(marketRequests.createdAt)),
     db.select().from(sellerCommitments).orderBy(desc(sellerCommitments.createdAt)),
     db.select().from(payoutRecords).orderBy(desc(payoutRecords.createdAt)),
     db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(80),
     db.select().from(supportMessages).orderBy(desc(supportMessages.createdAt)).limit(100),
+    db.select().from(sourceBans).orderBy(desc(sourceBans.bannedAt)),
   ]);
   const sourceOffers = commitments.filter(item => !item.requestId && !item.parentOfferId && item.status === "open");
   const tradeableSourceOffers = sourceOffers.filter(item => Boolean(item.pointsPerUnit));
@@ -565,6 +652,7 @@ export async function getOperations() {
     payouts,
     logs,
     supportMessages: supportRows,
+    sourceBans: bans,
     transferQueue,
     metrics: {
       openSourceOffers: sourceOffers.length,
@@ -572,6 +660,8 @@ export async function getOperations() {
       activeAllocations: activeAllocations.length,
       completedAllocations: completedAllocations.length,
       listingsMissingPoints: sourceOffers.filter(item => !item.pointsPerUnit).length,
+      activeRetentions: commitments.filter(item => item.retentionEndsAt && item.retentionEndsAt.getTime() > Date.now()).length,
+      sourceBans: bans.length,
     },
   };
 }
@@ -606,6 +696,11 @@ export async function getParticipantActivity(wallet: string) {
         pricePerVouch: sellerCommitments.pricePerVouch,
         status: sellerCommitments.status,
         sellerMarkedDoneAt: sellerCommitments.sellerMarkedDoneAt,
+        retentionDays: sellerCommitments.retentionDays,
+        retentionStartsAt: sellerCommitments.retentionStartsAt,
+        retentionEndsAt: sellerCommitments.retentionEndsAt,
+        retentionViolationReportedAt: sellerCommitments.retentionViolationReportedAt,
+        retentionViolationVerifiedAt: sellerCommitments.retentionViolationVerifiedAt,
       })
       .from(sellerCommitments)
       .where(eq(sellerCommitments.sellerWallet, wallet))
@@ -623,6 +718,12 @@ export async function getParticipantActivity(wallet: string) {
         grossUsdc: sellerCommitments.grossUsdc,
         status: sellerCommitments.status,
         buyerMarkedDoneAt: sellerCommitments.buyerMarkedDoneAt,
+        sellerMarkedDoneAt: sellerCommitments.sellerMarkedDoneAt,
+        retentionDays: sellerCommitments.retentionDays,
+        retentionStartsAt: sellerCommitments.retentionStartsAt,
+        retentionEndsAt: sellerCommitments.retentionEndsAt,
+        retentionViolationReportedAt: sellerCommitments.retentionViolationReportedAt,
+        retentionViolationVerifiedAt: sellerCommitments.retentionViolationVerifiedAt,
       })
       .from(sellerCommitments)
       .where(eq(sellerCommitments.buyerWallet, wallet))

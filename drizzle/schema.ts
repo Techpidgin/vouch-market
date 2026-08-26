@@ -119,6 +119,13 @@ export const sellerCommitments = pgTable(
     kaitoScore: integer("kaitoScore"),
     kaitoAura: integer("kaitoAura"),
     metricsVerifiedAt: utcTimestamp("metricsVerifiedAt"),
+    retentionDays: integer("retentionDays").notNull().default(30),
+    retentionStartsAt: utcTimestamp("retentionStartsAt"),
+    retentionEndsAt: utcTimestamp("retentionEndsAt"),
+    retentionViolationReportedAt: utcTimestamp("retentionViolationReportedAt"),
+    retentionViolationEvidence: text("retentionViolationEvidence"),
+    retentionViolationVerifiedAt: utcTimestamp("retentionViolationVerifiedAt"),
+    retentionViolationNote: text("retentionViolationNote"),
     pricePerVouch: numeric("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
     grossUsdc: numeric("grossUsdc", { precision: 16, scale: 6 }),
     platformFeeUsdc: numeric("platformFeeUsdc", { precision: 16, scale: 6 }),
@@ -140,6 +147,24 @@ export const sellerCommitments = pgTable(
     index("sellerCommitments_requestId_status_idx").on(table.requestId, table.status),
     index("sellerCommitments_parentOfferId_status_idx").on(table.parentOfferId, table.status),
     index("sellerCommitments_status_createdAt_idx").on(table.status, table.createdAt),
+    index("sellerCommitments_retentionEndsAt_idx").on(table.retentionEndsAt),
+  ],
+);
+
+export const sourceBans = pgTable(
+  "sourceBans",
+  {
+    id: serial("id").primaryKey(),
+    sourceHandle: varchar("sourceHandle", { length: 80 }).notNull(),
+    sellerWallet: varchar("sellerWallet", { length: 64 }).notNull(),
+    commitmentPublicId: varchar("commitmentPublicId", { length: 24 }).notNull(),
+    reason: text("reason").notNull(),
+    bannedByOpenId: varchar("bannedByOpenId", { length: 96 }).notNull(),
+    bannedAt: utcTimestamp("bannedAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("sourceBans_sourceHandle_unique").on(table.sourceHandle),
+    index("sourceBans_sellerWallet_idx").on(table.sellerWallet),
   ],
 );
 

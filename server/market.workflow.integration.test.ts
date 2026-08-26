@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   recordPayoutDecision: vi.fn(),
   recordVerifiedOfferPurchase: vi.fn(),
   recordVerifiedPayment: vi.fn(),
+  reportEarlyRemoval: vi.fn(),
+  verifyEarlyRemovalAndBanSource: vi.fn(),
   verifyUsdcPayment: vi.fn(),
   verifyWalletChallenge: vi.fn(),
   awardReferralPoints: vi.fn(),
@@ -40,7 +42,9 @@ vi.mock("./market/db", () => ({
   recordPayoutDecision: mocks.recordPayoutDecision,
   recordVerifiedOfferPurchase: mocks.recordVerifiedOfferPurchase,
   recordVerifiedPayment: mocks.recordVerifiedPayment,
+  reportEarlyRemoval: mocks.reportEarlyRemoval,
   setLegacyOfferPoints: vi.fn(),
+  verifyEarlyRemovalAndBanSource: mocks.verifyEarlyRemovalAndBanSource,
 }));
 
 vi.mock("./market/solana", () => ({ verifyUsdcPayment: mocks.verifyUsdcPayment }));
@@ -82,19 +86,21 @@ describe("wallet-first marketplace workflow integration", () => {
     mocks.activatePaidRequest.mockResolvedValue({ totalUsdc: "1.040000", createdAt: new Date("2026-08-24T07:00:00.000Z") });
     mocks.fillRequest.mockResolvedValue({ publicId: "FILL-LIVE" });
     mocks.recordPayoutDecision.mockResolvedValue(undefined);
+    mocks.reportEarlyRemoval.mockResolvedValue({ publicId: "ASK-ALLOC", reportedAt: new Date("2026-08-25T07:00:00.000Z") });
+    mocks.verifyEarlyRemovalAndBanSource.mockResolvedValue({ sourceHandle: "source_one", bannedAt: new Date("2026-08-25T07:05:00.000Z") });
   });
 
   it("traces a source listing through one target allocation, verified payment, two-party completion, and administrator payout review", async () => {
     const caller = appRouter.createCaller(anonymousContext());
 
-    await caller.market.createSellerOffer({ wallet: sellerWallet, profileHandle: "source_one", projectSlug: "commonsmade", instrument: "vouch", quantity: 2, pointsPerUnit: 12000, pricePerVouch: 0.52, proof });
+    await caller.market.createSellerOffer({ wallet: sellerWallet, profileHandle: "source_one", projectSlug: "commonsmade", instrument: "vouch", quantity: 2, pointsPerUnit: 12000, retentionDays: 30, pricePerVouch: 0.52, proof });
     await caller.market.initiateOfferPurchase({ publicId: "ASK-LIVE", wallet: buyerWallet, targetHandle: "target_one", proof });
     await caller.market.verifyOfferPayment({ publicId: "ASK-ALLOC", wallet: buyerWallet, signature: transactionSignature });
     await caller.market.markSellerDone({ publicId: "ASK-ALLOC", wallet: sellerWallet, proof });
     await caller.market.markOfferBuyerDone({ publicId: "ASK-ALLOC", wallet: buyerWallet, proof });
     await caller.admin.recordPayout({ commitmentPublicId: "ASK-ALLOC", status: "sent", wallet: sellerWallet, proof });
 
-    expect(mocks.createSellerOffer).toHaveBeenCalledWith(expect.objectContaining({ profileHandle: "source_one", pointsPerUnit: 12000, quantity: 2 }));
+    expect(mocks.createSellerOffer).toHaveBeenCalledWith(expect.objectContaining({ profileHandle: "source_one", pointsPerUnit: 12000, quantity: 2, retentionDays: 30 }));
     expect(mocks.initiateOfferPurchase).toHaveBeenCalledWith({ offerPublicId: "ASK-LIVE", buyerWallet, targetHandle: "target_one" });
     expect(mocks.verifyUsdcPayment).toHaveBeenCalledWith(expect.objectContaining({ signature: transactionSignature, buyerWallet, expectedUsdc: "0.520000" }));
     expect(mocks.recordVerifiedOfferPurchase).toHaveBeenCalledWith("ASK-ALLOC", transactionSignature, buyerWallet);
@@ -108,14 +114,14 @@ describe("wallet-first marketplace workflow integration", () => {
 
     await caller.market.createRequest({ wallet: buyerWallet, targetHandle: "target_two", projectSlug: "commonsmade", instrument: "slash", quantity: 1, pricePerVouch: 1.04, proof });
     await caller.market.verifyPayment({ publicId: "REQ-LIVE", wallet: buyerWallet, signature: transactionSignature });
-    await caller.market.fillRequest({ requestPublicId: "REQ-LIVE", wallet: sellerWallet, profileHandle: "source_two", quantity: 1, pointsPerUnit: 8500, proof });
+    await caller.market.fillRequest({ requestPublicId: "REQ-LIVE", wallet: sellerWallet, profileHandle: "source_two", quantity: 1, pointsPerUnit: 8500, retentionDays: 14, proof });
     await caller.market.markBuyerDone({ publicId: "REQ-LIVE", wallet: buyerWallet, proof });
     await caller.market.markSellerDone({ publicId: "FILL-LIVE", wallet: sellerWallet, proof });
     await caller.admin.recordPayout({ commitmentPublicId: "FILL-LIVE", status: "sent", wallet: sellerWallet, proof });
 
     expect(mocks.createRequest).toHaveBeenCalledWith(expect.objectContaining({ buyerWallet, targetHandle: "target_two", instrument: "slash", requestedQuantity: 1 }));
     expect(mocks.verifyUsdcPayment).toHaveBeenCalledWith(expect.objectContaining({ signature: transactionSignature, buyerWallet, expectedUsdc: "1.040000" }));
-    expect(mocks.fillRequest).toHaveBeenCalledWith({ requestPublicId: "REQ-LIVE", sellerWallet, profileHandle: "source_two", quantity: 1, pointsPerUnit: 8500 });
+    expect(mocks.fillRequest).toHaveBeenCalledWith({ requestPublicId: "REQ-LIVE", sellerWallet, profileHandle: "source_two", quantity: 1, pointsPerUnit: 8500, retentionDays: 14 });
     expect(mocks.markBuyerDone).toHaveBeenCalledWith("REQ-LIVE", buyerWallet);
     expect(mocks.markSellerDone).toHaveBeenCalledWith("FILL-LIVE", sellerWallet);
     expect(mocks.recordPayoutDecision).toHaveBeenCalledWith(expect.objectContaining({ commitmentPublicId: "FILL-LIVE", status: "sent", adminOpenId: `wallet:${sellerWallet}` }));

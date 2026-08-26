@@ -27,6 +27,43 @@ export function enforcePointsPerUnit(pointsPerUnit: number) {
   }
 }
 
+export const RETENTION_DAYS_OPTIONS = [7, 14, 30, 60, 90] as const;
+export type RetentionDays = (typeof RETENTION_DAYS_OPTIONS)[number];
+
+export function enforceRetentionDays(retentionDays: number): asserts retentionDays is RetentionDays {
+  if (!RETENTION_DAYS_OPTIONS.includes(retentionDays as RetentionDays)) {
+    throw new Error(`Choose a retention period of ${RETENTION_DAYS_OPTIONS.join(", ")} days`);
+  }
+}
+
+export function retentionEndsAt(retentionStartsAt: Date, retentionDays: number) {
+  enforceRetentionDays(retentionDays);
+  return new Date(retentionStartsAt.getTime() + retentionDays * 24 * 60 * 60 * 1000);
+}
+
+export function retentionWindowIsActive(retentionEndsAt: Date | null | undefined, now = new Date()) {
+  return Boolean(retentionEndsAt && now.getTime() < retentionEndsAt.getTime());
+}
+
+export function enforceVerifiableEarlyRemoval(input: {
+  sellerMarkedDoneAt: Date | null | undefined;
+  retentionEndsAt: Date | null | undefined;
+  now?: Date;
+}) {
+  if (!input.sellerMarkedDoneAt || !input.retentionEndsAt) {
+    throw new Error("This proof has not entered its retention period");
+  }
+  if (!retentionWindowIsActive(input.retentionEndsAt, input.now)) {
+    throw new Error("This proof's retention period has already expired");
+  }
+}
+
+export function enforceSourceNotRestricted(restricted: boolean) {
+  if (restricted) {
+    throw new Error("This source is restricted from new HANKA listings after a verified retention violation");
+  }
+}
+
 export function allocationKey(input: { sourceHandle: string; targetHandle: string; projectSlug: string; instrument: MarketInstrument }) {
   const sourceHandle = normalizeXHandle(input.sourceHandle);
   const targetHandle = normalizeXHandle(input.targetHandle);

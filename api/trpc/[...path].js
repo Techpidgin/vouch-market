@@ -57140,6 +57140,13 @@ var sellerCommitments = pgTable(
     kaitoScore: integer2("kaitoScore"),
     kaitoAura: integer2("kaitoAura"),
     metricsVerifiedAt: utcTimestamp("metricsVerifiedAt"),
+    retentionDays: integer2("retentionDays").notNull().default(30),
+    retentionStartsAt: utcTimestamp("retentionStartsAt"),
+    retentionEndsAt: utcTimestamp("retentionEndsAt"),
+    retentionViolationReportedAt: utcTimestamp("retentionViolationReportedAt"),
+    retentionViolationEvidence: text("retentionViolationEvidence"),
+    retentionViolationVerifiedAt: utcTimestamp("retentionViolationVerifiedAt"),
+    retentionViolationNote: text("retentionViolationNote"),
     pricePerVouch: numeric("pricePerVouch", { precision: 14, scale: 6 }).notNull(),
     grossUsdc: numeric("grossUsdc", { precision: 16, scale: 6 }),
     platformFeeUsdc: numeric("platformFeeUsdc", { precision: 16, scale: 6 }),
@@ -57160,7 +57167,24 @@ var sellerCommitments = pgTable(
     uniqueIndex("sellerCommitments_allocationKey_unique").on(table.allocationKey),
     index("sellerCommitments_requestId_status_idx").on(table.requestId, table.status),
     index("sellerCommitments_parentOfferId_status_idx").on(table.parentOfferId, table.status),
-    index("sellerCommitments_status_createdAt_idx").on(table.status, table.createdAt)
+    index("sellerCommitments_status_createdAt_idx").on(table.status, table.createdAt),
+    index("sellerCommitments_retentionEndsAt_idx").on(table.retentionEndsAt)
+  ]
+);
+var sourceBans = pgTable(
+  "sourceBans",
+  {
+    id: serial("id").primaryKey(),
+    sourceHandle: varchar("sourceHandle", { length: 80 }).notNull(),
+    sellerWallet: varchar("sellerWallet", { length: 64 }).notNull(),
+    commitmentPublicId: varchar("commitmentPublicId", { length: 24 }).notNull(),
+    reason: text("reason").notNull(),
+    bannedByOpenId: varchar("bannedByOpenId", { length: 96 }).notNull(),
+    bannedAt: utcTimestamp("bannedAt").defaultNow().notNull()
+  },
+  (table) => [
+    uniqueIndex("sourceBans_sourceHandle_unique").on(table.sourceHandle),
+    index("sourceBans_sellerWallet_idx").on(table.sellerWallet)
   ]
 );
 var walletChallenges = pgTable(
@@ -62963,6 +62987,32 @@ function enforcePointsPerUnit(pointsPerUnit) {
     throw new Error("Points per unit must be a positive whole number");
   }
 }
+var RETENTION_DAYS_OPTIONS = [7, 14, 30, 60, 90];
+function enforceRetentionDays(retentionDays2) {
+  if (!RETENTION_DAYS_OPTIONS.includes(retentionDays2)) {
+    throw new Error(`Choose a retention period of ${RETENTION_DAYS_OPTIONS.join(", ")} days`);
+  }
+}
+function retentionEndsAt(retentionStartsAt, retentionDays2) {
+  enforceRetentionDays(retentionDays2);
+  return new Date(retentionStartsAt.getTime() + retentionDays2 * 24 * 60 * 60 * 1e3);
+}
+function retentionWindowIsActive(retentionEndsAt2, now = /* @__PURE__ */ new Date()) {
+  return Boolean(retentionEndsAt2 && now.getTime() < retentionEndsAt2.getTime());
+}
+function enforceVerifiableEarlyRemoval(input) {
+  if (!input.sellerMarkedDoneAt || !input.retentionEndsAt) {
+    throw new Error("This proof has not entered its retention period");
+  }
+  if (!retentionWindowIsActive(input.retentionEndsAt, input.now)) {
+    throw new Error("This proof's retention period has already expired");
+  }
+}
+function enforceSourceNotRestricted(restricted) {
+  if (restricted) {
+    throw new Error("This source is restricted from new HANKA listings after a verified retention violation");
+  }
+}
 function allocationKey(input) {
   const sourceHandle = normalizeXHandle(input.sourceHandle);
   const targetHandle = normalizeXHandle(input.targetHandle);
@@ -63048,6 +63098,14 @@ async function dbOrThrow() {
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
   return db;
+}
+async function assertSourceCanParticipate(sourceHandle, sellerWallet) {
+  const db = await dbOrThrow();
+  const restriction = (await db.select({ id: sourceBans.id }).from(sourceBans).where(or(
+    eq(sourceBans.sourceHandle, sourceHandle),
+    eq(sourceBans.sellerWallet, sellerWallet)
+  )).limit(1))[0];
+  enforceSourceNotRestricted(Boolean(restriction));
 }
 async function logActivity(input) {
   const db = await dbOrThrow();
@@ -63150,6 +63208,7 @@ async function getPublicMarket() {
       kaitoScore: sellerCommitments.kaitoScore,
       kaitoAura: sellerCommitments.kaitoAura,
       metricsVerifiedAt: sellerCommitments.metricsVerifiedAt,
+      retentionDays: sellerCommitments.retentionDays,
       pricePerVouch: sellerCommitments.pricePerVouch,
       status: sellerCommitments.status,
       archivedAt: sellerCommitments.archivedAt,
@@ -63228,7 +63287,9 @@ async function createSellerOffer(input) {
   const db = await dbOrThrow();
   const intent = createExactMarketIntent(input.instrument, input.quantity);
   enforcePointsPerUnit(input.pointsPerUnit);
+  enforceRetentionDays(input.retentionDays);
   const sourceHandle = normalizeXHandle(input.profileHandle);
+  await assertSourceCanParticipate(sourceHandle, input.sellerWallet);
   const publicId = `ASK-${nanoid3(8).toUpperCase()}`;
   await db.insert(sellerCommitments).values({
     ...input,
@@ -63237,6 +63298,7 @@ async function createSellerOffer(input) {
     instrument: intent.instrument,
     quantity: intent.quantity,
     pointsPerUnit: input.pointsPerUnit,
+    retentionDays: input.retentionDays,
     publicId,
     pricePerVouch: input.pricePerVouch.toFixed(6),
     archiveEligibleAt: new Date(Date.now() + ARCHIVE_AFTER_MS)
@@ -63250,9 +63312,11 @@ async function fillRequest(input) {
   if (!request || request.status !== "open") throw new Error("This request is not open for fills");
   enforceSingleUnitAllocation(input.quantity);
   enforcePointsPerUnit(input.pointsPerUnit);
+  enforceRetentionDays(input.retentionDays);
   enforceAvailableFill(request.requestedQuantity - request.filledQuantity, input.quantity);
   const fillIntent = createFillIntent({ instrument: request.instrument, quantity: request.requestedQuantity - request.filledQuantity }, input.quantity);
   const sourceHandle = normalizeXHandle(input.profileHandle);
+  await assertSourceCanParticipate(sourceHandle, input.sellerWallet);
   const targetHandle = normalizeXHandle(request.targetHandle);
   const pairKey = allocationKey({ sourceHandle, targetHandle, projectSlug: request.projectSlug, instrument: fillIntent.instrument });
   const existingAllocation = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.allocationKey, pairKey)).limit(1))[0];
@@ -63286,6 +63350,7 @@ async function fillRequest(input) {
       spaceMinutes: request.spaceMinutes,
       quantity: fillIntent.quantity,
       pointsPerUnit: input.pointsPerUnit,
+      retentionDays: input.retentionDays,
       followerCount: input.followerCount,
       ethosScore: input.ethosScore,
       kaitoScore: input.kaitoScore,
@@ -63308,6 +63373,7 @@ async function initiateOfferPurchase(input) {
   if (!offer || offer.requestId || offer.parentOfferId || offer.status !== "open" || offer.quantity < 1) throw new Error("This seller offer is no longer available");
   const purchaseIntent = createDirectPurchaseIntent({ instrument: offer.instrument, quantity: 1 });
   const sourceHandle = normalizeXHandle(offer.sourceHandle ?? offer.profileHandle);
+  await assertSourceCanParticipate(sourceHandle, offer.sellerWallet);
   const targetHandle = normalizeXHandle(input.targetHandle);
   const pairKey = allocationKey({ sourceHandle, targetHandle, projectSlug: offer.projectSlug, instrument: purchaseIntent.instrument });
   const existingAllocation = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.allocationKey, pairKey)).limit(1))[0];
@@ -63344,6 +63410,8 @@ async function initiateOfferPurchase(input) {
       followerCount: offer.followerCount,
       ethosScore: offer.ethosScore,
       kaitoScore: offer.kaitoScore,
+      kaitoAura: offer.kaitoAura,
+      retentionDays: offer.retentionDays,
       pricePerVouch: offer.pricePerVouch,
       grossUsdc: amounts.grossUsdc,
       platformFeeUsdc: amounts.platformFeeUsdc,
@@ -63447,7 +63515,13 @@ async function markSellerDone(publicId, wallet3) {
   const commitment = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, publicId)).limit(1))[0];
   if (!commitment || commitment.status !== "matched") throw new Error("This fill cannot be marked complete yet");
   enforceWalletOwnership(commitment.sellerWallet, wallet3);
-  await db.update(sellerCommitments).set({ sellerMarkedDoneAt: /* @__PURE__ */ new Date(), status: "done" }).where(eq(sellerCommitments.id, commitment.id));
+  const retentionStartsAt = /* @__PURE__ */ new Date();
+  await db.update(sellerCommitments).set({
+    sellerMarkedDoneAt: retentionStartsAt,
+    retentionStartsAt,
+    retentionEndsAt: retentionEndsAt(retentionStartsAt, commitment.retentionDays),
+    status: "done"
+  }).where(eq(sellerCommitments.id, commitment.id));
   await logActivity({ entityType: "seller_commitment", entityPublicId: publicId, eventType: "seller_marked_done", actorWallet: wallet3 });
   if (commitment.requestId) await requestReadyForReview(commitment.requestId);
   else if (nextDirectPurchaseStatus(Boolean(commitment.buyerMarkedDoneAt), true) === "under_review") {
@@ -63485,14 +63559,70 @@ async function createSupportMessage(input) {
   await logActivity({ entityType: "support_message", entityPublicId: publicId, eventType: "support_message_submitted", actorWallet: input.wallet, detail: input.subject });
   return { publicId, createdAt };
 }
+async function reportEarlyRemoval(input) {
+  const db = await dbOrThrow();
+  const commitment = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, input.commitmentPublicId)).limit(1))[0];
+  if (!commitment) throw new Error("This proof commitment was not found");
+  const linkedRequest = commitment.requestId ? (await db.select({ buyerWallet: marketRequests.buyerWallet }).from(marketRequests).where(eq(marketRequests.id, commitment.requestId)).limit(1))[0] : void 0;
+  if (commitment.buyerWallet !== input.reporterWallet && linkedRequest?.buyerWallet !== input.reporterWallet) {
+    throw new Error("Only the buyer for this proof can report an early removal");
+  }
+  if (commitment.retentionViolationReportedAt) throw new Error("This early-removal report is already awaiting operator review");
+  enforceVerifiableEarlyRemoval({ sellerMarkedDoneAt: commitment.sellerMarkedDoneAt, retentionEndsAt: commitment.retentionEndsAt });
+  const reportedAt = /* @__PURE__ */ new Date();
+  await db.update(sellerCommitments).set({
+    retentionViolationReportedAt: reportedAt,
+    retentionViolationEvidence: input.evidence
+  }).where(eq(sellerCommitments.id, commitment.id));
+  await logActivity({ entityType: "seller_commitment", entityPublicId: commitment.publicId, eventType: "retention_removal_reported", actorWallet: input.reporterWallet, detail: "Private evidence submitted for operator review" });
+  return { publicId: commitment.publicId, reportedAt };
+}
+async function verifyEarlyRemovalAndBanSource(input) {
+  const db = await dbOrThrow();
+  const commitment = (await db.select().from(sellerCommitments).where(eq(sellerCommitments.publicId, input.commitmentPublicId)).limit(1))[0];
+  if (!commitment) throw new Error("This proof commitment was not found");
+  if (commitment.retentionViolationVerifiedAt) throw new Error("This retention violation has already been verified");
+  enforceVerifiableEarlyRemoval({ sellerMarkedDoneAt: commitment.sellerMarkedDoneAt, retentionEndsAt: commitment.retentionEndsAt });
+  const sourceHandle = normalizeXHandle(commitment.sourceHandle ?? commitment.profileHandle);
+  const bannedAt = /* @__PURE__ */ new Date();
+  try {
+    await db.transaction(async (tx) => {
+      await tx.update(sellerCommitments).set({
+        retentionViolationReportedAt: commitment.retentionViolationReportedAt ?? bannedAt,
+        retentionViolationVerifiedAt: bannedAt,
+        retentionViolationNote: input.reason
+      }).where(eq(sellerCommitments.id, commitment.id));
+      await tx.insert(sourceBans).values({
+        sourceHandle,
+        sellerWallet: commitment.sellerWallet,
+        commitmentPublicId: commitment.publicId,
+        reason: input.reason,
+        bannedByOpenId: input.adminOpenId,
+        bannedAt
+      });
+      await tx.update(sellerCommitments).set({ status: "cancelled" }).where(and(
+        eq(sellerCommitments.sourceHandle, sourceHandle),
+        isNull(sellerCommitments.requestId),
+        isNull(sellerCommitments.parentOfferId),
+        eq(sellerCommitments.status, "open")
+      ));
+    });
+  } catch (error46) {
+    if (error46.code === "23505") throw new Error("This source is already banned from HANKA listings");
+    throw error46;
+  }
+  await logActivity({ entityType: "seller_commitment", entityPublicId: commitment.publicId, eventType: "retention_violation_verified_source_banned", actorAdminOpenId: input.adminOpenId, detail: `@${sourceHandle}: ${input.reason}` });
+  return { sourceHandle, bannedAt };
+}
 async function getOperations() {
   const db = await dbOrThrow();
-  const [requests, commitments, payouts, logs, supportRows] = await Promise.all([
+  const [requests, commitments, payouts, logs, supportRows, bans] = await Promise.all([
     db.select().from(marketRequests).orderBy(desc(marketRequests.createdAt)),
     db.select().from(sellerCommitments).orderBy(desc(sellerCommitments.createdAt)),
     db.select().from(payoutRecords).orderBy(desc(payoutRecords.createdAt)),
     db.select().from(activityLogs).orderBy(desc(activityLogs.createdAt)).limit(80),
-    db.select().from(supportMessages).orderBy(desc(supportMessages.createdAt)).limit(100)
+    db.select().from(supportMessages).orderBy(desc(supportMessages.createdAt)).limit(100),
+    db.select().from(sourceBans).orderBy(desc(sourceBans.bannedAt))
   ]);
   const sourceOffers = commitments.filter((item) => !item.requestId && !item.parentOfferId && item.status === "open");
   const tradeableSourceOffers = sourceOffers.filter((item) => Boolean(item.pointsPerUnit));
@@ -63514,13 +63644,16 @@ async function getOperations() {
     payouts,
     logs,
     supportMessages: supportRows,
+    sourceBans: bans,
     transferQueue,
     metrics: {
       openSourceOffers: sourceOffers.length,
       availableUnits: tradeableSourceOffers.reduce((sum, item) => sum + item.quantity, 0),
       activeAllocations: activeAllocations.length,
       completedAllocations: completedAllocations.length,
-      listingsMissingPoints: sourceOffers.filter((item) => !item.pointsPerUnit).length
+      listingsMissingPoints: sourceOffers.filter((item) => !item.pointsPerUnit).length,
+      activeRetentions: commitments.filter((item) => item.retentionEndsAt && item.retentionEndsAt.getTime() > Date.now()).length,
+      sourceBans: bans.length
     }
   };
 }
@@ -63548,7 +63681,12 @@ async function getParticipantActivity(wallet3) {
       pointsPerUnit: sellerCommitments.pointsPerUnit,
       pricePerVouch: sellerCommitments.pricePerVouch,
       status: sellerCommitments.status,
-      sellerMarkedDoneAt: sellerCommitments.sellerMarkedDoneAt
+      sellerMarkedDoneAt: sellerCommitments.sellerMarkedDoneAt,
+      retentionDays: sellerCommitments.retentionDays,
+      retentionStartsAt: sellerCommitments.retentionStartsAt,
+      retentionEndsAt: sellerCommitments.retentionEndsAt,
+      retentionViolationReportedAt: sellerCommitments.retentionViolationReportedAt,
+      retentionViolationVerifiedAt: sellerCommitments.retentionViolationVerifiedAt
     }).from(sellerCommitments).where(eq(sellerCommitments.sellerWallet, wallet3)).orderBy(desc(sellerCommitments.createdAt)),
     db.select({
       publicId: sellerCommitments.publicId,
@@ -63561,7 +63699,13 @@ async function getParticipantActivity(wallet3) {
       pricePerVouch: sellerCommitments.pricePerVouch,
       grossUsdc: sellerCommitments.grossUsdc,
       status: sellerCommitments.status,
-      buyerMarkedDoneAt: sellerCommitments.buyerMarkedDoneAt
+      buyerMarkedDoneAt: sellerCommitments.buyerMarkedDoneAt,
+      sellerMarkedDoneAt: sellerCommitments.sellerMarkedDoneAt,
+      retentionDays: sellerCommitments.retentionDays,
+      retentionStartsAt: sellerCommitments.retentionStartsAt,
+      retentionEndsAt: sellerCommitments.retentionEndsAt,
+      retentionViolationReportedAt: sellerCommitments.retentionViolationReportedAt,
+      retentionViolationVerifiedAt: sellerCommitments.retentionViolationVerifiedAt
     }).from(sellerCommitments).where(eq(sellerCommitments.buyerWallet, wallet3)).orderBy(desc(sellerCommitments.createdAt))
   ]);
   return { requests, fills, purchases };
@@ -63800,6 +63944,15 @@ var adminRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: error46 instanceof Error ? error46.message : "Seller metrics could not be verified" });
     }
   }),
+  verifyEarlyRemovalAndBanSource: rateLimitedPublicProcedure.input(external_exports.object({ commitmentPublicId: external_exports.string().regex(/^(ASK|FILL)-/), reason: external_exports.string().trim().min(8).max(1e3), wallet, proof })).mutation(async ({ input }) => {
+    try {
+      await verifyAdminWallet(input);
+      return await verifyEarlyRemovalAndBanSource({ commitmentPublicId: input.commitmentPublicId, reason: input.reason, adminOpenId: `wallet:${input.wallet}` });
+    } catch (error46) {
+      if (error46 instanceof TRPCError) throw error46;
+      throw new TRPCError({ code: "BAD_REQUEST", message: error46 instanceof Error ? error46.message : "The retention violation could not be verified" });
+    }
+  }),
   recordPayout: rateLimitedPublicProcedure.input(external_exports.object({ commitmentPublicId: external_exports.string().regex(/^(FILL|ASK)-/), status: external_exports.enum(["sent", "withheld"]), externalReference: external_exports.string().trim().max(160).optional(), adminNote: external_exports.string().trim().max(1e3).optional(), wallet, proof })).mutation(async ({ input }) => {
     try {
       await verifyAdminWallet(input);
@@ -63978,6 +64131,7 @@ var proofScope = external_exports.string().trim().max(240).optional();
 var spaceMinutes = external_exports.number().int().positive().max(720).optional();
 var proof2 = external_exports.object({ challengeId: external_exports.string().min(8), signature: external_exports.string().min(20) });
 var xHandle = external_exports.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle");
+var retentionDays = external_exports.union([external_exports.literal(7), external_exports.literal(14), external_exports.literal(30), external_exports.literal(60), external_exports.literal(90)]);
 function marketError(error46) {
   throw new TRPCError({ code: "BAD_REQUEST", message: error46 instanceof Error ? error46.message : "The request could not be processed" });
 }
@@ -64015,7 +64169,7 @@ var marketRouter = router({
       marketError(error46);
     }
   }),
-  walletChallenge: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, action: external_exports.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "support_message", "admin_access", "referral_join", "referral_view"]) })).mutation(async ({ input }) => {
+  walletChallenge: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, action: external_exports.enum(["buyer_request", "seller_offer", "seller_fill", "buyer_done", "seller_done", "cancel_request", "seller_delist", "offer_buy", "offer_buyer_done", "activity_view", "support_message", "retention_report", "admin_access", "referral_join", "referral_view"]) })).mutation(async ({ input }) => {
     try {
       return await createWalletChallenge(input.wallet, input.action);
     } catch (error46) {
@@ -64026,6 +64180,14 @@ var marketRouter = router({
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "support_message" });
       return await createSupportMessage({ wallet: input.wallet, subject: input.subject || "Customer support", message: input.message });
+    } catch (error46) {
+      marketError(error46);
+    }
+  }),
+  reportEarlyRemoval: rateLimitedPublicProcedure.input(external_exports.object({ commitmentPublicId: external_exports.string().regex(/^(ASK|FILL)-/), wallet: wallet2, evidence: external_exports.string().trim().min(8).max(2e3), proof: proof2 })).mutation(async ({ input }) => {
+    try {
+      await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "retention_report" });
+      return await reportEarlyRemoval({ commitmentPublicId: input.commitmentPublicId, reporterWallet: input.wallet, evidence: input.evidence });
     } catch (error46) {
       marketError(error46);
     }
@@ -64058,20 +64220,20 @@ var marketRouter = router({
       marketError(error46);
     }
   }),
-  createSellerOffer: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, profileHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: external_exports.number().int().positive().max(1e6), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoAura: external_exports.number().int().nonnegative().max(1e10).optional(), pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
+  createSellerOffer: rateLimitedPublicProcedure.input(external_exports.object({ wallet: wallet2, profileHandle: xHandle, projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: external_exports.number().int().positive().max(1e6), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoAura: external_exports.number().int().nonnegative().max(1e10).optional(), retentionDays, pricePerVouch: external_exports.number().positive().max(1e4), proof: proof2 })).mutation(async ({ input }) => {
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_offer" });
-      const created = await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura, pricePerVouch: input.pricePerVouch });
+      const created = await createSellerOffer({ sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura, retentionDays: input.retentionDays, pricePerVouch: input.pricePerVouch });
       await grantReferralPoints(input.wallet, "seller_listing", `listing:${created.publicId}`);
       return created;
     } catch (error46) {
       marketError(error46);
     }
   }),
-  fillRequest: rateLimitedPublicProcedure.input(external_exports.object({ requestPublicId: external_exports.string().startsWith("REQ-"), wallet: wallet2, profileHandle: xHandle, quantity: external_exports.number().int().positive(), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoAura: external_exports.number().int().nonnegative().max(1e10).optional(), proof: proof2 })).mutation(async ({ input }) => {
+  fillRequest: rateLimitedPublicProcedure.input(external_exports.object({ requestPublicId: external_exports.string().startsWith("REQ-"), wallet: wallet2, profileHandle: xHandle, quantity: external_exports.number().int().positive(), pointsPerUnit: external_exports.number().int().positive().max(1e9), followerCount: external_exports.number().int().nonnegative().max(1e10).optional(), ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(), kaitoAura: external_exports.number().int().nonnegative().max(1e10).optional(), retentionDays, proof: proof2 })).mutation(async ({ input }) => {
     try {
       await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "seller_fill" });
-      return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura });
+      return await fillRequest({ requestPublicId: input.requestPublicId, sellerWallet: input.wallet, profileHandle: input.profileHandle.replace(/^@/, ""), quantity: input.quantity, pointsPerUnit: input.pointsPerUnit, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura, retentionDays: input.retentionDays });
     } catch (error46) {
       marketError(error46);
     }
