@@ -205,8 +205,8 @@
   .hanka-app { --hanka-bg: #0b120e; --hanka-panel: #111b14; --hanka-panel-strong: #17251b; --hanka-text: #f0f4ec; --hanka-muted: #a7b2a6; --hanka-line: rgba(232, 242, 230, .14); --hanka-accent: #a5e5b4; --hanka-accent-text: #102016; background: var(--hanka-bg); color: var(--hanka-text); }
   .hanka-home { isolation: isolate; background: var(--hanka-bg); color: var(--hanka-text); }
   .landing-opera-background { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: #07100b; pointer-events: none; }
-  .landing-opera-background img { width: 100%; height: 100%; object-fit: cover; object-position: 58% 42%; opacity: .19; filter: grayscale(1) brightness(.92) contrast(.84); transform: scale(1.035); }
-  .landing-opera-background::after { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(7, 16, 11, .94) 0%, rgba(7, 16, 11, .8) 42%, rgba(7, 16, 11, .62) 100%), linear-gradient(180deg, rgba(7, 16, 11, .34), rgba(7, 16, 11, .82) 92%); content: ""; }
+  .landing-opera-background img { width: 100%; height: 100%; object-fit: cover; object-position: 58% 42%; opacity: .28; filter: grayscale(1) brightness(.92) contrast(.84); transform: scale(1.035); }
+  .landing-opera-background::after { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(7, 16, 11, .9) 0%, rgba(7, 16, 11, .72) 42%, rgba(7, 16, 11, .48) 100%), linear-gradient(180deg, rgba(7, 16, 11, .25), rgba(7, 16, 11, .76) 92%); content: ""; }
   .hanka-home > :not(.landing-opera-background):not(.hanka-aurora) { position: relative; z-index: 1; }
   .hanka-aurora { background: radial-gradient(circle at 72% 22%, rgba(79, 157, 98, .22), transparent 28%), radial-gradient(circle at 10% 82%, rgba(148, 218, 164, .1), transparent 27%), linear-gradient(180deg, transparent, rgba(0, 0, 0, .25)); }
   .hanka-header { border-bottom: 1px solid var(--hanka-line); background: color-mix(in srgb, var(--hanka-bg) 88%, transparent); backdrop-filter: blur(18px); }
@@ -373,8 +373,9 @@
 }
 
 
-.market-hero { position: relative; overflow: hidden; isolation: isolate; background: radial-gradient(circle at 72% 18%, rgba(79, 157, 98, .22), transparent 34%), #0b120e; }
-.market-hero-opera { position: absolute; z-index: -1; right: -5rem; top: -7rem; width: min(46rem, 58vw); height: 30rem; object-fit: cover; opacity: .075; filter: grayscale(1) brightness(1.35) contrast(.9); transform: rotate(-3deg); pointer-events: none; }
+.market-hero { position: relative; overflow: hidden; isolation: isolate; background: #0b120e; }
+.market-hero::after { position: absolute; z-index: 0; inset: 0; background: linear-gradient(90deg, rgba(11, 18, 14, .9) 0%, rgba(11, 18, 14, .62) 54%, rgba(11, 18, 14, .3) 100%), linear-gradient(180deg, rgba(11, 18, 14, .26), rgba(11, 18, 14, .72)); content: ""; pointer-events: none; }
+.market-hero-opera { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 66% 40%; opacity: .23; filter: grayscale(1) brightness(1.18) contrast(.92); transform: scale(1.08); pointer-events: none; }
 .market-hero > .market-shell { position: relative; z-index: 1; }
 .transaction-terminal {
   position: relative;
@@ -511,7 +512,7 @@
   .transaction-terminal { min-height: 18.5rem; }
   .transaction-terminal::before { inset: 1rem .5rem -.5rem 1rem; }
   .terminal-window { inset: 1.8rem .9rem .9rem .9rem; }
-  .landing-opera-background img { object-position: 63% 38%; opacity: .16; }
-  .market-hero-opera { right: -9rem; top: -4rem; width: 38rem; height: 24rem; opacity: .055; }
+  .landing-opera-background img { object-position: 63% 38%; opacity: .23; }
+  .market-hero-opera { inset: 0; width: 100%; height: 100%; object-position: 67% 31%; opacity: .2; transform: scale(1.2); }
   .terminal-code-row { font-size: .58rem; }
 }

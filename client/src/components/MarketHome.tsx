@@ -17,7 +17,6 @@ type Instrument = "vouch" | "slash" | "follow" | "repost" | "comment" | "space_l
 type InstrumentFilter = Instrument | "all" | "other";
 type MetricSort = "recent" | "followers" | "ethos" | "kaito" | "aura";
 type Payment = { kind: "request" | "offer"; publicId: string; totalUsdc: string; recipientWallet: string; usdcMint: string };
-type PaymentNetwork = "solana_usdc" | "arc_usdc_testnet";
 type DialogState = "bid" | "ask" | "activity" | "support" | { fill: string; remaining: number; instrument: Instrument } | { buy: string; instrument: Instrument; sourceHandle: string; pointsPerUnit: number } | null;
 type MarketRow = { publicId: string; side: "bid" | "ask"; instrument: Instrument; handle: string; sourceHandle?: string | null; exactQuantity: number; pointsPerUnit?: number | null; followerCount?: number | null; ethosScore?: number | null; kaitoScore?: number | null; kaitoAura?: number | null; metricsVerifiedAt?: Date | string | null; price: string; proofDetail?: string | null; spaceMinutes?: number | null; createdAt: Date };
 const ETHOS_LOGO_URL = "/ethos%20logo.jpeg";
@@ -91,7 +90,6 @@ export default function MarketHome() {
   const [dialog, setDialog] = useState<DialogState>(initialDialogState);
   const [payment, setPayment] = useState<Payment | null>(null);
   const [paymentRailOpen, setPaymentRailOpen] = useState(false);
-  const [paymentNetwork, setPaymentNetwork] = useState<PaymentNetwork>("solana_usdc");
   const [busy, setBusy] = useState(false);
   const [project, setProject] = useState("commonsmade");
   const [instrumentFilter, setInstrumentFilter] = useState<InstrumentFilter>(initialInstrumentFilter);
@@ -146,15 +144,12 @@ export default function MarketHome() {
     catch (error) { toast.error(error instanceof Error ? error.message : "Could not load wallet activity"); }
     finally { setBusy(false); }
   }
-  function selectPaymentRail(network: PaymentNetwork) {
-    setPaymentNetwork(network);
+  function selectSolanaRail() {
     setPaymentRailOpen(false);
-    if (network === "solana_usdc") { setWalletChooserOpen(true); return; }
-    toast.info("Arc EVM USDC is a testnet preview. Wallet connection and live settlement remain on Solana.");
+    setWalletChooserOpen(true);
   }
   async function settlePayment() {
     if (!payment) return;
-    if (paymentNetwork !== "solana_usdc") { toast.info("Arc EVM USDC is testnet-only. Select Solana USDC to settle a live order."); return; }
     try {
       setBusy(true);
       if (!payment.recipientWallet || !payment.usdcMint) throw new Error("Payment instructions are unavailable. Please reconnect and try again.");
@@ -194,7 +189,7 @@ export default function MarketHome() {
       <ReferralPanel wallet={wallet} connect={connect} walletProof={walletProof} />
       <section id="terms" className="border-t border-[#e9e5d5]/15 bg-[#090e0b]"><div className="market-shell grid gap-5 py-7 md:grid-cols-[.7fr_1.3fr]"><p className="eyebrow text-[#9ba094]">Market terms</p><p className="max-w-3xl text-sm leading-6 text-[#d6d7cd]">Buyer payments use Circle-issued USDC on Solana. A <strong>5% platform fee</strong> is deducted from the seller’s gross amount. Prices remain participant-set.</p></div></section>
     </main>
-    <PaymentRailPopover open={paymentRailOpen} value={paymentNetwork} onClose={() => setPaymentRailOpen(false)} onSelect={selectPaymentRail} />
+    <PaymentRailPopover open={paymentRailOpen} onClose={() => setPaymentRailOpen(false)} onSelectSolana={selectSolanaRail} />
     <footer id="support" className="border-t border-[#e9e5d5]/15"><div className="market-shell flex flex-wrap items-center justify-between gap-4 py-5 text-xs text-[#989d91]"><span>HANKA Social Proof Market · USDC on Solana</span><nav className="flex items-center gap-4"><button type="button" onClick={() => setDialog("support")} className="transition-colors hover:text-white">Support</button><a href="#terms" className="transition-colors hover:text-white">Terms</a><Link href="/ops" className="transition-colors hover:text-white">Operations</Link></nav></div></footer>
     <MobileActionDock onBuy={() => setDialog("bid")} onSell={() => setDialog("ask")} onSupport={() => setDialog("support")} />
     <BidDialog open={dialog === "bid" || Boolean(payment?.kind === "offer")} close={() => { setDialog(null); setPayment(null); }} wallet={wallet} connect={connect} projects={projects} project={project} setProject={setProject} create={createRequest} sign={walletProof} payment={payment} setPayment={setPayment} pay={settlePayment} busy={busy} />
@@ -207,9 +202,9 @@ export default function MarketHome() {
 }
 
 function Mark() { return <span className="brand-mark market-mark grid size-7 grid-cols-2 gap-[2px] sm:size-8" aria-hidden>{[0, 1, 2, 3].map(index => <i key={index} className={`block bg-[#f2efe4] ${index === 1 ? "translate-x-1" : ""}`} />)}</span>; }
-function PaymentRailPopover({ open, value, onClose, onSelect }: { open: boolean; value: PaymentNetwork; onClose: () => void; onSelect: (network: PaymentNetwork) => void }) {
+function PaymentRailPopover({ open, onClose, onSelectSolana }: { open: boolean; onClose: () => void; onSelectSolana: () => void }) {
   if (!open) return null;
-  return <div className="fixed right-3 top-[4.5rem] z-50 w-[min(22rem,calc(100vw-1.5rem))] border border-[var(--hanka-line)] bg-[#111b14] p-3 shadow-2xl sm:right-6 sm:top-[5.25rem]" role="dialog" aria-label="Choose payment network"><div className="flex items-center justify-between gap-3"><p className="hanka-micro">Choose payment rail</p><button type="button" onClick={onClose} className="text-xs text-[var(--hanka-muted)] hover:text-[var(--hanka-text)]">Close</button></div><p className="mt-2 text-xs leading-5 text-[var(--hanka-muted)]">Select USDC on Solana to continue to a wallet. Arc EVM is available as a testnet preview.</p><div className="mt-3 grid gap-2"><button type="button" onClick={() => onSelect("solana_usdc")} className={`flex items-center gap-3 border px-3 py-3 text-left transition-colors ${value === "solana_usdc" ? "border-[#a5e5b4] bg-[#183123]" : "border-[var(--hanka-line)] hover:bg-[var(--hanka-panel-strong)]"}`}><img src={USDC_MARK_URL} alt="" className="size-6 object-contain" /><span className="min-w-0"><strong className="block text-sm text-[var(--hanka-text)]">USDC · Solana</strong><span className="text-[10px] uppercase tracking-[.12em] text-[#a5e5b4]">Live</span></span><ChevronRight className="ml-auto size-4 text-[#a5e5b4]" /></button><button type="button" onClick={() => onSelect("arc_usdc_testnet")} className={`flex items-center gap-3 border px-3 py-3 text-left transition-colors ${value === "arc_usdc_testnet" ? "border-[#d7bf8c] bg-[#2b2616]" : "border-[var(--hanka-line)] hover:bg-[var(--hanka-panel-strong)]"}`}><img src={ARC_MARK_URL} alt="" className="size-6 object-contain" /><span className="min-w-0"><strong className="block text-sm text-[var(--hanka-text)]">USDC · Arc EVM</strong><span className="text-[10px] uppercase tracking-[.12em] text-[#d7bf8c]">Testnet</span></span><ChevronRight className="ml-auto size-4 text-[#d7bf8c]" /></button></div></div>;
+  return <div className="fixed right-3 top-[4.5rem] z-50 w-[min(22rem,calc(100vw-1.5rem))] border border-[var(--hanka-line)] bg-[#111b14] p-3 shadow-2xl sm:right-6 sm:top-[5.25rem]" role="dialog" aria-label="Choose payment network"><div className="flex items-center justify-between gap-3"><p className="hanka-micro">Choose payment rail</p><button type="button" onClick={onClose} className="text-xs text-[var(--hanka-muted)] hover:text-[var(--hanka-text)]">Close</button></div><p className="mt-2 text-xs leading-5 text-[var(--hanka-muted)]">Solana USDC is the active settlement rail. Arc EVM support is coming with mainnet availability.</p><div className="mt-3 grid gap-2"><button type="button" disabled aria-disabled="true" className="flex cursor-not-allowed items-center gap-3 border border-[var(--hanka-line)] px-3 py-3 text-left opacity-55"><img src={ARC_MARK_URL} alt="" className="size-6 object-contain" /><span className="min-w-0"><strong className="block text-sm text-[var(--hanka-text)]">USDC · Arc EVM</strong><span className="text-[10px] uppercase tracking-[.12em] text-[#d7bf8c]">Mainnet soon</span></span><span className="ml-auto text-[10px] uppercase tracking-[.12em] text-[var(--hanka-muted)]">Locked</span></button><button type="button" onClick={onSelectSolana} className="flex items-center gap-3 border border-[#a5e5b4] bg-[#183123] px-3 py-3 text-left transition-colors hover:bg-[#21412e]"><img src={USDC_MARK_URL} alt="" className="size-6 object-contain" /><span className="min-w-0"><strong className="block text-sm text-[var(--hanka-text)]">USDC · Solana</strong><span className="text-[10px] uppercase tracking-[.12em] text-[#a5e5b4]">Live</span></span><ChevronRight className="ml-auto size-4 text-[#a5e5b4]" /></button></div></div>;
 }
 function MobileActionDock({ onBuy, onSell, onSupport }: { onBuy: () => void; onSell: () => void; onSupport: () => void }) { return <nav className="mobile-action-dock sm:hidden" aria-label="Quick market actions"><button type="button" className="mobile-action-buy" onClick={onBuy}><BadgeCheck className="size-4" /><span>Buy</span></button><button type="button" onClick={onSell}><CircleUserRound className="size-4" /><span>Sell</span></button><button type="button" onClick={onSupport}><MessageCircleMore className="size-4" /><span>Support</span></button></nav>; }
 function Loading() { return <div className="h-60 animate-pulse bg-[#101612]" />; }

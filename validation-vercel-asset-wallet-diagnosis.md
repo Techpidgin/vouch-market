@@ -17,3 +17,7 @@ At 390px, the Ethos hero mark remains legible, terminal rows continue their stag
 After the Connect-control refinement, the marketplace header presents the USDC mark beside Connect wallet instead of the Solana mark. The landing terminal now retains completed rows without cursors; the cursor class is assigned only to the currently typing row by state rather than every incomplete row.
 
 At 390px, the USDC-branded Connect button remains prominent and touch-friendly. The terminal shows one active cursor on the row currently loading while subsequent rows stay cursor-free, preserving a calm compact mobile presentation.
+
+Desktop verification of the latest hero treatment confirms Opera is now materially more visible on the full landing background and spans the entire marketplace hero from edge to edge. Both hero headings, descriptive copy, and primary actions remain readable against their dark directional overlays.
+
+At 390px, Opera remains visible across both hero surfaces without clipping essential content. The marketplace underlay uses a higher focal crop for the smaller screen, keeping the full hero treatment present while its navigation, copy, and Buy/Sell controls retain clear contrast.
