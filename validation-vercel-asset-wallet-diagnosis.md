@@ -13,3 +13,7 @@ After the final GitHub/Vercel deployment, the live Vercel client bundle contains
 Desktop verification of the latest payment-surface update shows the Ethos mark in the hero value proposition, sequential terminal text with an active cursor, and a clear payment-rail selector. Solana USDC is visibly marked Live, while Arc EVM USDT is visibly marked Testnet and described as unable to settle live orders.
 
 At 390px, the Ethos hero mark remains legible, terminal rows continue their staged typing treatment without crowding, and the payment-rail section stays readable above the footer. The selected Solana USDC option is compact; Arc EVM USDT remains available only as a labeled testnet choice in the selector.
+
+After the Connect-control refinement, the marketplace header presents the USDC mark beside Connect wallet instead of the Solana mark. The landing terminal now retains completed rows without cursors; the cursor class is assigned only to the currently typing row by state rather than every incomplete row.
+
+At 390px, the USDC-branded Connect button remains prominent and touch-friendly. The terminal shows one active cursor on the row currently loading while subsequent rows stay cursor-free, preserving a calm compact mobile presentation.

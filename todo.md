@@ -202,3 +202,5 @@
 - [x] Add the Ethos mark beside the landing hero’s Ethos reference.
 - [x] Animate terminal output with a restrained typing-load treatment.
 - [x] Add Solana USDT and Arc EVM testnet payment-network choices using supplied USDC and Arc marks.
+- [x] Move payment-network selection into a USDC-branded Connect control with USDC Solana and USDC Arc options.
+- [x] Show the terminal blinking cursor only on the actively typing line.

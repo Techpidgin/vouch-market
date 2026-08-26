@@ -28,7 +28,8 @@ describe("mobile HANKA experience", () => {
     expect(marketSource).toContain("@/lib/brandAssets");
     expect(marketSource).toContain("mobileWalletLinks");
     expect(marketSource).toContain("Open HANKA inside a mobile wallet");
-    expect(marketSource).toContain("walletOptions.length !== 1");
+    expect(marketSource).toContain("PaymentRailPopover");
+    expect(marketSource).toContain("setPaymentRailOpen(true)");
     expect(walletSource).toContain("window.phantom?.solana");
     expect(walletSource).toContain("getMobileWalletLinks");
     expect(walletSource).toContain("phantom.app/ul/browse");

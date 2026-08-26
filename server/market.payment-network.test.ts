@@ -6,14 +6,17 @@ const marketSource = readFileSync(resolve(process.cwd(), "client/src/components/
 const assetsSource = readFileSync(resolve(process.cwd(), "client/src/lib/brandAssets.ts"), "utf8");
 
 describe("payment network selector", () => {
-  it("offers Solana USDC live settlement and an explicitly testnet-only Arc EVM USDT preview", () => {
+  it("opens from Connect with USDC on Solana live and USDC on Arc EVM testnet", () => {
     expect(assetsSource).toContain("USDC_MARK_URL");
     expect(assetsSource).toContain("ARC_MARK_URL");
-    expect(marketSource).toContain("PaymentNetworkDock");
-    expect(marketSource).toContain("Solana · USDC");
-    expect(marketSource).toContain("Arc EVM · USDT");
+    expect(marketSource).toContain("PaymentRailPopover");
+    expect(marketSource).toContain("setPaymentRailOpen(true)");
+    expect(marketSource).toContain("selectPaymentRail");
+    expect(marketSource).toContain("USDC · Solana");
+    expect(marketSource).toContain("USDC · Arc EVM");
     expect(marketSource).toContain("Testnet");
-    expect(marketSource).toContain('paymentNetwork === "arc_usdt_testnet"');
-    expect(marketSource).toContain("Select Solana USDC to settle a live order.");
+    expect(marketSource).toContain("paymentNetwork !== \"solana_usdc\"");
+    expect(marketSource).toContain("Arc EVM USDC is testnet-only.");
+    expect(marketSource).not.toContain("PaymentNetworkDock");
   });
 });

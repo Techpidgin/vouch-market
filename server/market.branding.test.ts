@@ -66,6 +66,8 @@ describe("public market branding", () => {
     expect(homeSource).toContain("terminal-underlay-tabs");
     expect(homeSource).toContain("terminalLines");
     expect(homeSource).toContain("typedLines");
+    expect(homeSource).toContain("typingLine");
+    expect(homeSource).toContain("index === typingLine");
     expect(styles).toContain("@keyframes terminal-row-in");
     expect(styles).toContain("@keyframes terminal-cursor");
     expect(styles).toContain("@media (prefers-reduced-motion: no-preference");

@@ -55,6 +55,7 @@ const terminalLines = [
 
 export default function Home() {
   const [typedLines, setTypedLines] = useState<string[]>(() => terminalLines.map(() => ""));
+  const [typingLine, setTypingLine] = useState(0);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setTypedLines([...terminalLines]); return; }
@@ -64,17 +65,20 @@ export default function Home() {
     const start = () => {
       lineIndex = 0;
       characterIndex = 0;
+      setTypingLine(0);
       setTypedLines(terminalLines.map(() => ""));
       tick();
     };
     const tick = () => {
       const line = terminalLines[lineIndex];
+      setTypingLine(lineIndex);
       characterIndex += 1;
       setTypedLines(current => current.map((value, index) => index === lineIndex ? line.slice(0, characterIndex) : value));
       if (characterIndex < line.length) { timer = window.setTimeout(tick, 24); return; }
       lineIndex += 1;
       characterIndex = 0;
       if (lineIndex < terminalLines.length) { timer = window.setTimeout(tick, 145); return; }
+      setTypingLine(-1);
       timer = window.setTimeout(start, 2200);
     };
     timer = window.setTimeout(start, 220);
@@ -109,7 +113,7 @@ export default function Home() {
           <div className="terminal-window">
             <div className="terminal-window-head"><span>hanka://market</span><span className="terminal-live"><i />LIVE</span></div>
             <div className="terminal-command"><span className="terminal-prompt">›</span> watch --market</div>
-            <div className="terminal-code">{terminalLines.map((line, index) => <div className="terminal-code-row" key={line}><span className="terminal-code-index">0{index + 1}</span><code className={typedLines[index].length < line.length ? "terminal-typing" : ""}>{typedLines[index] || " "}</code><span className="terminal-code-dot" /></div>)}</div>
+            <div className="terminal-code">{terminalLines.map((line, index) => <div className="terminal-code-row" key={line}><span className="terminal-code-index">0{index + 1}</span><code className={index === typingLine ? "terminal-typing" : ""}>{typedLines[index] || " "}</code><span className="terminal-code-dot" /></div>)}</div>
             <div className="terminal-window-foot"><span>tx stream</span><span>preview mode</span></div>
           </div>
         </aside>
