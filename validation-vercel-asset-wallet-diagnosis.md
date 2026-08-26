@@ -9,3 +9,7 @@ The final desktop and 390px previews confirm that Opera is now a full-page landi
 The revised value proposition renders as a single concise line on desktop and wraps naturally into two short lines at 390px without pushing the primary action or transaction terminal below the initial viewport.
 
 After the final GitHub/Vercel deployment, the live Vercel client bundle contains the public HANKA asset origin. Both Opera and Solana public storage routes return a 307 redirect, so the Vercel UI no longer depends on its unconfigured Manus storage proxy. The zero-wallet Connect flow opens the in-app-wallet chooser rather than emitting an immediate install-wallet error; injected-wallet discovery and mobile handoff links are covered by active tests.
+
+Desktop verification of the latest payment-surface update shows the Ethos mark in the hero value proposition, sequential terminal text with an active cursor, and a clear payment-rail selector. Solana USDC is visibly marked Live, while Arc EVM USDT is visibly marked Testnet and described as unable to settle live orders.
+
+At 390px, the Ethos hero mark remains legible, terminal rows continue their staged typing treatment without crowding, and the payment-rail section stays readable above the footer. The selected Solana USDC option is compact; Arc EVM USDT remains available only as a labeled testnet choice in the selector.

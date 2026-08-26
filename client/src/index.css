@@ -484,6 +484,7 @@
   .terminal-code-row:nth-child(3) { animation-delay: 160ms; }
   .terminal-code-row:nth-child(4) { animation-delay: 240ms; }
   .terminal-code-row:nth-child(5) { animation-delay: 320ms; }
+  .terminal-typing::after { color: #a5e5b4; content: "▋"; animation: terminal-cursor 720ms steps(1, end) infinite; }
   .terminal-live i { animation: terminal-pulse 1.6s ease-in-out infinite; }
 }
 @keyframes terminal-float {
@@ -501,6 +502,10 @@
 @keyframes terminal-pulse {
   0%, 100% { opacity: .5; }
   50% { opacity: 1; }
+}
+@keyframes terminal-cursor {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
 }
 @media (max-width: 639px) {
   .transaction-terminal { min-height: 18.5rem; }

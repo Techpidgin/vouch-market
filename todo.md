@@ -199,3 +199,6 @@
 - [x] Replace the terminal-only Opera treatment with a full-screen landing-page background underlay.
 - [x] Replace the landing supporting paragraph with concise HANKA Exchange positioning.
 - [x] Restrict social-card download and sharing controls to the connected wallet that owns the leaderboard entry.
+- [x] Add the Ethos mark beside the landing hero’s Ethos reference.
+- [x] Animate terminal output with a restrained typing-load treatment.
+- [x] Add Solana USDT and Arc EVM testnet payment-network choices using supplied USDC and Arc marks.

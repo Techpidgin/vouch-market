@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { OPERA_UNDERLAY_URL } from "@/lib/brandAssets";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 
 const ETHOS_LOGO_URL = "/ethos%20logo.jpeg";
@@ -53,6 +54,33 @@ const terminalLines = [
 ] as const;
 
 export default function Home() {
+  const [typedLines, setTypedLines] = useState<string[]>(() => terminalLines.map(() => ""));
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setTypedLines([...terminalLines]); return; }
+    let timer = 0;
+    let lineIndex = 0;
+    let characterIndex = 0;
+    const start = () => {
+      lineIndex = 0;
+      characterIndex = 0;
+      setTypedLines(terminalLines.map(() => ""));
+      tick();
+    };
+    const tick = () => {
+      const line = terminalLines[lineIndex];
+      characterIndex += 1;
+      setTypedLines(current => current.map((value, index) => index === lineIndex ? line.slice(0, characterIndex) : value));
+      if (characterIndex < line.length) { timer = window.setTimeout(tick, 24); return; }
+      lineIndex += 1;
+      characterIndex = 0;
+      if (lineIndex < terminalLines.length) { timer = window.setTimeout(tick, 145); return; }
+      timer = window.setTimeout(start, 2200);
+    };
+    timer = window.setTimeout(start, 220);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <main className="hanka-home hanka-app relative min-h-screen overflow-hidden">
       <div className="landing-opera-background" aria-hidden="true"><img src={OPERA_UNDERLAY_URL} alt="" /></div>
@@ -68,7 +96,7 @@ export default function Home() {
         <div className="home-copy">
           <p className="hanka-kicker"><Sparkles className="size-3" />HANKA · Social proof exchange</p>
           <h1 className="hero-shine-text mt-4 max-w-4xl font-display text-[clamp(3.4rem,6vw,5rem)] leading-[.78] tracking-[-.09em]">Trade what moves attention.</h1>
-          <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Trade Ethos reputation and social proof on HANKA Exchange.</p>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Trade <span className="inline-flex items-center gap-1"><EthosMark className="size-4" />Ethos</span> reputation and social proof on HANKA Exchange.</p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link href="/market#market" className="hanka-primary-button">Buy or sell proof <ArrowUpRight className="size-4" /></Link>
           </div>
@@ -81,7 +109,7 @@ export default function Home() {
           <div className="terminal-window">
             <div className="terminal-window-head"><span>hanka://market</span><span className="terminal-live"><i />LIVE</span></div>
             <div className="terminal-command"><span className="terminal-prompt">›</span> watch --market</div>
-            <div className="terminal-code">{terminalLines.map((line, index) => <div className="terminal-code-row" key={line}><span className="terminal-code-index">0{index + 1}</span><code>{line}</code><span className="terminal-code-dot" /></div>)}</div>
+            <div className="terminal-code">{terminalLines.map((line, index) => <div className="terminal-code-row" key={line}><span className="terminal-code-index">0{index + 1}</span><code className={typedLines[index].length < line.length ? "terminal-typing" : ""}>{typedLines[index] || " "}</code><span className="terminal-code-dot" /></div>)}</div>
             <div className="terminal-window-foot"><span>tx stream</span><span>preview mode</span></div>
           </div>
         </aside>

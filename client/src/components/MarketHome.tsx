@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { OPERA_UNDERLAY_URL, SOLANA_LOGO_URL } from "@/lib/brandAssets";
+import { ARC_MARK_URL, OPERA_UNDERLAY_URL, SOLANA_LOGO_URL, USDC_MARK_URL } from "@/lib/brandAssets";
 import { walletsMatch } from "@/lib/walletIdentity";
 import { connectWallet, getMobileWalletLinks, getWalletOptions, sendUsdcPayment, signWalletMessage, type WalletOption } from "@/lib/solanaWallet";
 import { ArrowLeft, ArrowUpRight, BadgeCheck, Check, ChevronRight, CircleUserRound, Copy, Download, Loader2, Share2, MessageCircleMore, Mic2, Repeat2, Sparkles, UsersRound, X } from "lucide-react";
@@ -17,6 +17,7 @@ type Instrument = "vouch" | "slash" | "follow" | "repost" | "comment" | "space_l
 type InstrumentFilter = Instrument | "all" | "other";
 type MetricSort = "recent" | "followers" | "ethos" | "kaito" | "aura";
 type Payment = { kind: "request" | "offer"; publicId: string; totalUsdc: string; recipientWallet: string; usdcMint: string };
+type PaymentNetwork = "solana_usdc" | "arc_usdt_testnet";
 type DialogState = "bid" | "ask" | "activity" | "support" | { fill: string; remaining: number; instrument: Instrument } | { buy: string; instrument: Instrument; sourceHandle: string; pointsPerUnit: number } | null;
 type MarketRow = { publicId: string; side: "bid" | "ask"; instrument: Instrument; handle: string; sourceHandle?: string | null; exactQuantity: number; pointsPerUnit?: number | null; followerCount?: number | null; ethosScore?: number | null; kaitoScore?: number | null; kaitoAura?: number | null; metricsVerifiedAt?: Date | string | null; price: string; proofDetail?: string | null; spaceMinutes?: number | null; createdAt: Date };
 const ETHOS_LOGO_URL = "/ethos%20logo.jpeg";
@@ -89,6 +90,7 @@ export default function MarketHome() {
   const [walletChooserOpen, setWalletChooserOpen] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(initialDialogState);
   const [payment, setPayment] = useState<Payment | null>(null);
+  const [paymentNetwork, setPaymentNetwork] = useState<PaymentNetwork>("solana_usdc");
   const [busy, setBusy] = useState(false);
   const [project, setProject] = useState("commonsmade");
   const [instrumentFilter, setInstrumentFilter] = useState<InstrumentFilter>(initialInstrumentFilter);
@@ -145,6 +147,7 @@ export default function MarketHome() {
   }
   async function settlePayment() {
     if (!payment) return;
+    if (paymentNetwork === "arc_usdt_testnet") { toast.info("Arc EVM is testnet-only. Select Solana USDC to settle a live order."); return; }
     try {
       setBusy(true);
       if (!payment.recipientWallet || !payment.usdcMint) throw new Error("Payment instructions are unavailable. Please reconnect and try again.");
@@ -184,6 +187,7 @@ export default function MarketHome() {
       <ReferralPanel wallet={wallet} connect={connect} walletProof={walletProof} />
       <section id="terms" className="border-t border-[#e9e5d5]/15 bg-[#090e0b]"><div className="market-shell grid gap-5 py-7 md:grid-cols-[.7fr_1.3fr]"><p className="eyebrow text-[#9ba094]">Market terms</p><p className="max-w-3xl text-sm leading-6 text-[#d6d7cd]">Buyer payments use Circle-issued USDC on Solana. A <strong>5% platform fee</strong> is deducted from the seller’s gross amount. Prices remain participant-set.</p></div></section>
     </main>
+    <PaymentNetworkDock value={paymentNetwork} onChange={setPaymentNetwork} />
     <footer id="support" className="border-t border-[#e9e5d5]/15"><div className="market-shell flex flex-wrap items-center justify-between gap-4 py-5 text-xs text-[#989d91]"><span>HANKA Social Proof Market · USDC on Solana</span><nav className="flex items-center gap-4"><button type="button" onClick={() => setDialog("support")} className="transition-colors hover:text-white">Support</button><a href="#terms" className="transition-colors hover:text-white">Terms</a><Link href="/ops" className="transition-colors hover:text-white">Operations</Link></nav></div></footer>
     <MobileActionDock onBuy={() => setDialog("bid")} onSell={() => setDialog("ask")} onSupport={() => setDialog("support")} />
     <BidDialog open={dialog === "bid" || Boolean(payment?.kind === "offer")} close={() => { setDialog(null); setPayment(null); }} wallet={wallet} connect={connect} projects={projects} project={project} setProject={setProject} create={createRequest} sign={walletProof} payment={payment} setPayment={setPayment} pay={settlePayment} busy={busy} />
@@ -196,6 +200,10 @@ export default function MarketHome() {
 }
 
 function Mark() { return <span className="brand-mark market-mark grid size-7 grid-cols-2 gap-[2px] sm:size-8" aria-hidden>{[0, 1, 2, 3].map(index => <i key={index} className={`block bg-[#f2efe4] ${index === 1 ? "translate-x-1" : ""}`} />)}</span>; }
+function PaymentNetworkDock({ value, onChange }: { value: PaymentNetwork; onChange: (value: PaymentNetwork) => void }) {
+  const selected = value === "solana_usdc" ? { label: "Solana · USDC", status: "Live", mark: USDC_MARK_URL } : { label: "Arc EVM · USDT", status: "Testnet", mark: ARC_MARK_URL };
+  return <section className="border-t border-[#e9e5d5]/15 bg-[#0b120e]"><div className="market-shell flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="hanka-micro text-[#a4a89b]">Payment rail</p><p className="mt-1 text-xs leading-5 text-[#c8cabf]">Solana USDC settles live orders. Arc EVM USDT is a testnet preview and cannot settle live orders yet.</p></div><Select value={value} onValueChange={next => onChange(next as PaymentNetwork)}><SelectTrigger className="h-11 w-full border-[var(--hanka-line)] bg-[var(--hanka-panel)] text-[var(--hanka-text)] sm:w-64"><span className="flex min-w-0 items-center gap-2"><img src={selected.mark} alt="" className="size-5 object-contain" /><span className="truncate text-sm">{selected.label}</span><span className={`ml-auto text-[9px] uppercase tracking-[.12em] ${value === "solana_usdc" ? "text-[#a5e5b4]" : "text-[#d7bf8c]"}`}>{selected.status}</span></span></SelectTrigger><SelectContent><SelectItem value="solana_usdc"><span className="flex items-center gap-2"><img src={USDC_MARK_URL} alt="" className="size-4 object-contain" />Solana · USDC <span className="text-[9px] uppercase tracking-[.12em] text-[#4d8f61]">Live</span></span></SelectItem><SelectItem value="arc_usdt_testnet"><span className="flex items-center gap-2"><img src={ARC_MARK_URL} alt="" className="size-4 object-contain" />Arc EVM · USDT <span className="text-[9px] uppercase tracking-[.12em] text-[#9a792e]">Testnet</span></span></SelectItem></SelectContent></Select></div></section>;
+}
 function MobileActionDock({ onBuy, onSell, onSupport }: { onBuy: () => void; onSell: () => void; onSupport: () => void }) { return <nav className="mobile-action-dock sm:hidden" aria-label="Quick market actions"><button type="button" className="mobile-action-buy" onClick={onBuy}><BadgeCheck className="size-4" /><span>Buy</span></button><button type="button" onClick={onSell}><CircleUserRound className="size-4" /><span>Sell</span></button><button type="button" onClick={onSupport}><MessageCircleMore className="size-4" /><span>Support</span></button></nav>; }
 function Loading() { return <div className="h-60 animate-pulse bg-[#101612]" />; }
 function MarketPriceGuide({ suggested }: { suggested?: Partial<Record<Instrument, string | null>> }) {

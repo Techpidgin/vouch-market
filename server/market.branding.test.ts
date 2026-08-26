@@ -30,7 +30,8 @@ describe("public market branding", () => {
     const documentSource = readFileSync(resolve(process.cwd(), "client/index.html"), "utf8");
     expect(documentSource).toContain("HANKA Vouch &amp; Slash Market");
     expect(homeSource).toContain("HANKA · Social proof exchange");
-    expect(homeSource).toContain("Trade Ethos reputation and social proof on HANKA Exchange.");
+    expect(homeSource).toContain("reputation and social proof on HANKA Exchange.");
+    expect(homeSource).toContain('EthosMark className="size-4"');
     expect(homeSource).toContain("HANKA Social Proof Market · USDC on Solana");
     expect(marketSource).toContain("HANKA · Open market");
     expect(marketSource).toContain("HANKA Social Proof Market · USDC on Solana");
@@ -52,7 +53,7 @@ describe("public market branding", () => {
 
   it("uses a more human landing introduction, removes wallet-first framing, and retains editorial text shine", () => {
     const styles = readFileSync(resolve(process.cwd(), "client/src/index.css"), "utf8");
-    expect(homeSource).toContain("Trade Ethos reputation and social proof on HANKA Exchange.");
+    expect(homeSource).toContain("reputation and social proof on HANKA Exchange.");
     expect(homeSource).not.toContain("Looking for a little more signal?");
     expect(homeSource).not.toContain("Wallet-first");
     expect(homeSource).toContain("hero-shine-text");
@@ -64,7 +65,9 @@ describe("public market branding", () => {
     expect(homeSource).toContain("transaction-terminal");
     expect(homeSource).toContain("terminal-underlay-tabs");
     expect(homeSource).toContain("terminalLines");
+    expect(homeSource).toContain("typedLines");
     expect(styles).toContain("@keyframes terminal-row-in");
+    expect(styles).toContain("@keyframes terminal-cursor");
     expect(styles).toContain("@media (prefers-reduced-motion: no-preference");
     expect(homeSource).toContain('className="landing-opera-background"');
     expect(homeSource).toContain("OPERA_UNDERLAY_URL");
