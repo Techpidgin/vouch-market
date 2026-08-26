@@ -198,3 +198,4 @@
 - [x] Restore visible Opera underlay treatment in the landing hero while preserving text readability.
 - [x] Replace the terminal-only Opera treatment with a full-screen landing-page background underlay.
 - [x] Replace the landing supporting paragraph with concise HANKA Exchange positioning.
+- [x] Restrict social-card download and sharing controls to the connected wallet that owns the leaderboard entry.
