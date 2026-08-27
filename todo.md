@@ -233,4 +233,11 @@
 - [x] Add an Arc build attribution with the Arc mark to the landing page and retain the existing HANKA visual system.
 - [x] Complete terminal typing sequences so each line resolves to its full intended text before the next line begins.
 - [x] Validate Arc-first and Solana-alternative paths, Bounty interactions, responsive layouts, tests, and production builds before publishing.
+- [x] Remove the Solana wallet, manual OTC settlement, and split-market interface from the active HANKA user experience.
+- [x] Use the existing Arc Testnet escrow contract’s funded Bounty lifecycle for social-proof work, with the social commitment hashed into the same task terms; no contract redeployment is required.
+- [x] Build an Arc-only social-proof Bounty creation and discovery interface without demo listings or fabricated user activity.
+- [x] Restore a generic EVM injected-wallet connection flow and remove Rainbow-specific branding or provider assumptions.
+- [x] Rework the unified Bounty board with the supplied dense-market hierarchy, responsive columns, search, sorting, and an Arc-focused action rail.
+- [x] Add bright high-contrast placement behind or adjacent to the black Arc logo wherever it is displayed.
+- [x] Validate Arc-only contract flows, mobile/desktop behavior, full tests, and production builds before publishing.
 - [x] Document the missing local dependencies recovery sequence before a Windows Arc Testnet deployment retry.

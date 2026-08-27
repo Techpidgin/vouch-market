@@ -6,34 +6,32 @@ const page = readFileSync(path.resolve(process.cwd(), "client/src/pages/ArcMarke
 
 describe("Arc Testnet market page", () => {
   it("keeps real transaction controls testnet-only and deployment-gated", () => {
-    expect(page).toContain("Arc Testnet · Contract market");
+    expect(page).toContain("Arc Testnet · Escrow Bounty market");
     expect(page).toContain("getArcEscrowAddress");
-    expect(page).toContain("Awaiting reviewed contract");
-    expect(page).toContain("disabled={!wallet || busy || !escrowAddress}");
+    expect(page).toContain("Test tokens only.");
+    expect(page).toContain("disabled={!props.wallet || props.busy || !props.escrow}");
   });
 
   it("presents point exchanges and Bounty reward funding from the user Arc wallet", () => {
     expect(page).toContain("Point exchange");
-    expect(page).toContain("Open Bounties");
-    expect(page).toContain("Fund Bounty reward");
+    expect(page).toContain("Create a Bounty");
+    expect(page).toContain("Fund Arc Bounty");
     expect(page).toContain("createArcPointExchange");
     expect(page).toContain("createArcTask");
-    expect(page).toContain("No seed phrase or private key is shared with HANKA.");
+    expect(page).toContain("HANKA never requests your private key or seed phrase.");
   });
 
   it("renders only real open Bounties read from the public contract", () => {
     expect(page).toContain("getArcOpenBounties");
-    expect(page).toContain("No demo tasks are shown.");
-    expect(page).toContain("No open Bounties found.");
+    expect(page).toContain("no sample Bounties are invented.");
+    expect(page).toContain("No matching funded Bounties.");
   });
 
   it("includes onchain post-funding actions while keeping the contract as the settlement source of truth", () => {
-    expect(page).toContain("Accept &amp; lock collateral");
-    expect(page).toContain("Approve settlement");
-    expect(page).toContain("Maker decline");
-    expect(page).toContain("Submit delivery hash");
-    expect(page).toContain("Approve payout");
-    expect(page).toContain("Open dispute");
-    expect(page).toContain("The contract is the source of truth");
+    expect(page).toContain("Confirm &amp; accept Bounty");
+    expect(page).toContain("Submit delivery");
+    expect(page).toContain("Release reward");
+    expect(page).toContain("Dispute");
+    expect(page).toContain("Payout authority remains with the onchain contract.");
   });
 });

@@ -26,12 +26,13 @@ describe("Arc wallet dashboard discovery", () => {
     expect(clientSource).toContain("never invent a bounty description");
   });
 
-  it("renders separate wallet-owned active and completed exchange and task ledgers", () => {
+  it("renders separate wallet-owned active and completed exchange and Bounty ledgers", () => {
     expect(dashboardSource).toContain("getArcWalletDashboard");
     expect(dashboardSource).toContain("Only records where your connected EVM wallet");
     expect(dashboardSource).toContain("Active exchanges");
     expect(dashboardSource).toContain("Completed exchanges");
     expect(dashboardSource).toContain("Point exchanges");
-    expect(dashboardSource).toContain("Task escrows");
+    expect(dashboardSource).toContain("Active Bounties");
+    expect(dashboardSource).toContain('title="Bounties"');
   });
 });

@@ -1,5 +1,5 @@
-import MarketHome from "@/components/MarketHome";
+import { Redirect } from "wouter";
 
 export default function Market() {
-  return <MarketHome />;
+  return <Redirect to="/arc" replace />;
 }

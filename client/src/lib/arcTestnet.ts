@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, custom, defineChain, http, isAddress, keccak256, parseAbi, parseUnits, stringToHex, type Address, type Hex } from "viem";
+import { createPublicClient, createWalletClient, custom, defineChain, http, isAddress, keccak256, parseAbi, parseEventLogs, parseUnits, stringToHex, type Address, type Hex } from "viem";
 
 const browserProvider = () => typeof window === "undefined" ? undefined : (window as Window & { ethereum?: unknown }).ethereum;
 
@@ -21,7 +21,6 @@ const erc20Abi = parseAbi([
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
   "function decimals() view returns (uint8)",
-  "function transfer(address to, uint256 amount) returns (bool)",
 ]);
 
 const escrowAbi = parseAbi([
@@ -41,21 +40,19 @@ const escrowAbi = parseAbi([
   "function taskCount() view returns (uint256)",
   "function pointExchanges(uint256 id) view returns (address maker, address taker, address token, uint128 collateral, uint64 acceptDeadline, uint64 settlementDeadline, bytes32 termsHash, bytes32 makerApprovalHash, bytes32 takerApprovalHash, uint8 state)",
   "function tasks(uint256 id) view returns (address requester, address taker, address token, uint128 reward, uint64 acceptDeadline, uint64 dueAt, bytes32 termsHash, bytes32 deliveryHash, uint8 state)",
+  "event TaskCreated(uint256 indexed id, address indexed requester, address token, uint256 reward, uint64 acceptDeadline, uint64 dueAt, bytes32 termsHash)",
 ]);
 
 export type ArcTokenSymbol = (typeof ARC_TESTNET_TOKENS)[number]["symbol"];
 export type ArcWalletState = { address: Address; chainId: number };
 export type ArcPointExchangeRecord = { id: bigint; maker: Address; taker: Address; token: Address; tokenDecimals: number; collateral: bigint; acceptDeadline: bigint; settlementDeadline: bigint; termsHash: Hex; state: number };
 export type ArcTaskRecord = { id: bigint; requester: Address; taker: Address; token: Address; tokenDecimals: number; reward: bigint; acceptDeadline: bigint; dueAt: bigint; termsHash: Hex; deliveryHash: Hex; state: number };
+export type ArcCreatedBounty = { hash: Hex; taskId: bigint; termsHash: Hex };
 export type ArcWalletDashboard = { pointExchanges: ArcPointExchangeRecord[]; tasks: ArcTaskRecord[] };
 export const ARC_POINT_EXCHANGE_STATES = ["Unknown", "Open", "Funded", "Disputed", "Settled", "Declined", "Cancelled"] as const;
 export const ARC_TASK_STATES = ["Unknown", "Open", "Accepted", "Submitted", "Disputed", "Paid", "Cancelled"] as const;
 export const getArcEscrowAddress = (): Address | null => {
   const value = import.meta.env.VITE_ARC_TESTNET_ESCROW_ADDRESS?.trim();
-  return value && isAddress(value) ? value : null;
-};
-export const getArcOtcRecipientAddress = (): Address | null => {
-  const value = import.meta.env.VITE_ARC_OTC_RECIPIENT_ADDRESS?.trim();
   return value && isAddress(value) ? value : null;
 };
 export const arcExplorerTx = (hash: Hex) => `https://testnet.arcscan.app/tx/${hash}`;
@@ -123,21 +120,6 @@ export async function signArcWalletMessage(message: string): Promise<Hex> {
   return walletClient.signMessage({ account, message });
 }
 
-export async function sendArcManualOtcUsdc(amount: bigint): Promise<Hex> {
-  const recipient = getArcOtcRecipientAddress();
-  if (!recipient) throw new Error("Arc manual OTC recipient is not configured. Try the Solana alternative or contact HANKA support.");
-  const { walletClient, account } = await walletAndAccount();
-  const hash = await walletClient.writeContract({
-    address: tokenFor("USDC").address,
-    abi: erc20Abi,
-    functionName: "transfer",
-    args: [recipient, amount],
-    account,
-  });
-  await createPublicClient({ chain: hankaArcTestnet, transport: http() }).waitForTransactionReceipt({ hash });
-  return hash;
-}
-
 export async function approveArcEscrow(token: Address, amount: bigint): Promise<Hex> {
   const escrow = getArcEscrowAddress();
   if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet. Add the verified public contract address first.");
@@ -158,11 +140,19 @@ export async function createArcPointExchange(input: PointExchangeInput): Promise
   return walletClient.writeContract({ address: escrow, abi: escrowAbi, functionName: "createPointExchange", args: [input.token, input.taker, input.collateral, BigInt(input.acceptDeadline), BigInt(input.settlementDeadline), hashArcTerms(input.terms)], account });
 }
 
-export async function createArcTask(input: TaskInput): Promise<Hex> {
+export async function createArcTask(input: TaskInput): Promise<ArcCreatedBounty> {
   const escrow = getArcEscrowAddress();
   if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet.");
   const { walletClient, account } = await walletAndAccount();
-  return walletClient.writeContract({ address: escrow, abi: escrowAbi, functionName: "createTask", args: [input.token, input.reward, BigInt(input.acceptDeadline), BigInt(input.dueAt), hashArcTerms(input.terms)], account });
+  const termsHash = hashArcTerms(input.terms);
+  const hash = await walletClient.writeContract({ address: escrow, abi: escrowAbi, functionName: "createTask", args: [input.token, input.reward, BigInt(input.acceptDeadline), BigInt(input.dueAt), termsHash], account });
+  const receipt = await createPublicClient({ chain: hankaArcTestnet, transport: http() }).waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error("The Bounty funding transaction did not complete.");
+  const created = parseEventLogs({ abi: escrowAbi, logs: receipt.logs, eventName: "TaskCreated", strict: false })
+    .find(event => event.address.toLowerCase() === escrow.toLowerCase());
+  const taskId = created?.args.id;
+  if (typeof taskId !== "bigint") throw new Error("The Bounty was funded but its onchain ID could not be confirmed.");
+  return { hash, taskId, termsHash };
 }
 
 export async function getArcPointExchangeToken(id: bigint): Promise<Address> {

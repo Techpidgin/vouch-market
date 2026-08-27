@@ -92,7 +92,7 @@ export default function Home() {
       <header className="hanka-header relative">
         <div className="market-shell flex h-16 items-center justify-between gap-3 sm:h-20">
           <Link href="/" className="flex items-center gap-3"><Mark /><Wordmark /></Link>
-          <Link href="/market#market" className="hanka-header-action">Open market <ArrowUpRight className="size-3" /></Link>
+          <Link href="/arc#bounty-board" className="hanka-header-action">Open market <ArrowUpRight className="size-3" /></Link>
         </div>
       </header>
 
@@ -102,7 +102,7 @@ export default function Home() {
           <h1 className="hero-shine-text mt-4 max-w-4xl font-display text-[clamp(3.4rem,6vw,5rem)] leading-[.78] tracking-[-.09em]">Trade what moves attention.</h1>
           <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Trade <span className="inline-flex items-center gap-1"><EthosMark className="size-4" />Ethos</span> reputation and social proof on HANKA Exchange.</p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Link href="/market#market" className="hanka-primary-button">Buy or sell proof <ArrowUpRight className="size-4" /></Link>
+            <Link href="/arc#bounty-board" className="hanka-primary-button">Fund a Bounty <ArrowUpRight className="size-4" /></Link>
             <Link href="/arc" className="home-built-on-arc"><img src={ARC_MARK_URL} alt="" aria-hidden="true" />Built on Arc <ArrowUpRight className="size-3" /></Link>
           </div>
         </div>
@@ -123,16 +123,16 @@ export default function Home() {
       <section className="market-shell relative pb-12 sm:pb-16">
         <div className="flex items-end justify-between gap-6 border-t border-[var(--hanka-line)] pt-5">
           <div><p className="hanka-kicker">Proof catalogue</p><h2 className="mt-2 font-display text-4xl tracking-[-.06em] sm:text-5xl">Designed for more signal.</h2></div>
-          <Link href="/market#market" className="hidden hanka-text-link sm:inline-flex">View live market <ArrowUpRight className="size-3" /></Link>
+          <Link href="/arc#bounty-board" className="hidden hanka-text-link sm:inline-flex">View live Bounties <ArrowUpRight className="size-3" /></Link>
         </div>
         <div className="mt-5 grid gap-px overflow-hidden border border-[var(--hanka-line)] bg-[var(--hanka-line)] sm:grid-cols-2 lg:grid-cols-3">
           {proofTypes.map(({ instrument, icon: Icon, ethos, title, note }, index) => (
-            <Link key={instrument} href={`/market?proof=${instrument}#market`} className="proof-card group" aria-label={`Browse ${title} markets`}>
+            <Link key={instrument} href={`/arc#bounty-board`} className="proof-card group" aria-label={`Browse ${title} Bounties`}>
               <span className="proof-index">0{index + 1}</span>
               {ethos ? <EthosMark className="proof-icon" /> : <Icon className="proof-icon" strokeWidth={1.5} />}
               <h3 className="mt-7 font-display text-3xl tracking-[-.055em]">{title}</h3>
               <p className="mt-2 max-w-xs text-sm leading-6 text-[var(--hanka-muted)]">{note}</p>
-              <span className="proof-browse">Browse market</span>
+              <span className="proof-browse">Browse Bounties</span>
               <ArrowUpRight className="proof-arrow size-4" />
             </Link>
           ))}
@@ -141,8 +141,8 @@ export default function Home() {
 
       <footer className="relative border-t border-[var(--hanka-line)]">
         <div className="market-shell flex flex-wrap items-center justify-between gap-4 py-5 text-xs text-[var(--hanka-muted)]">
-          <span>HANKA Social Proof Market · Built on Arc · Solana USDC alternative</span>
-          <nav className="flex items-center gap-4"><Link href="/market?support=1#support" className="hanka-text-link">Support</Link><Link href="/market#terms" className="hanka-text-link">Terms</Link><Link href="/ops" className="hanka-text-link">Operations</Link></nav>
+          <span>HANKA Social Proof Market · Built on Arc Testnet</span>
+          <nav className="flex items-center gap-4"><Link href="/arc#bounty-board" className="hanka-text-link">Bounties</Link><Link href="/arc/dashboard" className="hanka-text-link">My activity</Link></nav>
         </div>
       </footer>
     </main>

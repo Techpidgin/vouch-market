@@ -1,12 +1,10 @@
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { adminRouter } from "./routers/admin";
-import { marketRouter } from "./routers/market";
+import { arcBountyRouter } from "./routers/arcBounty";
 
 export const appRouter = router({
   system: systemRouter,
-  market: marketRouter,
-  admin: adminRouter,
+  arcBounty: arcBountyRouter,
 });
 
 export type AppRouter = typeof appRouter;

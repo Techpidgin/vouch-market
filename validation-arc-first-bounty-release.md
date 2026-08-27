@@ -1,8 +1,8 @@
-# HANKA Arc-first Bounty release validation
+# HANKA Arc-only unified Bounty release validation
 
 ## Verified configuration
 
-The configured public Arc Testnet escrow address was checked through the official Arc Testnet RPC. The address is syntactically valid and returned deployed bytecode. The separately configured public Arc manual-OTC recipient address was also validated through the same RPC. No signing key, seed phrase, or private credential was added to the project.
+The configured public Arc Testnet escrow address was checked through the official Arc Testnet RPC. The address is syntactically valid and returned deployed bytecode. The active marketplace now uses that contract for all public settlement: social proof, vouches, slashes, general Bounties, and point exchanges. The former public manual-OTC recipient is no longer referenced by the client experience. No signing key, seed phrase, or private credential was added to the project.
 
 ## Interface review
 
@@ -10,19 +10,20 @@ Desktop and 375px mobile reviews confirmed the following outcomes.
 
 | Area | Verified behavior |
 | --- | --- |
-| Landing | The existing dark Opera treatment remains intact, now includes an understated **Built on Arc** treatment with the Arc mark, and the terminal keeps its single active cursor. |
+| Landing | The dark Opera treatment remains intact, public calls to action now enter the unified Arc Bounty market, and the black Arc mark has a bright backing surface wherever it is shown. |
 | Terminal | Compact terminal line copy and full-width code rows avoid ellipsis clipping. Each line continues to type to completion before the next line begins. |
-| Social market | Wallet selection begins with Arc; Arc users can sign social-market actions and select Arc Testnet USDC manual OTC. Solana remains an explicitly labelled alternative. |
-| Bounty | The Arc market shows a dense Bounty board backed only by open onchain task records; the empty state does not fabricate tasks. |
-| Arc records | The personal Arc dashboard now detects the configured public contract and offers connected-wallet record discovery. |
-| Mobile | Landing, social market, Bounty board, funding form, side information panels, and Arc activity states remain stacked and legible at 375px width. |
+| Unified market | Historic `/market` and `/ops` URLs redirect to Arc. The active public application exposes only EVM wallet connection and Arc Testnet contract settlement. |
+| Social-proof Bounty | A requester funds a fixed Bounty reward onchain. The canonical social-proof target, instrument, scope, duration, and retention terms are hashed into that Bounty. A taker adds a source profile only after the contract accepts them. |
+| Bounty board | The dense, reference-inspired board reads real open contract records only, supports search, proof-type filtering, reward/newest/ending sorting, and does not create sample activity. |
+| Arc records | The personal Arc dashboard detects the configured public contract, offers connected-wallet record discovery, and uses Bounty terminology for task rewards. |
+| Mobile | Landing, Bounty board, filters, funding form, side information rail, and Arc activity states remain stacked and legible at 375px width. |
 
 ## Validation commands
 
-The focused Arc Bounty, dashboard, payment-rail, terminal, and public recipient checks passed: **12 tests across 5 files**. The public contract-address check passed independently against `https://rpc.testnet.arc.io`.
+The full Arc-only regression suite passed: **28 tests across 12 files**. It includes canonical social-proof commitment coverage, Arc-only routing and client-surface assertions, the Bounty board, dashboard discovery, contract source tests, terminal typing, persistence architecture, and Vercel configuration. The public contract-address check passed independently against `https://rpc.testnet.arc.io`.
 
-Final validation also passed with `pnpm check`, **97 non-network tests across 31 files**, `pnpm run build:vercel`, and `pnpm run build:vercel:function`. The first serverless bundle exposed browser-only `import.meta` warnings because the Arc verifier imported a client module; the verifier was separated from browser configuration and the final function build completed with no warnings.
+Final validation passed with `pnpm check`, `pnpm exec vitest run`, `pnpm run build:vercel`, and `pnpm run build:vercel:function`. The frontend build reported an advisory asset-chunk size warning only. The Vercel function bundle completed with no browser-only `import.meta` warning. Source diff hygiene passed after excluding the generated CJS bundle, whose third-party minified output contains non-source trailing whitespace.
 
 ## Environment note
 
-The local preview has no Neon connection string, so the public social-proof board uses its existing graceful unavailable/empty behavior. This does not affect the client-side Arc Testnet contract connection, Bounty discovery, or onchain personal-ledger reads.
+The local preview has no Neon connection string, so readable social-proof Bounty metadata may remain unavailable locally. The deployed project’s runtime PostgreSQL connector automatically applies the reviewed additive migration when its configured database is reachable. The environment in this workspace could not apply the migration manually: the managed SQL console points to TiDB and the connected Neon integration lists no accessible project. This does not affect client-side Arc Testnet connection, real Bounty discovery, or onchain personal-ledger reads. If production database configuration is absent, social Bounties remain funded onchain but should be re-opened after database configuration before relying on the readable metadata view.

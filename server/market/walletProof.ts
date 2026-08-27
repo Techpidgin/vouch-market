@@ -1,16 +1,14 @@
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import nacl from "tweetnacl";
-import { PublicKey } from "@solana/web3.js";
 import { isAddress, verifyMessage } from "viem";
 import { walletChallenges } from "../../drizzle/schema";
 import { getDb } from "../db";
 
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 
-function walletNetwork(wallet: string): "solana" | "arc" {
-  if (isAddress(wallet)) return "arc";
-  try { new PublicKey(wallet); return "solana"; } catch { throw new Error("Enter a valid Solana or Arc EVM wallet address"); }
+function walletNetwork(wallet: string): "arc" {
+  if (!isAddress(wallet)) throw new Error("Enter a valid Arc EVM wallet address");
+  return "arc";
 }
 
 export async function createWalletChallenge(wallet: string, action: string) {
@@ -22,7 +20,7 @@ export async function createWalletChallenge(wallet: string, action: string) {
   const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS);
   const message = [
     "HANKA wallet confirmation",
-    `Network: ${network === "arc" ? "Arc Testnet" : "Solana"}`,
+    `Network: ${network === "arc" ? "Arc Testnet" : "Arc Testnet"}`,
     `Action: ${action}`,
     `Wallet: ${wallet}`,
     `Nonce: ${id}`,
@@ -51,13 +49,7 @@ export async function verifyWalletChallenge(input: {
   }
 
   const network = walletNetwork(input.wallet);
-  const verified = network === "arc"
-    ? await verifyMessage({ address: input.wallet as `0x${string}`, message: challenge.message, signature: input.signature as `0x${string}` })
-    : nacl.sign.detached.verify(
-      new TextEncoder().encode(challenge.message),
-      new Uint8Array(Buffer.from(input.signature, "base64")),
-      new PublicKey(input.wallet).toBytes(),
-    );
+  const verified = await verifyMessage({ address: input.wallet as `0x${string}`, message: challenge.message, signature: input.signature as `0x${string}` });
   if (!verified) throw new Error("Wallet signature could not be verified");
 
   await db.update(walletChallenges).set({ usedAt: new Date() }).where(eq(walletChallenges.id, input.challengeId));

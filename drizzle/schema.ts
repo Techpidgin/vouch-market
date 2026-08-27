@@ -1,5 +1,6 @@
 import {
   boolean,
+  bigint,
   index,
   integer,
   numeric,
@@ -236,6 +237,62 @@ export const supportMessages = pgTable(
   ],
 );
 
+/**
+ * Public presentation metadata for an already-funded Arc task. The escrow,
+ * identities, amount, deadlines, terms commitment, and lifecycle remain
+ * verifiable onchain; this table merely lets social-proof Bounties be readable.
+ */
+export const arcSocialBounties = pgTable(
+  "arcSocialBounties",
+  {
+    id: serial("id").primaryKey(),
+    contractAddress: varchar("contractAddress", { length: 42 }).notNull(),
+    taskId: bigint("taskId", { mode: "number" }).notNull(),
+    requesterWallet: varchar("requesterWallet", { length: 42 }).notNull(),
+    projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
+    instrument: marketInstrument("instrument").notNull(),
+    targetHandle: varchar("targetHandle", { length: 80 }).notNull(),
+    proofDetail: varchar("proofDetail", { length: 240 }),
+    spaceMinutes: integer("spaceMinutes"),
+    retentionDays: integer("retentionDays").notNull().default(30),
+    termsHash: varchar("termsHash", { length: 66 }).notNull(),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp(),
+  },
+  table => [
+    uniqueIndex("arcSocialBounties_contract_task_unique").on(table.contractAddress, table.taskId),
+    index("arcSocialBounties_target_instrument_idx").on(table.targetHandle, table.instrument),
+    index("arcSocialBounties_requester_idx").on(table.requesterWallet),
+  ],
+);
+
+/**
+ * The source profile a verified Arc task taker associates with a social-proof
+ * Bounty. It never controls payout: the contract's taker address and state do.
+ */
+export const arcSocialBountySources = pgTable(
+  "arcSocialBountySources",
+  {
+    id: serial("id").primaryKey(),
+    contractAddress: varchar("contractAddress", { length: 42 }).notNull(),
+    taskId: bigint("taskId", { mode: "number" }).notNull(),
+    takerWallet: varchar("takerWallet", { length: 42 }).notNull(),
+    sourceHandle: varchar("sourceHandle", { length: 80 }).notNull(),
+    pointsPerUnit: integer("pointsPerUnit").notNull(),
+    followerCount: integer("followerCount"),
+    ethosScore: integer("ethosScore"),
+    kaitoScore: integer("kaitoScore"),
+    kaitoAura: integer("kaitoAura"),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp(),
+  },
+  table => [
+    uniqueIndex("arcSocialBountySources_contract_task_unique").on(table.contractAddress, table.taskId),
+    index("arcSocialBountySources_source_idx").on(table.sourceHandle),
+    index("arcSocialBountySources_taker_idx").on(table.takerWallet),
+  ],
+);
+
 export const activityLogs = pgTable(
   "activityLogs",
   {
@@ -288,3 +345,5 @@ export const payoutRecords = pgTable(
 export type MarketRequest = typeof marketRequests.$inferSelect;
 export type SellerCommitment = typeof sellerCommitments.$inferSelect;
 export type SupportMessage = typeof supportMessages.$inferSelect;
+export type ArcSocialBounty = typeof arcSocialBounties.$inferSelect;
+export type ArcSocialBountySource = typeof arcSocialBountySources.$inferSelect;
