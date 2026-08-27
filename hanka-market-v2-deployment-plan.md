@@ -73,7 +73,7 @@ $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureKey)
 $env:ARC_TESTNET_DEPLOYER_PRIVATE_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
 [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
 
-pnpm node contracts/scripts/deployHankaMarketV2Testnet.mjs
+pnpm run arc:v2:deploy:testnet
 Remove-Item Env:ARC_TESTNET_DEPLOYER_PRIVATE_KEY
 ```
 
