@@ -277,3 +277,4 @@
 - [x] Keep Bounties, Airdrop Agreements, and Social Proof together in one Arc listing dashboard, using tabs and filters rather than separate market pages.
 - [x] Make the landing Arc attribution borderless and non-linking, and restrict Testnet wording to wallet connection controls.
 - [x] Ensure every animated hero-terminal command remains fully visible at desktop and mobile widths.
+- [x] Document current Bounty, Social Proof, and Airdrop Agreement workflows; assess gaps; and define a successor escrow-contract specification for future deployment.
