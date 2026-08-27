@@ -36,10 +36,19 @@ const escrowAbi = parseAbi([
   "function disputeTask(uint256 id)",
   "function pointExchangeToken(uint256 id) view returns (address)",
   "function taskToken(uint256 id) view returns (address)",
+  "function pointExchangeCount() view returns (uint256)",
+  "function taskCount() view returns (uint256)",
+  "function pointExchanges(uint256 id) view returns (address maker, address taker, address token, uint128 collateral, uint64 acceptDeadline, uint64 settlementDeadline, bytes32 termsHash, bytes32 makerApprovalHash, bytes32 takerApprovalHash, uint8 state)",
+  "function tasks(uint256 id) view returns (address requester, address taker, address token, uint128 reward, uint64 acceptDeadline, uint64 dueAt, bytes32 termsHash, bytes32 deliveryHash, uint8 state)",
 ]);
 
 export type ArcTokenSymbol = (typeof ARC_TESTNET_TOKENS)[number]["symbol"];
 export type ArcWalletState = { address: Address; chainId: number };
+export type ArcPointExchangeRecord = { id: bigint; maker: Address; taker: Address; token: Address; tokenDecimals: number; collateral: bigint; acceptDeadline: bigint; settlementDeadline: bigint; termsHash: Hex; state: number };
+export type ArcTaskRecord = { id: bigint; requester: Address; taker: Address; token: Address; tokenDecimals: number; reward: bigint; acceptDeadline: bigint; dueAt: bigint; termsHash: Hex; deliveryHash: Hex; state: number };
+export type ArcWalletDashboard = { pointExchanges: ArcPointExchangeRecord[]; tasks: ArcTaskRecord[] };
+export const ARC_POINT_EXCHANGE_STATES = ["Unknown", "Open", "Funded", "Disputed", "Settled", "Declined", "Cancelled"] as const;
+export const ARC_TASK_STATES = ["Unknown", "Open", "Accepted", "Submitted", "Disputed", "Paid", "Cancelled"] as const;
 export const getArcEscrowAddress = (): Address | null => {
   const value = import.meta.env.VITE_ARC_TESTNET_ESCROW_ADDRESS?.trim();
   return value && isAddress(value) ? value : null;
@@ -135,6 +144,32 @@ export async function getArcPointExchangeToken(id: bigint): Promise<Address> {
   const escrow = getArcEscrowAddress();
   if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet.");
   return createPublicClient({ chain: hankaArcTestnet, transport: http() }).readContract({ address: escrow, abi: escrowAbi, functionName: "pointExchangeToken", args: [id] });
+}
+
+const walletMatches = (left: Address, right: Address) => left.toLowerCase() === right.toLowerCase();
+const allRecordIds = (count: bigint) => Array.from({ length: Math.min(Number(count), 300) }, (_, index) => BigInt(index + 1));
+
+/**
+ * Small-scale Testnet discovery. It reads only public contract state and filters it to the connected wallet.
+ * A production launch should replace bounded ID scanning with an indexed, verified event stream.
+ */
+export async function getArcWalletDashboard(wallet: Address): Promise<ArcWalletDashboard> {
+  const escrow = getArcEscrowAddress();
+  if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet.");
+  const publicClient = createPublicClient({ chain: hankaArcTestnet, transport: http() });
+  const [pointCount, taskCount] = await Promise.all([
+    publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "pointExchangeCount" }),
+    publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "taskCount" }),
+  ]);
+  const [pointValues, taskValues] = await Promise.all([
+    Promise.all(allRecordIds(pointCount).map(async id => ({ id, value: await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "pointExchanges", args: [id] }) }))),
+    Promise.all(allRecordIds(taskCount).map(async id => ({ id, value: await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "tasks", args: [id] }) }))),
+  ]);
+  const tokenAddresses = Array.from(new Set([...pointValues.map(item => item.value[2]), ...taskValues.map(item => item.value[2])].map(token => token.toLowerCase())));
+  const tokenDecimals = new Map(await Promise.all(tokenAddresses.map(async token => [token, await getArcTokenDecimals(token as Address)] as const)));
+  const pointExchanges = pointValues.map(({ id, value }) => ({ id, maker: value[0], taker: value[1], token: value[2], tokenDecimals: tokenDecimals.get(value[2].toLowerCase()) ?? 6, collateral: value[3], acceptDeadline: value[4], settlementDeadline: value[5], termsHash: value[6], state: Number(value[9]) })).filter(record => walletMatches(record.maker, wallet) || walletMatches(record.taker, wallet));
+  const tasks = taskValues.map(({ id, value }) => ({ id, requester: value[0], taker: value[1], token: value[2], tokenDecimals: tokenDecimals.get(value[2].toLowerCase()) ?? 6, reward: value[3], acceptDeadline: value[4], dueAt: value[5], termsHash: value[6], deliveryHash: value[7], state: Number(value[8]) })).filter(record => walletMatches(record.requester, wallet) || walletMatches(record.taker, wallet));
+  return { pointExchanges: pointExchanges.sort((a, b) => Number(b.id - a.id)), tasks: tasks.sort((a, b) => Number(b.id - a.id)) };
 }
 
 async function submitEscrowAction(functionName: "acceptPointExchange" | "approvePointExchangeSettlement" | "declinePointExchange" | "disputePointExchange" | "acceptTask" | "submitTask" | "approveTask" | "disputeTask", args: readonly unknown[]): Promise<Hex> {

@@ -19,7 +19,7 @@ describe("Hanka Arc escrow contract", () => {
 
   it("exposes distinct collateral-exchange and first-valid-acceptance task workflows", () => {
     const functions = contract.abi.filter((item: { type: string }) => item.type === "function").map((item: { name: string }) => item.name);
-    expect(functions).toEqual(expect.arrayContaining(["createPointExchange", "acceptPointExchange", "approvePointExchangeSettlement", "declinePointExchange", "disputePointExchange", "resolvePointExchange", "pointExchangeToken", "createTask", "acceptTask", "submitTask", "approveTask", "disputeTask", "resolveTask", "taskToken"]));
+    expect(functions).toEqual(expect.arrayContaining(["createPointExchange", "acceptPointExchange", "approvePointExchangeSettlement", "declinePointExchange", "disputePointExchange", "resolvePointExchange", "pointExchangeToken", "pointExchangeCount", "createTask", "acceptTask", "submitTask", "approveTask", "disputeTask", "resolveTask", "taskToken", "taskCount"]));
     expect(source).toContain("The first valid onchain transaction wins task acceptance.");
   });
 

@@ -343,6 +343,18 @@ contract HankaArcEscrow {
         return tasks[id].token;
     }
 
+    /// @notice Record counts support read-only client discovery during the small-scale Testnet phase.
+    /// @dev Production indexing should consume emitted events rather than scan all record IDs.
+    function pointExchangeCount() external view returns (uint256) {
+        return nextPointExchangeId - 1;
+    }
+
+    /// @notice Record counts support read-only client discovery during the small-scale Testnet phase.
+    /// @dev Production indexing should consume emitted events rather than scan all record IDs.
+    function taskCount() external view returns (uint256) {
+        return nextTaskId - 1;
+    }
+
     function _setFee(uint16 newFeeBps) private {
         if (newFeeBps > MAX_FEE_BPS) revert FeeTooHigh();
         feeBps = newFeeBps;

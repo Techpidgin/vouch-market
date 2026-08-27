@@ -216,3 +216,7 @@
 - [x] Add Arc EVM wallet connection and testnet transaction flows while preserving Solana USDC as a separately labelled alternative.
 - [x] Configure token support only for verified Arc testnet deployments of USDC, EURC, and Circle cirBTC, with token decimals read from the contract where not documented.
 - [x] Document secure private-key handling and require explicit confirmation before any real Arc testnet deployment transaction.
+- [x] Define wallet-owned Arc point-exchange and task record discovery, status, and completed-history rules.
+- [x] Add read-only onchain discovery for connected-wallet active and completed Arc escrow records.
+- [x] Build a responsive Arc dashboard for personal point exchanges and task escrows with status, counterparties, terms hashes, and ArcScan links.
+- [x] Validate dashboard behavior, production build compatibility, and mobile responsiveness before publishing.
