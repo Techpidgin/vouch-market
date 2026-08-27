@@ -220,3 +220,5 @@
 - [x] Add read-only onchain discovery for connected-wallet active and completed Arc escrow records.
 - [x] Build a responsive Arc dashboard for personal point exchanges and task escrows with status, counterparties, terms hashes, and ArcScan links.
 - [x] Validate dashboard behavior, production build compatibility, and mobile responsiveness before publishing.
+- [x] Verify the Arc Testnet deployment script’s secret boundaries and required public configuration values.
+- [x] Provide a safe step-by-step Arc Testnet wallet, contract deployment, and Vercel configuration handoff without receiving a private key.
