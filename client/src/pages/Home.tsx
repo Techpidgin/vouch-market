@@ -61,23 +61,19 @@ export default function Home() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setTypedLines([...terminalLines]); return; }
     let timer = 0;
     let lineIndex = 0;
-    let wordIndex = 0;
     const start = () => {
       lineIndex = 0;
-      wordIndex = 0;
       setTypingLine(0);
       setTypedLines(terminalLines.map(() => ""));
       tick();
     };
     const tick = () => {
-      const line = terminalLines[lineIndex];
-      const words = line.split(" ");
-      setTypingLine(lineIndex);
-      setTypedLines(current => current.map((value, index) => index === lineIndex ? words.slice(0, wordIndex + 1).join(" ") : value));
-      if (wordIndex < words.length - 1) { wordIndex += 1; timer = window.setTimeout(tick, 170); return; }
+      const activeLineIndex = lineIndex;
+      const line = terminalLines[activeLineIndex];
+      setTypingLine(activeLineIndex);
+      setTypedLines(current => current.map((value, index) => index === activeLineIndex ? line : value));
       lineIndex += 1;
-      wordIndex = 0;
-      if (lineIndex < terminalLines.length) { timer = window.setTimeout(tick, 145); return; }
+      if (lineIndex < terminalLines.length) { timer = window.setTimeout(tick, 430); return; }
       setTypingLine(-1);
       timer = window.setTimeout(start, 2200);
     };
