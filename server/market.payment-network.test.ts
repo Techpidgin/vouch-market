@@ -6,7 +6,7 @@ const marketSource = readFileSync(resolve(process.cwd(), "client/src/components/
 const assetsSource = readFileSync(resolve(process.cwd(), "client/src/lib/brandAssets.ts"), "utf8");
 
 describe("payment network selector", () => {
-  it("shows Arc Testnet first as the contract-market entry and retains the Solana USDC flow as an alternative", () => {
+  it("makes Arc the connected-wallet primary path while retaining Solana manual OTC as an alternative", () => {
     expect(assetsSource).toContain("USDC_MARK_URL");
     expect(assetsSource).toContain("ARC_MARK_URL");
     expect(marketSource).toContain("PaymentRailPopover");
@@ -17,6 +17,9 @@ describe("payment network selector", () => {
     expect(marketSource).toContain("USDC · Arc EVM");
     expect(marketSource).toContain("Testnet contract market");
     expect(marketSource).toContain("Alternative market");
+    expect(marketSource).toContain("connectArcWallet");
+    expect(marketSource).toContain("sendArcManualOtcUsdc");
+    expect(marketSource).toContain("Bounty &amp; point escrow");
     expect(marketSource.indexOf("USDC · Arc EVM")).toBeLessThan(marketSource.indexOf("USDC · Solana"));
     expect(marketSource).not.toContain("PaymentNetworkDock");
     expect(marketSource).not.toContain("Solana USDC is the active settlement rail.");

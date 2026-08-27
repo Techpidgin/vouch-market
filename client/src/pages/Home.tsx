@@ -9,7 +9,7 @@ import {
   UsersRound,
 } from "lucide-react";
 
-import { OPERA_UNDERLAY_URL } from "@/lib/brandAssets";
+import { ARC_MARK_URL, OPERA_UNDERLAY_URL } from "@/lib/brandAssets";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 
@@ -47,10 +47,10 @@ const proofTypes = [
 
 const terminalLines = [
   "watch / social-proof",
-  "match   Ethos vouch      ready",
-  "quote   USDC / unit      live",
-  "proof   source -> target signed",
-  "route   buy | sell       open",
+  "match Ethos vouch ready",
+  "quote USDC / unit live",
+  "proof source > target signed",
+  "route buy + sell open",
 ] as const;
 
 export default function Home() {
@@ -103,6 +103,7 @@ export default function Home() {
           <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Trade <span className="inline-flex items-center gap-1"><EthosMark className="size-4" />Ethos</span> reputation and social proof on HANKA Exchange.</p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link href="/market#market" className="hanka-primary-button">Buy or sell proof <ArrowUpRight className="size-4" /></Link>
+            <Link href="/arc" className="home-built-on-arc"><img src={ARC_MARK_URL} alt="" aria-hidden="true" />Built on Arc <ArrowUpRight className="size-3" /></Link>
           </div>
         </div>
         <aside className="transaction-terminal" aria-label="HANKA transaction terminal preview">
@@ -140,7 +141,7 @@ export default function Home() {
 
       <footer className="relative border-t border-[var(--hanka-line)]">
         <div className="market-shell flex flex-wrap items-center justify-between gap-4 py-5 text-xs text-[var(--hanka-muted)]">
-          <span>HANKA Social Proof Market · USDC on Solana</span>
+          <span>HANKA Social Proof Market · Built on Arc · Solana USDC alternative</span>
           <nav className="flex items-center gap-4"><Link href="/market?support=1#support" className="hanka-text-link">Support</Link><Link href="/market#terms" className="hanka-text-link">Terms</Link><Link href="/ops" className="hanka-text-link">Operations</Link></nav>
         </div>
       </footer>

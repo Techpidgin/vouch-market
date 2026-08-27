@@ -21,6 +21,7 @@ const erc20Abi = parseAbi([
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
   "function decimals() view returns (uint8)",
+  "function transfer(address to, uint256 amount) returns (bool)",
 ]);
 
 const escrowAbi = parseAbi([
@@ -51,6 +52,10 @@ export const ARC_POINT_EXCHANGE_STATES = ["Unknown", "Open", "Funded", "Disputed
 export const ARC_TASK_STATES = ["Unknown", "Open", "Accepted", "Submitted", "Disputed", "Paid", "Cancelled"] as const;
 export const getArcEscrowAddress = (): Address | null => {
   const value = import.meta.env.VITE_ARC_TESTNET_ESCROW_ADDRESS?.trim();
+  return value && isAddress(value) ? value : null;
+};
+export const getArcOtcRecipientAddress = (): Address | null => {
+  const value = import.meta.env.VITE_ARC_OTC_RECIPIENT_ADDRESS?.trim();
   return value && isAddress(value) ? value : null;
 };
 export const arcExplorerTx = (hash: Hex) => `https://testnet.arcscan.app/tx/${hash}`;
@@ -113,6 +118,26 @@ async function walletAndAccount() {
   return { walletClient, account };
 }
 
+export async function signArcWalletMessage(message: string): Promise<Hex> {
+  const { walletClient, account } = await walletAndAccount();
+  return walletClient.signMessage({ account, message });
+}
+
+export async function sendArcManualOtcUsdc(amount: bigint): Promise<Hex> {
+  const recipient = getArcOtcRecipientAddress();
+  if (!recipient) throw new Error("Arc manual OTC recipient is not configured. Try the Solana alternative or contact HANKA support.");
+  const { walletClient, account } = await walletAndAccount();
+  const hash = await walletClient.writeContract({
+    address: tokenFor("USDC").address,
+    abi: erc20Abi,
+    functionName: "transfer",
+    args: [recipient, amount],
+    account,
+  });
+  await createPublicClient({ chain: hankaArcTestnet, transport: http() }).waitForTransactionReceipt({ hash });
+  return hash;
+}
+
 export async function approveArcEscrow(token: Address, amount: bigint): Promise<Hex> {
   const escrow = getArcEscrowAddress();
   if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet. Add the verified public contract address first.");
@@ -170,6 +195,28 @@ export async function getArcWalletDashboard(wallet: Address): Promise<ArcWalletD
   const pointExchanges = pointValues.map(({ id, value }) => ({ id, maker: value[0], taker: value[1], token: value[2], tokenDecimals: tokenDecimals.get(value[2].toLowerCase()) ?? 6, collateral: value[3], acceptDeadline: value[4], settlementDeadline: value[5], termsHash: value[6], state: Number(value[9]) })).filter(record => walletMatches(record.maker, wallet) || walletMatches(record.taker, wallet));
   const tasks = taskValues.map(({ id, value }) => ({ id, requester: value[0], taker: value[1], token: value[2], tokenDecimals: tokenDecimals.get(value[2].toLowerCase()) ?? 6, reward: value[3], acceptDeadline: value[4], dueAt: value[5], termsHash: value[6], deliveryHash: value[7], state: Number(value[8]) })).filter(record => walletMatches(record.requester, wallet) || walletMatches(record.taker, wallet));
   return { pointExchanges: pointExchanges.sort((a, b) => Number(b.id - a.id)), tasks: tasks.sort((a, b) => Number(b.id - a.id)) };
+}
+
+/**
+ * Testnet-only public bounty discovery. The contract stores a terms hash rather than task text,
+ * so callers must render the hash as a commitment reference, never invent a bounty description.
+ * A production market should replace this bounded scan with a verified event indexer.
+ */
+export async function getArcOpenBounties(): Promise<ArcTaskRecord[]> {
+  const escrow = getArcEscrowAddress();
+  if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet.");
+  const publicClient = createPublicClient({ chain: hankaArcTestnet, transport: http() });
+  const taskCount = await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "taskCount" });
+  const values = await Promise.all(allRecordIds(taskCount).map(async id => ({
+    id,
+    value: await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "tasks", args: [id] }),
+  })));
+  const tokenAddresses = Array.from(new Set(values.map(item => item.value[2].toLowerCase())));
+  const decimals = new Map(await Promise.all(tokenAddresses.map(async token => [token, await getArcTokenDecimals(token as Address)] as const)));
+  return values
+    .map(({ id, value }) => ({ id, requester: value[0], taker: value[1], token: value[2], tokenDecimals: decimals.get(value[2].toLowerCase()) ?? 6, reward: value[3], acceptDeadline: value[4], dueAt: value[5], termsHash: value[6], deliveryHash: value[7], state: Number(value[8]) }))
+    .filter(record => record.state === 1)
+    .sort((left, right) => Number(right.id - left.id));
 }
 
 async function submitEscrowAction(functionName: "acceptPointExchange" | "approvePointExchangeSettlement" | "declinePointExchange" | "disputePointExchange" | "acceptTask" | "submitTask" | "approveTask" | "disputeTask", args: readonly unknown[]): Promise<Hex> {

@@ -2,20 +2,27 @@ import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import nacl from "tweetnacl";
 import { PublicKey } from "@solana/web3.js";
+import { isAddress, verifyMessage } from "viem";
 import { walletChallenges } from "../../drizzle/schema";
 import { getDb } from "../db";
 
 const CHALLENGE_TTL_MS = 10 * 60 * 1000;
 
+function walletNetwork(wallet: string): "solana" | "arc" {
+  if (isAddress(wallet)) return "arc";
+  try { new PublicKey(wallet); return "solana"; } catch { throw new Error("Enter a valid Solana or Arc EVM wallet address"); }
+}
+
 export async function createWalletChallenge(wallet: string, action: string) {
-  new PublicKey(wallet);
+  const network = walletNetwork(wallet);
   const db = await getDb();
   if (!db) throw new Error("Database is unavailable");
 
   const id = nanoid(20);
   const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS);
   const message = [
-    "Vouch Market wallet confirmation",
+    "HANKA wallet confirmation",
+    `Network: ${network === "arc" ? "Arc Testnet" : "Solana"}`,
     `Action: ${action}`,
     `Wallet: ${wallet}`,
     `Nonce: ${id}`,
@@ -43,11 +50,14 @@ export async function verifyWalletChallenge(input: {
     throw new Error("Wallet confirmation has expired; request a new one");
   }
 
-  const verified = nacl.sign.detached.verify(
-    new TextEncoder().encode(challenge.message),
-    new Uint8Array(Buffer.from(input.signature, "base64")),
-    new PublicKey(input.wallet).toBytes(),
-  );
+  const network = walletNetwork(input.wallet);
+  const verified = network === "arc"
+    ? await verifyMessage({ address: input.wallet as `0x${string}`, message: challenge.message, signature: input.signature as `0x${string}` })
+    : nacl.sign.detached.verify(
+      new TextEncoder().encode(challenge.message),
+      new Uint8Array(Buffer.from(input.signature, "base64")),
+      new PublicKey(input.wallet).toBytes(),
+    );
   if (!verified) throw new Error("Wallet signature could not be verified");
 
   await db.update(walletChallenges).set({ usedAt: new Date() }).where(eq(walletChallenges.id, input.challengeId));

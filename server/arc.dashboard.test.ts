@@ -20,6 +20,12 @@ describe("Arc wallet dashboard discovery", () => {
     expect(clientSource).toContain('"Open", "Accepted", "Submitted", "Disputed", "Paid", "Cancelled"');
   });
 
+  it("exposes a real-only public Bounty scan without seeded marketplace records", () => {
+    expect(clientSource).toContain("getArcOpenBounties");
+    expect(clientSource).toContain("filter(record => record.state === 1)");
+    expect(clientSource).toContain("never invent a bounty description");
+  });
+
   it("renders separate wallet-owned active and completed exchange and task ledgers", () => {
     expect(dashboardSource).toContain("getArcWalletDashboard");
     expect(dashboardSource).toContain("Only records where your connected EVM wallet");

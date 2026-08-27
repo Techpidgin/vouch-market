@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { PublicKey } from "@solana/web3.js";
+import { isAddress } from "viem";
 import { publicProcedure, rateLimitedPublicProcedure, router } from "../_core/trpc";
 import {
   activatePaidRequest,
@@ -23,14 +24,17 @@ import {
   recordVerifiedPayment,
   reportEarlyRemoval,
 } from "../market/db";
+import { verifyArcUsdcManualOtcPayment } from "../market/arc";
 import { verifyUsdcPayment } from "../market/solana";
 import { USDC_MINT } from "../market/constants";
 import { createWalletChallenge, verifyWalletChallenge } from "../market/walletProof";
 import { awardReferralPoints, getReferralDashboard, getReferralLeaderboard, joinReferral } from "../market/referrals";
 
 const wallet = z.string().trim().min(32).max(64).refine(value => {
+  if (isAddress(value)) return true;
   try { new PublicKey(value); return true; } catch { return false; }
-}, "Enter a valid Solana wallet address");
+}, "Enter a valid Solana or Arc EVM wallet address");
+const paymentRail = z.enum(["solana", "arc"]);
 const instrument = z.enum(["vouch", "slash", "follow", "repost", "comment", "space_listener", "space_speaker", "space_contributor", "hanka_points"]);
 const proofScope = z.string().trim().max(240).optional();
 const spaceMinutes = z.number().int().positive().max(720).optional();
@@ -44,6 +48,12 @@ function marketError(error: unknown): never {
 
 async function grantReferralPoints(wallet: string, event: "seller_listing" | "buyer_purchase" | "seller_completion", eventKey: string) {
   try { await awardReferralPoints(wallet, event, eventKey); } catch (error) { console.warn(`[Referrals] Could not award ${event} for ${wallet.slice(0, 6)}…`, error); }
+}
+
+function paymentInstructions(rail: z.infer<typeof paymentRail>) {
+  return rail === "arc"
+    ? { rail, recipientWallet: process.env.VITE_ARC_OTC_RECIPIENT_ADDRESS ?? "", usdcMint: "0x3600000000000000000000000000000000000000" }
+    : { rail, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
 }
 
 export const marketRouter = router({
@@ -89,32 +99,33 @@ export const marketRouter = router({
       }
     }),
   createRequest: rateLimitedPublicProcedure
-    .input(z.object({ wallet, targetHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
+    .input(z.object({ wallet, paymentRail, targetHandle: xHandle, projectSlug: z.string().trim().min(2).max(64).default("commonsmade"), instrument: instrument.default("vouch"), proofDetail: proofScope, spaceMinutes, quantity: z.number().int().positive().max(1_000_000), pricePerVouch: z.number().positive().max(10_000), proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "buyer_request" });
         const created = await createRequest({ buyerWallet: input.wallet, targetHandle: input.targetHandle.replace(/^@/, ""), projectSlug: input.projectSlug, instrument: input.instrument, proofDetail: input.proofDetail, spaceMinutes: input.spaceMinutes, requestedQuantity: input.quantity, pricePerVouch: input.pricePerVouch, totalUsdc: input.quantity * input.pricePerVouch });
-        return { ...created, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
+        return { ...created, ...paymentInstructions(input.paymentRail) };
       } catch (error) {
         marketError(error);
       }
     }),
   paymentDetails: publicProcedure
-    .input(z.object({ publicId: z.string().startsWith("REQ-"), wallet }))
+    .input(z.object({ publicId: z.string().startsWith("REQ-"), wallet, paymentRail }))
     .query(async ({ input }) => {
       try {
         const details = await getPaymentDetails(input.publicId, input.wallet);
-        return { ...details, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
+        return { ...details, ...paymentInstructions(input.paymentRail) };
       } catch (error) {
         marketError(error);
       }
     }),
   verifyPayment: rateLimitedPublicProcedure
-    .input(z.object({ publicId: z.string().startsWith("REQ-"), wallet, signature: z.string().min(64).max(128) }))
+    .input(z.object({ publicId: z.string().startsWith("REQ-"), wallet, paymentRail, signature: z.string().min(64).max(128) }))
     .mutation(async ({ input }) => {
       try {
         const request = await activatePaidRequest({ publicId: input.publicId, signature: input.signature, buyerWallet: input.wallet });
-        await verifyUsdcPayment({ signature: input.signature, buyerWallet: input.wallet, expectedUsdc: request.totalUsdc, earliestAllowedAt: request.createdAt });
+        if (input.paymentRail === "arc") await verifyArcUsdcManualOtcPayment({ hash: input.signature, buyerWallet: input.wallet, expectedUsdc: request.totalUsdc, earliestAllowedAt: request.createdAt });
+        else await verifyUsdcPayment({ signature: input.signature, buyerWallet: input.wallet, expectedUsdc: request.totalUsdc, earliestAllowedAt: request.createdAt });
         await recordVerifiedPayment(input.publicId, input.signature, input.wallet);
         await grantReferralPoints(input.wallet, "buyer_purchase", `payment:${input.publicId}`);
         return { ok: true };
@@ -145,28 +156,29 @@ export const marketRouter = router({
       }
     }),
   initiateOfferPurchase: rateLimitedPublicProcedure
-    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, targetHandle: xHandle, proof }))
+    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, paymentRail, targetHandle: xHandle, proof }))
     .mutation(async ({ input }) => {
       try {
         await verifyWalletChallenge({ ...input.proof, wallet: input.wallet, action: "offer_buy" });
         const created = await initiateOfferPurchase({ offerPublicId: input.publicId, buyerWallet: input.wallet, targetHandle: input.targetHandle });
-        return { ...created, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
+        return { ...created, ...paymentInstructions(input.paymentRail) };
       } catch (error) { marketError(error); }
     }),
   offerPaymentDetails: publicProcedure
-    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet }))
+    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, paymentRail }))
     .query(async ({ input }) => {
       try {
         const details = await getOfferPaymentDetails(input.publicId, input.wallet);
-        return { ...details, recipientWallet: process.env.SOLANA_RECIPIENT_WALLET ?? "", usdcMint: USDC_MINT };
+        return { ...details, ...paymentInstructions(input.paymentRail) };
       } catch (error) { marketError(error); }
     }),
   verifyOfferPayment: rateLimitedPublicProcedure
-    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, signature: z.string().min(64).max(128) }))
+    .input(z.object({ publicId: z.string().startsWith("ASK-"), wallet, paymentRail, signature: z.string().min(64).max(128) }))
     .mutation(async ({ input }) => {
       try {
         const offer = await activateOfferPurchase({ publicId: input.publicId, signature: input.signature, buyerWallet: input.wallet });
-        await verifyUsdcPayment({ signature: input.signature, buyerWallet: input.wallet, expectedUsdc: offer.grossUsdc!, earliestAllowedAt: offer.createdAt });
+        if (input.paymentRail === "arc") await verifyArcUsdcManualOtcPayment({ hash: input.signature, buyerWallet: input.wallet, expectedUsdc: offer.grossUsdc!, earliestAllowedAt: offer.createdAt });
+        else await verifyUsdcPayment({ signature: input.signature, buyerWallet: input.wallet, expectedUsdc: offer.grossUsdc!, earliestAllowedAt: offer.createdAt });
         await recordVerifiedOfferPurchase(input.publicId, input.signature, input.wallet);
         await grantReferralPoints(input.wallet, "buyer_purchase", `offer-payment:${input.publicId}`);
         return { ok: true };

@@ -222,3 +222,15 @@
 - [x] Validate dashboard behavior, production build compatibility, and mobile responsiveness before publishing.
 - [x] Verify the Arc Testnet deployment script’s secret boundaries and required public configuration values.
 - [x] Provide a safe step-by-step Arc Testnet wallet, contract deployment, and Vercel configuration handoff without receiving a private key.
+- [x] Package the HANKA Arc Testnet escrow source, minimal local tooling, and VS Code deployment guide without credentials.
+- [x] Add a secure Windows PowerShell and Command Prompt deployment-key setup fix for the standalone Arc Testnet package.
+- [x] Provide an exact mapping of Arc Testnet deployment placeholders, wallet roles, local environment variables, and the single public Vercel value.
+- [x] Verify the deployed Arc Testnet contract and provide the safe HANKA activation and faucet-token test sequence.
+- [x] Confirm the deployed Arc Testnet contract verification settings and explain the HANKA frontend activation and redeployment boundary.
+- [x] Consolidate Arc and Solana entry points into a clear Arc-first wallet experience while retaining Solana USDC as manual OTC settlement.
+- [x] Show a clear Arc-wallet handoff when users on the Solana path request point-exchange or Bounty escrow capabilities.
+- [x] Rename the onchain task market to Bounty and build a dense, responsive live Bounty board based only on actual onchain records.
+- [x] Add an Arc build attribution with the Arc mark to the landing page and retain the existing HANKA visual system.
+- [x] Complete terminal typing sequences so each line resolves to its full intended text before the next line begins.
+- [x] Validate Arc-first and Solana-alternative paths, Bounty interactions, responsive layouts, tests, and production builds before publishing.
+- [x] Document the missing local dependencies recovery sequence before a Windows Arc Testnet deployment retry.

@@ -32,9 +32,9 @@ describe("public market branding", () => {
     expect(homeSource).toContain("HANKA · Social proof exchange");
     expect(homeSource).toContain("reputation and social proof on HANKA Exchange.");
     expect(homeSource).toContain('EthosMark className="size-4"');
-    expect(homeSource).toContain("HANKA Social Proof Market · USDC on Solana");
+    expect(homeSource).toContain("HANKA Social Proof Market · Built on Arc · Solana USDC alternative");
     expect(marketSource).toContain("HANKA · Open market");
-    expect(marketSource).toContain("HANKA Social Proof Market · USDC on Solana");
+    expect(marketSource).toContain("HANKA Social Proof Market · Arc Testnet primary · Solana USDC alternative");
   });
 
   it("keeps the public product dark-only and lets each catalogue card open its matching proof market", () => {

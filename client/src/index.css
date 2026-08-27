@@ -218,6 +218,9 @@
   .hanka-header-action:hover { border-color: color-mix(in srgb, var(--hanka-accent) 66%, var(--hanka-line)); background: var(--hanka-panel-strong); color: var(--hanka-text); }
   .hanka-primary-button { position: relative; display: inline-flex; align-items: center; gap: .55rem; overflow: hidden; background: var(--hanka-accent); color: var(--hanka-accent-text); padding: .85rem 1.1rem; font-family: "Geist", sans-serif; font-size: .84rem; font-weight: 700; box-shadow: 0 13px 30px rgba(70, 155, 93, .18); }
   .hanka-primary-button::after { position: absolute; inset: 0; content: ""; transform: translateX(-125%); background: linear-gradient(100deg, transparent 22%, rgba(255,255,255,.6) 50%, transparent 76%); }
+  .home-built-on-arc { display: inline-flex; align-items: center; gap: .45rem; border-bottom: 1px solid rgba(215, 191, 140, .55); padding: .55rem .05rem; color: #ecd59d; font-family: "Geist", sans-serif; font-size: .76rem; font-weight: 700; letter-spacing: .02em; }
+  .home-built-on-arc img { width: 1rem; height: 1rem; object-fit: contain; }
+  .home-built-on-arc:hover { color: #fff0c3; border-color: #ecd59d; }
   .hero-shine-text { color: var(--hanka-text); background: linear-gradient(112deg, var(--hanka-text) 20%, #f8fff5 46%, var(--hanka-text) 66%); background-size: 220% 100%; background-position: 100% 0; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
   .terms-stage { position: relative; min-height: 23rem; overflow: hidden; border: 1px solid var(--hanka-line); background: #112017; color: #f0f4ec; padding: 1.5rem; box-shadow: 0 26px 70px rgba(0,0,0,.18); isolation: isolate; }
   .terms-logo-bg { position: absolute; right: -1rem; bottom: -2.5rem; opacity: .1; transform: rotate(-10deg); }
@@ -460,7 +463,7 @@
 .terminal-code { display: grid; gap: .15rem; padding: .5rem .9rem 1rem; }
 .terminal-code-row {
   display: grid;
-  grid-template-columns: 1.25rem minmax(0, 1fr) .35rem;
+  grid-template-columns: 1.25rem max-content;
   align-items: center;
   gap: .55rem;
   min-height: 1.85rem;
@@ -471,8 +474,8 @@
   line-height: 1.3;
 }
 .terminal-code-index { color: rgba(165, 229, 180, .42); }
-.terminal-code-row code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.terminal-code-dot { width: .3rem; height: .3rem; background: rgba(165, 229, 180, .72); box-shadow: none; }
+.terminal-code-row code { min-width: 0; overflow: visible; text-overflow: clip; white-space: nowrap; font-size: clamp(.5rem, 1.3vw, .62rem); }
+.terminal-code-dot { display: none; }
 @media (prefers-reduced-motion: no-preference) {
   .transaction-terminal { animation: terminal-float 7s ease-in-out infinite; }
   .terminal-underlay-grid span { animation: terminal-scan 5s ease-in-out infinite; }
@@ -514,5 +517,5 @@
   .terminal-window { inset: 1.8rem .9rem .9rem .9rem; }
   .landing-opera-background img { object-position: 63% 38%; opacity: .23; }
   .market-hero-opera { inset: 0; width: 100%; height: 100%; object-position: 67% 31%; opacity: .2; transform: scale(1.2); }
-  .terminal-code-row { font-size: .58rem; }
+  .terminal-code-row { grid-template-columns: 1.05rem max-content; gap: .38rem; font-size: .5rem; }
 }

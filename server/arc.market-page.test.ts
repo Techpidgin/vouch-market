@@ -6,23 +6,30 @@ const page = readFileSync(path.resolve(process.cwd(), "client/src/pages/ArcMarke
 
 describe("Arc Testnet market page", () => {
   it("keeps real transaction controls testnet-only and deployment-gated", () => {
-    expect(page).toContain("Arc Testnet · Smart-contract preview");
+    expect(page).toContain("Arc Testnet · Contract market");
     expect(page).toContain("getArcEscrowAddress");
-    expect(page).toContain("No verified contract configured");
+    expect(page).toContain("Awaiting reviewed contract");
     expect(page).toContain("disabled={!wallet || busy || !escrowAddress}");
   });
 
-  it("presents both point-exchange and task-reward funding flows from the user wallet", () => {
+  it("presents point exchanges and Bounty reward funding from the user Arc wallet", () => {
     expect(page).toContain("Point exchange");
-    expect(page).toContain("Task market");
+    expect(page).toContain("Open Bounties");
+    expect(page).toContain("Fund Bounty reward");
     expect(page).toContain("createArcPointExchange");
     expect(page).toContain("createArcTask");
     expect(page).toContain("No seed phrase or private key is shared with HANKA.");
   });
 
+  it("renders only real open Bounties read from the public contract", () => {
+    expect(page).toContain("getArcOpenBounties");
+    expect(page).toContain("No demo tasks are shown.");
+    expect(page).toContain("No open Bounties found.");
+  });
+
   it("includes onchain post-funding actions while keeping the contract as the settlement source of truth", () => {
-    expect(page).toContain("Accept &amp; lock equal collateral");
-    expect(page).toContain("Approve matching settlement");
+    expect(page).toContain("Accept &amp; lock collateral");
+    expect(page).toContain("Approve settlement");
     expect(page).toContain("Maker decline");
     expect(page).toContain("Submit delivery hash");
     expect(page).toContain("Approve payout");

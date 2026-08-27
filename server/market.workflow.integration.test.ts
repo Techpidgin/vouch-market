@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   recordVerifiedPayment: vi.fn(),
   reportEarlyRemoval: vi.fn(),
   verifyEarlyRemovalAndBanSource: vi.fn(),
+  verifyArcUsdcManualOtcPayment: vi.fn(),
   verifyUsdcPayment: vi.fn(),
   verifyWalletChallenge: vi.fn(),
   awardReferralPoints: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock("./market/db", () => ({
 }));
 
 vi.mock("./market/solana", () => ({ verifyUsdcPayment: mocks.verifyUsdcPayment }));
+vi.mock("./market/arc", () => ({ verifyArcUsdcManualOtcPayment: mocks.verifyArcUsdcManualOtcPayment }));
 vi.mock("./market/walletProof", () => ({
   createWalletChallenge: vi.fn(),
   verifyWalletChallenge: mocks.verifyWalletChallenge,
@@ -78,6 +80,7 @@ describe("wallet-first marketplace workflow integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.verifyWalletChallenge.mockResolvedValue(undefined);
+    mocks.verifyArcUsdcManualOtcPayment.mockResolvedValue(undefined);
     mocks.verifyUsdcPayment.mockResolvedValue(undefined);
     mocks.createSellerOffer.mockResolvedValue({ publicId: "ASK-LIVE", unitsPosted: 2 });
     mocks.initiateOfferPurchase.mockResolvedValue({ publicId: "ASK-ALLOC", totalUsdc: "0.520000" });
@@ -94,8 +97,8 @@ describe("wallet-first marketplace workflow integration", () => {
     const caller = appRouter.createCaller(anonymousContext());
 
     await caller.market.createSellerOffer({ wallet: sellerWallet, profileHandle: "source_one", projectSlug: "commonsmade", instrument: "vouch", quantity: 2, pointsPerUnit: 12000, retentionDays: 30, pricePerVouch: 0.52, proof });
-    await caller.market.initiateOfferPurchase({ publicId: "ASK-LIVE", wallet: buyerWallet, targetHandle: "target_one", proof });
-    await caller.market.verifyOfferPayment({ publicId: "ASK-ALLOC", wallet: buyerWallet, signature: transactionSignature });
+    await caller.market.initiateOfferPurchase({ publicId: "ASK-LIVE", wallet: buyerWallet, paymentRail: "solana", targetHandle: "target_one", proof });
+    await caller.market.verifyOfferPayment({ publicId: "ASK-ALLOC", wallet: buyerWallet, paymentRail: "solana", signature: transactionSignature });
     await caller.market.markSellerDone({ publicId: "ASK-ALLOC", wallet: sellerWallet, proof });
     await caller.market.markOfferBuyerDone({ publicId: "ASK-ALLOC", wallet: buyerWallet, proof });
     await caller.admin.recordPayout({ commitmentPublicId: "ASK-ALLOC", status: "sent", wallet: sellerWallet, proof });
@@ -112,8 +115,8 @@ describe("wallet-first marketplace workflow integration", () => {
   it("traces a buyer request through signed payment, a one-unit point-declared source fill, completion, and administrator payout review", async () => {
     const caller = appRouter.createCaller(anonymousContext());
 
-    await caller.market.createRequest({ wallet: buyerWallet, targetHandle: "target_two", projectSlug: "commonsmade", instrument: "slash", quantity: 1, pricePerVouch: 1.04, proof });
-    await caller.market.verifyPayment({ publicId: "REQ-LIVE", wallet: buyerWallet, signature: transactionSignature });
+    await caller.market.createRequest({ wallet: buyerWallet, paymentRail: "solana", targetHandle: "target_two", projectSlug: "commonsmade", instrument: "slash", quantity: 1, pricePerVouch: 1.04, proof });
+    await caller.market.verifyPayment({ publicId: "REQ-LIVE", wallet: buyerWallet, paymentRail: "solana", signature: transactionSignature });
     await caller.market.fillRequest({ requestPublicId: "REQ-LIVE", wallet: sellerWallet, profileHandle: "source_two", quantity: 1, pointsPerUnit: 8500, retentionDays: 14, proof });
     await caller.market.markBuyerDone({ publicId: "REQ-LIVE", wallet: buyerWallet, proof });
     await caller.market.markSellerDone({ publicId: "FILL-LIVE", wallet: sellerWallet, proof });
@@ -125,5 +128,17 @@ describe("wallet-first marketplace workflow integration", () => {
     expect(mocks.markBuyerDone).toHaveBeenCalledWith("REQ-LIVE", buyerWallet);
     expect(mocks.markSellerDone).toHaveBeenCalledWith("FILL-LIVE", sellerWallet);
     expect(mocks.recordPayoutDecision).toHaveBeenCalledWith(expect.objectContaining({ commitmentPublicId: "FILL-LIVE", status: "sent", adminOpenId: `wallet:${sellerWallet}` }));
+  });
+
+  it("accepts a signed Arc EVM wallet and uses Arc USDC transfer verification for manual OTC payment", async () => {
+    const caller = appRouter.createCaller(anonymousContext());
+    const arcWallet = "0x93E9076512A833a9B931FDD5cf66F413692e611c";
+    const arcHash = `0x${"a".repeat(64)}`;
+
+    await caller.market.createRequest({ wallet: arcWallet, paymentRail: "arc", targetHandle: "arc_target", projectSlug: "commonsmade", instrument: "vouch", quantity: 1, pricePerVouch: 0.5, proof });
+    await caller.market.verifyPayment({ publicId: "REQ-LIVE", wallet: arcWallet, paymentRail: "arc", signature: arcHash });
+
+    expect(mocks.verifyArcUsdcManualOtcPayment).toHaveBeenCalledWith(expect.objectContaining({ hash: arcHash, buyerWallet: arcWallet, expectedUsdc: "1.040000" }));
+    expect(mocks.verifyUsdcPayment).not.toHaveBeenCalled();
   });
 });
