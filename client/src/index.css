@@ -518,6 +518,8 @@
   .landing-opera-background img { object-position: 63% 38%; opacity: .23; }
   .market-hero-opera { inset: 0; width: 100%; height: 100%; object-position: 67% 31%; opacity: .2; transform: scale(1.2); }
   .terminal-code-row { grid-template-columns: 1.05rem max-content; gap: .38rem; font-size: .5rem; }
+  .arc-market-intro { min-height: 0; }
+  .arc-market-intro-underlay { object-position: 68% 44%; opacity: .25; transform: scale(1.16); }
 }
 
 .arc-bright-hero { background: radial-gradient(circle at 78% 38%, rgba(165,229,180,.2), transparent 24%), linear-gradient(113deg, #edf5ed 0%, #dcecdf 44%, #a6d9b2 100%); color: #111812; }
@@ -527,6 +529,11 @@
 .arc-mark-tile img { width: 1.45rem; height: 1.45rem; object-fit: contain; }
 .arc-mark-tile-small { width: 1.7rem; height: 1.7rem; box-shadow: none; }
 .arc-mark-tile-small img { width: 1rem; height: 1rem; }
+.arc-wallet-mark { display: inline-flex; align-items: center; justify-content: center; width: 1.15rem; height: 1.15rem; flex: 0 0 auto; background: #fff; border: 1px solid rgba(16, 21, 16, .18); }
+.arc-wallet-mark img { width: .75rem; height: .75rem; object-fit: contain; }
+.arc-market-intro { isolation: isolate; min-height: 8.75rem; background: #09110c; }
+.arc-market-intro::after { position: absolute; z-index: -1; inset: 0; content: ""; background: linear-gradient(90deg, rgba(7, 16, 11, .94) 0%, rgba(7, 16, 11, .8) 50%, rgba(7, 16, 11, .55) 100%), linear-gradient(180deg, rgba(7, 16, 11, .08), rgba(7, 16, 11, .54)); }
+.arc-market-intro-underlay { position: absolute; z-index: -2; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% 44%; opacity: .32; filter: grayscale(1) brightness(1.05) contrast(.9); transform: scale(1.04); }
 .bounty-market-row { min-width: 0; }
 .bounty-market-row:hover { box-shadow: inset 3px 0 0 var(--hanka-accent); }
 @media (prefers-reduced-motion: no-preference) {

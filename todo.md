@@ -241,3 +241,9 @@
 - [x] Add bright high-contrast placement behind or adjacent to the black Arc logo wherever it is displayed.
 - [x] Validate Arc-only contract flows, mobile/desktop behavior, full tests, and production builds before publishing.
 - [x] Document the missing local dependencies recovery sequence before a Windows Arc Testnet deployment retry.
+- [x] Add a provider-neutral EVM wallet chooser and preserve a direct injected-wallet fallback so Rainbow is not the sole visible path.
+- [x] Add the Arc mark to wallet controls and automatically switch or add Arc Testnet before account access.
+- [x] Replace the Arc marketplace hero with a compact, underlay-backed market header that prioritizes the Bounty board.
+- [x] Gate the My Activity menu entry to connected EVM wallets and use uppercase market navigation labels.
+- [x] Update landing copy and terminal sequence for the unified Arc Bounty offering while keeping every typed terminal line complete.
+- [x] Validate multi-wallet connection, network switching, responsive layouts, terminal completion, tests, and Vercel builds before publishing.

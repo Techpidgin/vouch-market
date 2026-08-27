@@ -15,10 +15,12 @@ describe("Arc-only marketplace", () => {
   it("keeps social proof in the funded Arc Bounty lifecycle without a manual OTC sender", () => {
     const market = read("client/src/pages/ArcMarket.tsx");
     const wallet = read("client/src/lib/arcTestnet.ts");
-    expect(market).toContain("Fund social proof.");
+    const walletControl = read("client/src/components/ArcWalletConnect.tsx");
+    expect(market).toContain("Fund proof. Settle onchain.");
     expect(market).toContain("trpc.arcBounty.metadata");
     expect(market).toContain("registerBounty.mutateAsync");
-    expect(market).toContain("Connect EVM wallet");
+    expect(market).toContain("ArcWalletConnect");
+    expect(walletControl).toContain("Connect EVM wallet");
     expect(market).toContain("no sample Bounties are invented.");
     expect(market).not.toContain("Solana");
     expect(market).not.toContain("manual OTC");

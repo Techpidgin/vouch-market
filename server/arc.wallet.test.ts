@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { ARC_TESTNET_TOKENS, hankaArcTestnet, toTokenUnits } from "../client/src/lib/arcTestnet";
 
 describe("Arc Testnet wallet configuration", () => {
@@ -16,5 +18,18 @@ describe("Arc Testnet wallet configuration", () => {
     expect(toTokenUnits("50", 6)).toBe(BigInt("50000000"));
     expect(toTokenUnits("0.000001", 6)).toBe(BigInt(1));
     expect(() => toTokenUnits("1.0000001", 6)).toThrow("at most 6 decimal places");
+  });
+
+  it("discovers compatible EIP-6963 wallets, retains injected fallbacks, and adds Arc Testnet before account access", () => {
+    const client = readFileSync(path.resolve(process.cwd(), "client/src/lib/arcTestnet.ts"), "utf8");
+    const control = readFileSync(path.resolve(process.cwd(), "client/src/components/ArcWalletConnect.tsx"), "utf8");
+    expect(client).toContain("eip6963:requestProvider");
+    expect(client).toContain("eip6963:announceProvider");
+    expect(client).toContain("provider.providers?.length");
+    expect(client).toContain("await walletClient.addChain({ chain: hankaArcTestnet })");
+    expect(client).toContain("await walletClient.switchChain({ id: hankaArcTestnet.id })");
+    expect(control).toContain("Choose EVM wallet");
+    expect(control).toContain("MetaMask, Rabby, Coinbase Wallet, Rainbow");
+    expect(control).toContain("arc-wallet-mark");
   });
 });

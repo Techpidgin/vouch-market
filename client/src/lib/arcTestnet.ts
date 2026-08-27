@@ -1,6 +1,24 @@
 import { createPublicClient, createWalletClient, custom, defineChain, http, isAddress, keccak256, parseAbi, parseEventLogs, parseUnits, stringToHex, type Address, type Hex } from "viem";
 
-const browserProvider = () => typeof window === "undefined" ? undefined : (window as Window & { ethereum?: unknown }).ethereum;
+export type ArcEip1193Provider = Parameters<typeof custom>[0] & {
+  isMetaMask?: boolean;
+  isRabby?: boolean;
+  isCoinbaseWallet?: boolean;
+  providers?: ArcEip1193Provider[];
+};
+
+type Eip6963Detail = {
+  info: { uuid: string; name: string; icon?: string };
+  provider: ArcEip1193Provider;
+};
+
+export type ArcWalletProvider = {
+  id: string;
+  name: string;
+  provider: ArcEip1193Provider;
+};
+
+const browserProvider = () => typeof window === "undefined" ? undefined : (window as Window & { ethereum?: ArcEip1193Provider }).ethereum;
 
 export const hankaArcTestnet = defineChain({
   id: 5_042_002,
@@ -57,13 +75,56 @@ export const getArcEscrowAddress = (): Address | null => {
 };
 export const arcExplorerTx = (hash: Hex) => `https://testnet.arcscan.app/tx/${hash}`;
 
-function providerOrThrow() {
-  const provider = browserProvider();
-  if (!provider) throw new Error("No EVM wallet found. Install or open HANKA in MetaMask, Rabby, Coinbase Wallet, or another EVM wallet.");
-  return provider as Parameters<typeof custom>[0];
+const providerName = (provider: ArcEip1193Provider) => {
+  if (provider.isRabby) return "Rabby";
+  if (provider.isCoinbaseWallet) return "Coinbase Wallet";
+  if (provider.isMetaMask) return "MetaMask";
+  return "Browser wallet";
+};
+
+const dedupeProviders = (providers: ArcWalletProvider[]) => {
+  const seen = new Set<ArcEip1193Provider>();
+  return providers.filter(item => {
+    if (seen.has(item.provider)) return false;
+    seen.add(item.provider);
+    return true;
+  });
+};
+
+/**
+ * Finds EIP-6963 wallets announced by the browser, with a safe fallback for
+ * older injected wallets. Nothing is sent to a provider until the user chooses one.
+ */
+export async function listArcWalletProviders(): Promise<ArcWalletProvider[]> {
+  if (typeof window === "undefined") return [];
+  const announced = await new Promise<ArcWalletProvider[]>(resolve => {
+    const discovered: ArcWalletProvider[] = [];
+    const onAnnounce = (event: Event) => {
+      const detail = (event as CustomEvent<Eip6963Detail>).detail;
+      if (!detail?.provider?.request || !detail.info?.uuid) return;
+      discovered.push({ id: detail.info.uuid, name: detail.info.name || "EVM wallet", provider: detail.provider });
+    };
+    window.addEventListener("eip6963:announceProvider", onAnnounce as EventListener);
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+    window.setTimeout(() => {
+      window.removeEventListener("eip6963:announceProvider", onAnnounce as EventListener);
+      resolve(discovered);
+    }, 140);
+  });
+  const injected = browserProvider();
+  const fallback = injected ? (injected.providers?.length ? injected.providers : [injected]).map((provider, index) => ({ id: `injected-${index}`, name: providerName(provider), provider })) : [];
+  return dedupeProviders([...announced, ...fallback]);
 }
 
-async function ensureArcChain(provider: Parameters<typeof custom>[0]) {
+function providerOrThrow(selected?: ArcEip1193Provider) {
+  if (selected) return selected;
+  const provider = browserProvider();
+  if (!provider) throw new Error("No EVM wallet found. Install or open HANKA in MetaMask, Rabby, Coinbase Wallet, or another EVM wallet.");
+  const candidates = provider.providers?.length ? provider.providers : [provider];
+  return candidates.find(candidate => candidate.isRabby) ?? candidates.find(candidate => candidate.isMetaMask && !candidate.isCoinbaseWallet) ?? candidates.find(candidate => candidate.isCoinbaseWallet) ?? candidates[0];
+}
+
+async function ensureArcChain(provider: ArcEip1193Provider) {
   const walletClient = createWalletClient({ chain: hankaArcTestnet, transport: custom(provider) });
   const currentChainId = await walletClient.getChainId();
   if (currentChainId === hankaArcTestnet.id) return walletClient;
@@ -77,8 +138,8 @@ async function ensureArcChain(provider: Parameters<typeof custom>[0]) {
   return walletClient;
 }
 
-export async function connectArcWallet(): Promise<ArcWalletState> {
-  const provider = providerOrThrow();
+export async function connectArcWallet(selected?: ArcEip1193Provider): Promise<ArcWalletState> {
+  const provider = providerOrThrow(selected);
   const walletClient = await ensureArcChain(provider);
   const accounts = await walletClient.requestAddresses();
   const address = accounts[0];

@@ -6,9 +6,9 @@ const page = readFileSync(path.resolve(process.cwd(), "client/src/pages/ArcMarke
 
 describe("Arc Testnet market page", () => {
   it("keeps real transaction controls testnet-only and deployment-gated", () => {
-    expect(page).toContain("Arc Testnet · Escrow Bounty market");
+    expect(page).toContain("ARC TESTNET · ESCROW MARKET");
     expect(page).toContain("getArcEscrowAddress");
-    expect(page).toContain("Test tokens only.");
+    expect(page).toContain("Faucet tokens only.");
     expect(page).toContain("disabled={!props.wallet || props.busy || !props.escrow}");
   });
 

@@ -46,11 +46,11 @@ const proofTypes = [
 ] as const;
 
 const terminalLines = [
-  "watch / social-proof",
-  "match Ethos vouch ready",
-  "quote USDC / unit live",
-  "proof source > target signed",
-  "route buy + sell open",
+  "connect EVM / Arc",
+  "fund Bounty / USDC",
+  "claim source / proof",
+  "release / resolve",
+  "points / escrow",
 ] as const;
 
 export default function Home() {
@@ -100,7 +100,7 @@ export default function Home() {
         <div className="home-copy">
           <p className="hanka-kicker"><Sparkles className="size-3" />HANKA · Social proof exchange</p>
           <h1 className="hero-shine-text mt-4 max-w-4xl font-display text-[clamp(3.4rem,6vw,5rem)] leading-[.78] tracking-[-.09em]">Trade what moves attention.</h1>
-          <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Trade <span className="inline-flex items-center gap-1"><EthosMark className="size-4" />Ethos</span> reputation and social proof on HANKA Exchange.</p>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Fund social proof, Bounties, and point exchanges through one Arc Testnet escrow path.</p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link href="/arc#bounty-board" className="hanka-primary-button">Fund a Bounty <ArrowUpRight className="size-4" /></Link>
             <Link href="/arc" className="home-built-on-arc"><img src={ARC_MARK_URL} alt="" aria-hidden="true" />Built on Arc <ArrowUpRight className="size-3" /></Link>

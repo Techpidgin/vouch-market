@@ -14,7 +14,11 @@ describe("terminal typing animation", () => {
 
   it("uses terminal copy and styling that does not hide trailing typed characters", () => {
     const css = readFileSync(resolve(process.cwd(), "client/src/index.css"), "utf8");
-    expect(homeSource).toContain('"proof source > target signed"');
+    expect(homeSource).toContain('"connect EVM / Arc"');
+    expect(homeSource).toContain('"fund Bounty / USDC"');
+    expect(homeSource).toContain('"claim source / proof"');
+    expect(homeSource).toContain("if (characterIndex < line.length)");
+    expect(homeSource).toContain("line.slice(0, characterIndex)");
     expect(css).toContain("text-overflow: clip");
     expect(css).not.toContain(".terminal-code-row code { overflow: hidden; text-overflow: ellipsis");
   });
