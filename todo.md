@@ -266,3 +266,5 @@
 - [x] Remove CommonsMade as the default project from active Arc social-proof forms, metadata, and public copy.
 - [x] Let social-proof sellers and buyers describe any project, creator, brand, or individual scope with clear neutral labels.
 - [x] Simplify the Arc wallet connection control to show the Arc logo without the extra wallet icon.
+- [x] Replace the largest HANKA display-heading font with the supplied Geist family and remove the previous display font from active heading rules.
+- [x] Validate the updated Geist display-heading hierarchy across landing and Arc marketplace views before publishing.

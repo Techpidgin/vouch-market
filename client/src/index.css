@@ -184,7 +184,7 @@
     padding-inline: 1.25rem;
   }
 
-  .font-display { font-family: "DM Serif Display", Georgia, serif; }
+  .font-display { font-family: "Geist", "Instrument Sans", sans-serif; font-weight: 650; }
   .eyebrow { font-family: "Geist", "IBM Plex Mono", sans-serif; font-size: 0.65rem; letter-spacing: 0.15em; line-height: 1.2; text-transform: uppercase; font-weight: 600; }
   .paper-grid { background-image: linear-gradient(to right, rgba(27,27,25,.14) 1px, transparent 1px), linear-gradient(to bottom, rgba(27,27,25,.14) 1px, transparent 1px), radial-gradient(circle at 24% 22%, rgba(255,255,255,.8), transparent 25%); background-size: 34px 34px, 34px 34px, 100% 100%; }
   .home-ambient { background: radial-gradient(circle at 8% 16%, rgba(213,79,40,.13), transparent 26%), radial-gradient(circle at 92% 78%, rgba(40,82,62,.16), transparent 31%); }
@@ -225,7 +225,7 @@
   .terms-stage { position: relative; min-height: 23rem; overflow: hidden; border: 1px solid var(--hanka-line); background: #112017; color: #f0f4ec; padding: 1.5rem; box-shadow: 0 26px 70px rgba(0,0,0,.18); isolation: isolate; }
   .terms-logo-bg { position: absolute; right: -1rem; bottom: -2.5rem; opacity: .1; transform: rotate(-10deg); }
   .terms-glow { position: absolute; inset: 0; background: radial-gradient(circle at 78% 18%, rgba(180, 243, 190, .17), transparent 24%), linear-gradient(135deg, transparent 36%, rgba(255,255,255,.06)); }
-  .terms-typing { min-height: 5.5rem; max-width: 20rem; font-family: "DM Serif Display", Georgia, serif; font-size: clamp(2rem, 5vw, 3.4rem); line-height: .92; letter-spacing: -.06em; color: #fff; }
+  .terms-typing { min-height: 5.5rem; max-width: 20rem; font-family: "Geist", "Instrument Sans", sans-serif; font-size: clamp(2rem, 5vw, 3.4rem); font-weight: 650; line-height: .92; letter-spacing: -.06em; color: #fff; }
   .terms-caret { display: inline-block; height: .78em; width: 2px; margin-left: .12em; background: var(--hanka-accent); vertical-align: -.05em; }
   .proof-card { position: relative; display: block; min-height: 14.5rem; background: var(--hanka-panel); padding: 1.35rem; color: inherit; text-decoration: none; transition: background-color 180ms var(--market-ease-out), transform 180ms var(--market-ease-out); }
   .proof-index { font-family: "Geist", sans-serif; font-size: .66rem; font-weight: 600; letter-spacing: .13em; color: var(--hanka-muted); }
@@ -252,7 +252,7 @@
   .market-pricing { border: 1px solid var(--hanka-line); background: #0e1711; }
   .market-price-card { min-height: 9.5rem; border-right: 1px solid var(--hanka-line); border-bottom: 1px solid var(--hanka-line); padding: 1rem; }
   .market-price-card:hover { background: #142019; }
-  .market-price-value { color: var(--hanka-text); font-family: "DM Serif Display", Georgia, serif; font-size: 1.8rem; letter-spacing: -.06em; }
+  .market-price-value { color: var(--hanka-text); font-family: "Geist", "Instrument Sans", sans-serif; font-size: 1.8rem; font-weight: 650; letter-spacing: -.06em; }
   .market-price-empty { color: var(--hanka-muted); font-family: "Geist", sans-serif; font-size: .78rem; line-height: 1.45; }
 
   [data-slot="dialog-content"] { border-color: var(--hanka-line) !important; background: #0c130f !important; color: var(--hanka-text) !important; box-shadow: 0 28px 80px rgba(0,0,0,.52); }
