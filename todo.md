@@ -210,3 +210,9 @@
 - [x] Add seller-selected proof-retention periods to offers and completed proof commitments.
 - [x] Display the retention commitment and its expiry across marketplace, buyer activity, and operations views.
 - [x] Allow operators to record verified early removal and ban the violating source from new HANKA listings.
+- [x] Research Arc testnet and Circle-supported token requirements for a safe HANKA settlement design.
+- [x] Define collateralized point-exchange and task-escrow contract workflows, including timeouts, fees, disputes, and explicit approvals.
+- [x] Add a tested, testnet-only smart-contract foundation with a restricted dispute resolver and no stored private keys.
+- [x] Add Arc EVM wallet connection and testnet transaction flows while preserving Solana USDC as a separately labelled alternative.
+- [x] Configure token support only for verified Arc testnet deployments of USDC, EURC, and Circle cirBTC, with token decimals read from the contract where not documented.
+- [x] Document secure private-key handling and require explicit confirmation before any real Arc testnet deployment transaction.

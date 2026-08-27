@@ -7,6 +7,10 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Market from "./pages/Market";
 import Operations from "./pages/Operations";
+import { lazy, Suspense } from "react";
+
+const ArcMarket = lazy(() => import("./pages/ArcMarket"));
+const ArcMarketRoute = () => <Suspense fallback={<div className="hanka-app min-h-screen" />}><ArcMarket /></Suspense>;
 
 function Router() {
   // make sure to consider if you need authentication for certain routes
@@ -14,6 +18,7 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/market"} component={Market} />
+      <Route path={"/arc"} component={ArcMarketRoute} />
       <Route path={"/ops"} component={Operations} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
