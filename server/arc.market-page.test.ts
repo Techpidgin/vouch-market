@@ -4,12 +4,10 @@ import { describe, expect, it } from "vitest";
 
 const page = readFileSync(path.resolve(process.cwd(), "client/src/pages/ArcMarket.tsx"), "utf8");
 
-describe("Arc Testnet market page", () => {
-  it("keeps real transaction controls testnet-only and deployment-gated", () => {
-    expect(page).toContain("ARC TESTNET · SOCIAL PROOF EXCHANGE");
+describe("Arc market page", () => {
+  it("keeps real transaction controls deployment-gated", () => {
     expect(page).toContain("getArcEscrowAddress");
-    expect(page).toContain("Faucet tokens only.");
-    expect(page).toContain("Faucet tokens only.");
+    expect(page).toContain("Fund proof. Settle onchain.");
   });
 
   it("presents point exchanges and Bounty reward funding from the user Arc wallet", () => {

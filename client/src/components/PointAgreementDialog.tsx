@@ -38,7 +38,7 @@ export function PointAgreementDialog(props: Props) {
         <section>
           <p className="hanka-kicker">01 · Parties & collateral</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <Field label="Arc Testnet token"><select value={props.token} onChange={event => props.setToken(event.target.value as ArcTokenSymbol)} className="input-dark">{ARC_TESTNET_TOKENS.map(item => <option key={item.symbol}>{item.symbol}</option>)}</select></Field>
+            <Field label="Arc token"><select value={props.token} onChange={event => props.setToken(event.target.value as ArcTokenSymbol)} className="input-dark">{ARC_TESTNET_TOKENS.map(item => <option key={item.symbol}>{item.symbol}</option>)}</select></Field>
             <Field label="Collateral per party"><Input value={props.amount} onChange={event => props.setAmount(event.target.value)} inputMode="decimal" placeholder="50" className="input-dark" required /></Field>
             <Field label="Counterparty EVM wallet"><Input value={props.counterparty} onChange={event => props.setCounterparty(event.target.value)} placeholder="0x…" className="input-dark" required /></Field>
             <Field label="Counterparty must fund by"><Input type="datetime-local" value={props.acceptBy} onChange={event => props.setAcceptBy(event.target.value)} className="input-dark" required /></Field>
@@ -51,7 +51,7 @@ export function PointAgreementDialog(props: Props) {
           <Field label="Settlement or dispute by"><Input type="datetime-local" value={props.settleBy} onChange={event => props.setSettleBy(event.target.value)} className="input-dark" required /></Field>
         </section>
         <section className="border-t border-[var(--hanka-line)] pt-5">
-          <div className="border border-[var(--hanka-line)] bg-[#111b14] p-4"><div className="flex gap-3"><LockKeyhole className="mt-0.5 size-4 shrink-0 text-[var(--hanka-accent)]" /><div><p className="text-sm font-semibold">Lock equal collateral on Arc Testnet.</p><p className="mt-1 text-xs leading-5 text-[var(--hanka-muted)]">Both named parties deposit the same testnet collateral. Settlement needs matching approvals, or either party may open an onchain dispute for the configured resolver.</p><Button type="button" size="sm" disabled={!props.wallet || props.busy} onClick={props.approve} className="mt-3 bg-white text-[#101510]">APPROVE {props.token}</Button></div></div></div>
+          <div className="border border-[var(--hanka-line)] bg-[#111b14] p-4"><div className="flex gap-3"><LockKeyhole className="mt-0.5 size-4 shrink-0 text-[var(--hanka-accent)]" /><div><p className="text-sm font-semibold">Lock equal collateral on Arc.</p><p className="mt-1 text-xs leading-5 text-[var(--hanka-muted)]">Both named parties deposit the same collateral. Settlement needs matching approvals, or either party may open an onchain dispute for the configured resolver.</p><Button type="button" size="sm" disabled={!props.wallet || props.busy} onClick={props.approve} className="mt-3 bg-white text-[#101510]">APPROVE {props.token}</Button></div></div></div>
           <Button type="submit" disabled={!props.wallet || props.busy} className="mt-4 w-full bg-[var(--hanka-accent)] text-[var(--hanka-accent-text)]">FUND AIRDROP AGREEMENT <ArrowUpRight className="ml-2 size-4" /></Button>
         </section>
       </form>

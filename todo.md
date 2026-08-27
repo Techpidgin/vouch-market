@@ -275,3 +275,5 @@
 - [x] Block a confirmed violating source X account from publishing or claiming new social-proof offers while keeping onchain dispute authority unchanged.
 - [x] Validate market routing, form separation, retention safeguards, mobile layouts, tests, and production builds before publishing.
 - [x] Keep Bounties, Airdrop Agreements, and Social Proof together in one Arc listing dashboard, using tabs and filters rather than separate market pages.
+- [x] Make the landing Arc attribution borderless and non-linking, and restrict Testnet wording to wallet connection controls.
+- [x] Ensure every animated hero-terminal command remains fully visible at desktop and mobile widths.

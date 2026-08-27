@@ -61,22 +61,22 @@ export default function Home() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setTypedLines([...terminalLines]); return; }
     let timer = 0;
     let lineIndex = 0;
-    let characterIndex = 0;
+    let wordIndex = 0;
     const start = () => {
       lineIndex = 0;
-      characterIndex = 0;
+      wordIndex = 0;
       setTypingLine(0);
       setTypedLines(terminalLines.map(() => ""));
       tick();
     };
     const tick = () => {
       const line = terminalLines[lineIndex];
+      const words = line.split(" ");
       setTypingLine(lineIndex);
-      characterIndex += 1;
-      setTypedLines(current => current.map((value, index) => index === lineIndex ? line.slice(0, characterIndex) : value));
-      if (characterIndex < line.length) { timer = window.setTimeout(tick, 24); return; }
+      setTypedLines(current => current.map((value, index) => index === lineIndex ? words.slice(0, wordIndex + 1).join(" ") : value));
+      if (wordIndex < words.length - 1) { wordIndex += 1; timer = window.setTimeout(tick, 170); return; }
       lineIndex += 1;
-      characterIndex = 0;
+      wordIndex = 0;
       if (lineIndex < terminalLines.length) { timer = window.setTimeout(tick, 145); return; }
       setTypingLine(-1);
       timer = window.setTimeout(start, 2200);
@@ -100,10 +100,10 @@ export default function Home() {
         <div className="home-copy">
           <p className="hanka-kicker"><Sparkles className="size-3" />HANKA · Social proof exchange</p>
           <h1 className="hero-shine-text mt-4 max-w-4xl font-display text-[clamp(3.4rem,6vw,5rem)] leading-[.78] tracking-[-.09em]">Trade what moves attention.</h1>
-          <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Fund social proof, Bounties, and point exchanges through one Arc Testnet escrow path.</p>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[var(--hanka-muted)] sm:text-lg">Fund social proof, Bounties, and point exchanges through one Arc escrow path.</p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link href="/arc#bounty-board" className="hanka-primary-button">Fund a Bounty <ArrowUpRight className="size-4" /></Link>
-            <Link href="/arc" className="home-built-on-arc"><img src={ARC_MARK_URL} alt="" aria-hidden="true" />Built on Arc <ArrowUpRight className="size-3" /></Link>
+            <span className="home-built-on-arc"><img src={ARC_MARK_URL} alt="" aria-hidden="true" />Built on Arc</span>
           </div>
         </div>
         <aside className="transaction-terminal" aria-label="HANKA transaction terminal preview">
@@ -141,7 +141,7 @@ export default function Home() {
 
       <footer className="relative border-t border-[var(--hanka-line)]">
         <div className="market-shell flex flex-wrap items-center justify-between gap-4 py-5 text-xs text-[var(--hanka-muted)]">
-          <span>HANKA Social Proof Market · Built on Arc Testnet</span>
+          <span>HANKA Social Proof Market · Built on Arc</span>
           <nav className="flex items-center gap-4"><Link href="/arc#bounty-board" className="hanka-text-link">Bounties</Link><Link href="/arc/dashboard" className="hanka-text-link">My activity</Link></nav>
         </div>
       </footer>

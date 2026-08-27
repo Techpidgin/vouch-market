@@ -20,7 +20,7 @@ describe("HANKA Bounty creation modal", () => {
     expect(source).toContain("Number of winners");
     expect(source).toContain("Multi-winner reward splits are not available");
     expect(source).toContain("Files are not uploaded to the Arc contract or HANKA storage");
-    expect(source).toContain("QR scanning, geolocation, and third-party automated checks are not enabled");
+    expect(source).toContain("QR scanning, geolocation, and third-party automated checks are not currently enabled");
     expect(source).toContain("does not request illegal, exploitative, prohibited");
   });
 });
