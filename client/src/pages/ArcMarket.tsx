@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArcWalletConnect } from "@/components/ArcWalletConnect";
+import { BountyCreateDialog } from "@/components/BountyCreateDialog";
+import { BountySubmissionDialog } from "@/components/BountySubmissionDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +20,7 @@ import {
   disputeArcTask,
   getArcEscrowAddress,
   getArcOpenBounties,
+  getArcWalletDashboard,
   getArcPointExchangeToken,
   getArcTokenDecimals,
   submitArcTask,
@@ -39,12 +42,18 @@ type BountySort = "reward" | "newest" | "ending";
 type SocialMeta = {
   taskId: number;
   requesterWallet: string;
+  title: string | null;
+  summary: string | null;
+  deliverables: string | null;
   projectSlug: string;
   instrument: ArcSocialInstrument;
   targetHandle: string;
   proofDetail: string | null;
   spaceMinutes: number | null;
   retentionDays: number;
+  featuredToken: string | null;
+  location: string | null;
+  verificationMethod: "onchain_delivery_commitment" | "manual_evidence_reference" | null;
   termsHash: string;
   sourceHandle: string | null;
   takerWallet: string | null;
@@ -112,15 +121,24 @@ export default function ArcMarket() {
   const [kaitoScore, setKaitoScore] = useState("");
   const [kaitoAura, setKaitoAura] = useState("");
   const [bountyKind, setBountyKind] = useState<"social" | "general">("social");
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [bountyToken, setBountyToken] = useState<ArcTokenSymbol>("USDC");
   const [bountyAmount, setBountyAmount] = useState("5");
+  const [bountyTitle, setBountyTitle] = useState("");
+  const [bountySummary, setBountySummary] = useState("");
+  const [deliverables, setDeliverables] = useState<string[]>([""]);
   const [projectSlug, setProjectSlug] = useState("commonsmade");
   const [bountyInstrument, setBountyInstrument] = useState<ArcSocialInstrument>("vouch");
   const [targetHandle, setTargetHandle] = useState("");
   const [proofDetail, setProofDetail] = useState("");
   const [spaceMinutes, setSpaceMinutes] = useState("");
   const [retentionDays, setRetentionDays] = useState<(typeof retentionOptions)[number]>(30);
-  const [generalBrief, setGeneralBrief] = useState("Describe the work, delivery evidence, and release condition.");
+  const [featuredToken, setFeaturedToken] = useState("");
+  const [location, setLocation] = useState("");
+  const [verificationMethod, setVerificationMethod] = useState<"onchain_delivery_commitment" | "manual_evidence_reference">("onchain_delivery_commitment");
+  const [localAttachments, setLocalAttachments] = useState<File[]>([]);
+  const [safeAttested, setSafeAttested] = useState(false);
+  const [specificAttested, setSpecificAttested] = useState(false);
   const [acceptBy, setAcceptBy] = useState(() => defaultTime(24 * 60));
   const [dueAt, setDueAt] = useState(() => defaultTime(7 * 24 * 60));
   const [pointToken, setPointToken] = useState<ArcTokenSymbol>("USDC");
@@ -130,7 +148,7 @@ export default function ArcMarket() {
   const [pointAcceptBy, setPointAcceptBy] = useState(() => defaultTime(24 * 60));
   const [settleBy, setSettleBy] = useState(() => defaultTime(7 * 24 * 60));
   const [manageId, setManageId] = useState("");
-  const [deliveryReference, setDeliveryReference] = useState("Delivery evidence reference and outcome.");
+  const [submissionBounty, setSubmissionBounty] = useState<ArcTaskRecord | null>(null);
   const escrowAddress = getArcEscrowAddress();
   const metadataInput = useMemo(() => ({ contractAddress: (escrowAddress ?? "0x0000000000000000000000000000000000000000") as Address }), [escrowAddress]);
   const metadataQuery = trpc.arcBounty.metadata.useQuery(metadataInput, { enabled: Boolean(escrowAddress), retry: false });
@@ -161,7 +179,7 @@ export default function ArcMarket() {
       .filter(record => {
         const meta = metadataByTask.get(record.id.toString());
         const matchesView = view === "open" || sameAddress(record.requester, wallet) || sameAddress(record.taker, wallet);
-        const searchable = [record.id.toString(), record.requester, record.termsHash, meta?.targetHandle, meta?.sourceHandle, meta?.instrument, meta?.proofDetail].filter(Boolean).join(" ").toLowerCase();
+        const searchable = [record.id.toString(), record.requester, record.termsHash, meta?.title, meta?.summary, meta?.deliverables, meta?.targetHandle, meta?.sourceHandle, meta?.instrument, meta?.proofDetail].filter(Boolean).join(" ").toLowerCase();
         return matchesView && (instrumentFilter === "all" || meta?.instrument === instrumentFilter) && (!normalizedQuery || searchable.includes(normalizedQuery));
       })
       .sort((left, right) => sort === "reward" ? Number(right.reward - left.reward) : sort === "ending" ? Number(left.acceptDeadline - right.acceptDeadline) : Number(right.id - left.id));
@@ -190,14 +208,22 @@ export default function ArcMarket() {
     try {
       setBusy(true);
       const socialTerms = bountyKind === "social" ? {
+        title: bountyTitle,
+        summary: bountySummary,
+        deliverables: deliverables.map(item => item.trim()).filter(Boolean),
         projectSlug,
         instrument: bountyInstrument,
         targetHandle,
         proofDetail,
         spaceMinutes: spaceMinutes ? Number(spaceMinutes) : undefined,
         retentionDays,
+        featuredToken: featuredToken || undefined,
+        location: location || undefined,
+        verificationMethod,
       } : null;
-      const terms = socialTerms ? buildArcSocialBountyTerms(socialTerms) : generalBrief;
+      if (!safeAttested || !specificAttested) throw new Error("Confirm the Bounty safety and specificity statements before funding.");
+      if (!bountyTitle.trim() || !bountySummary.trim() || !deliverables.some(item => item.trim())) throw new Error("Add a title, summary, and at least one concrete deliverable.");
+      const terms = socialTerms ? buildArcSocialBountyTerms(socialTerms) : ["HANKA Arc Testnet general Bounty", `Title: ${bountyTitle.trim()}`, `Summary: ${bountySummary.trim()}`, `Deliverables: ${deliverables.map(item => item.trim()).filter(Boolean).map((item, index) => `${index + 1}. ${item}`).join(" | ")}`, "Winners: 1 (current Arc Testnet contract limit)", "Safety attestation: no prohibited or exploitative work is requested."].join("\n");
       const tokenMeta = ARC_TESTNET_TOKENS.find(item => item.symbol === bountyToken)!;
       const created = await createArcTask({
         token: tokenMeta.address,
@@ -214,6 +240,7 @@ export default function ArcMarket() {
         }
       }
       toast.success(`Bounty #${created.taskId.toString()} is funded on Arc Testnet.`);
+      setCreateDialogOpen(false);
       window.open(arcExplorerTx(created.hash), "_blank", "noopener,noreferrer");
       await loadBounties(true);
       document.getElementById("bounty-board")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -273,12 +300,40 @@ export default function ArcMarket() {
     finally { setBusy(false); }
   }
 
-  async function manage(action: "submit" | "approve" | "dispute") {
+  async function openSubmission() {
+    try {
+      if (!wallet) throw new Error("Connect the accepted worker wallet before submitting delivery.");
+      if (!/^\d+$/.test(manageId)) throw new Error("Enter the accepted Bounty ID you want to submit.");
+      setBusy(true);
+      const dashboard = await getArcWalletDashboard(wallet);
+      const record = dashboard.tasks.find(task => task.id === BigInt(manageId));
+      if (!record || !sameAddress(record.taker, wallet) || record.state !== 2) throw new Error("Only the wallet assigned to an accepted Bounty can open its delivery submission.");
+      setSubmissionBounty(record);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not open this Bounty submission."); }
+    finally { setBusy(false); }
+  }
+
+  async function submitBountyDelivery(payload: { description: string; links: string[]; attachments: File[]; confirmedDeliverables: string[] }) {
+    if (!submissionBounty || !wallet) return;
+    try {
+      if (!sameAddress(submissionBounty.taker, wallet) || submissionBounty.state !== 2) throw new Error("This wallet is not eligible to submit the selected Bounty.");
+      setBusy(true);
+      const terms = ["HANKA Arc Testnet Bounty delivery submission", `Bounty ID: ${submissionBounty.id.toString()}`, `Description: ${payload.description}`, `Confirmed deliverables: ${payload.confirmedDeliverables.map((item, index) => `${index + 1}. ${item}`).join(" | ")}`, `Evidence links: ${payload.links.length ? payload.links.join(" | ") : "none"}`, `Local attachment previews: ${payload.attachments.length} (not uploaded)`, "Claimant attests that this delivery is truthful and follows HANKA content restrictions."].join("\n");
+      const hash = await submitArcTask(submissionBounty.id, terms);
+      toast.success(`Delivery commitment submitted for Bounty #${submissionBounty.id.toString()}.`);
+      window.open(arcExplorerTx(hash), "_blank", "noopener,noreferrer");
+      setSubmissionBounty(null);
+      await loadBounties(true);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not submit the delivery commitment."); }
+    finally { setBusy(false); }
+  }
+
+  async function manage(action: "approve" | "dispute") {
     try {
       if (!/^\d+$/.test(manageId)) throw new Error("Enter a numeric Bounty ID.");
       setBusy(true);
       const id = BigInt(manageId);
-      const hash = action === "submit" ? await submitArcTask(id, deliveryReference) : action === "approve" ? await approveArcTask(id) : await disputeArcTask(id);
+      const hash = action === "approve" ? await approveArcTask(id) : await disputeArcTask(id);
       toast.success("Arc Bounty transaction submitted.");
       window.open(arcExplorerTx(hash), "_blank", "noopener,noreferrer");
       await loadBounties(true);
@@ -289,13 +344,15 @@ export default function ArcMarket() {
   return <div className="hanka-app min-h-screen text-[var(--hanka-text)]">
     <header className="hanka-header"><div className="market-shell flex h-16 items-center justify-between gap-3 sm:h-20"><Link href="/" className="flex items-center gap-2 font-display text-2xl tracking-[-.07em]"><span className="grid size-7 grid-cols-2 gap-[2px]" aria-hidden>{[0, 1, 2, 3].map(index => <i key={index} className={`block bg-[#f2efe4] ${index === 1 ? "translate-x-1" : ""}`} />)}</span>HANKA</Link><nav className="hidden items-center gap-5 text-[10px] font-semibold uppercase tracking-[.12em] text-[var(--hanka-muted)] sm:flex"><a href="#bounty-board" className="hover:text-[var(--hanka-text)]">BOUNTIES</a><button type="button" onClick={() => setMode("points")} className="hover:text-[var(--hanka-text)]">POINT EXCHANGE</button>{wallet ? <Link href="/arc/dashboard" className="hover:text-[var(--hanka-text)]">MY ACTIVITY</Link> : null}</nav><ArcWalletConnect address={wallet} busy={busy} onConnected={onWalletConnected} /></div></header>
     <main>
-      <section className="arc-market-intro relative overflow-hidden border-b border-[var(--hanka-line)]"><img src={OPERA_UNDERLAY_URL} alt="" aria-hidden="true" className="arc-market-intro-underlay" /><div className="market-shell relative flex flex-col justify-between gap-5 py-5 sm:flex-row sm:items-end sm:py-6"><div className="flex items-start gap-3"><span className="arc-mark-tile"><img src={ARC_MARK_URL} alt="Arc" /></span><div><p className="hanka-kicker text-[var(--hanka-accent)]">ARC TESTNET · ESCROW MARKET</p><h1 className="mt-1 font-display text-[clamp(2.2rem,4vw,3.5rem)] leading-[.84] tracking-[-.08em]">Fund proof. Settle onchain.</h1><p className="mt-2 max-w-2xl text-xs leading-5 text-[var(--hanka-muted)]">One contract path for social proof, Bounties, and point exchanges. Faucet tokens only.</p></div></div><div className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => { setMode("bounties"); document.getElementById("create-bounty")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="hanka-primary-button">CREATE BOUNTY <ArrowUpRight className="size-4" /></button>{escrowAddress ? <a className="inline-flex min-h-10 items-center gap-2 border border-white/20 bg-[#07110c]/75 px-3 text-[10px] font-semibold uppercase tracking-[.11em] text-white hover:border-white/40" href={`https://testnet.arcscan.app/address/${escrowAddress}`} target="_blank" rel="noreferrer">CONTRACT <ExternalLink className="size-3" /></a> : null}{wallet ? <Link href="/arc/dashboard" className="inline-flex min-h-10 items-center gap-2 border border-white/20 bg-[#07110c]/75 px-3 text-[10px] font-semibold uppercase tracking-[.11em] text-white hover:border-white/40">MY ACTIVITY <ArrowUpRight className="size-3" /></Link> : null}</div></div></section>
-      <section id="bounty-board" className="market-shell py-6 sm:py-8"><div className="overflow-hidden border border-[var(--hanka-line)] bg-[#0c100e]"><div className="flex flex-col gap-4 border-b border-[var(--hanka-line)] px-4 py-4 sm:px-5"><div className="flex flex-col justify-between gap-3 md:flex-row md:items-center"><div className="flex min-w-0 gap-4 overflow-x-auto"><BoardTab active={mode === "bounties" && view === "open"} onClick={() => { setMode("bounties"); setView("open"); }} label="Bounties" count={bounties.length} /><BoardTab active={mode === "points"} onClick={() => setMode("points")} label="Point exchange" /><BoardTab active={mode === "bounties" && view === "mine"} onClick={() => { setMode("bounties"); setView("mine"); }} label="Mine" /></div><button type="button" onClick={() => { setMode("bounties"); document.getElementById("create-bounty")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="inline-flex min-h-9 items-center justify-center gap-2 bg-[var(--hanka-accent)] px-3 text-xs font-semibold text-[var(--hanka-accent-text)] hover:brightness-105"><span className="text-base leading-none">+</span>Create Bounty</button></div>{mode === "bounties" ? <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]"><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[var(--hanka-muted)]" /><Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search Bounty ID, target, source, requester, or commitment" className="h-10 border-[var(--hanka-line)] bg-[#141a16] pl-9 text-xs" /></div><select value={instrumentFilter} onChange={event => setInstrumentFilter(event.target.value as ArcSocialInstrument | "all")} className="h-10 border border-[var(--hanka-line)] bg-[#141a16] px-3 text-xs text-[var(--hanka-text)]"><option value="all">All proof types</option>{socialInstruments.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select><div className="flex border border-[var(--hanka-line)] bg-[#141a16] p-1">{(["reward", "newest", "ending"] as const).map(value => <button key={value} type="button" onClick={() => setSort(value)} className={`px-3 py-1.5 text-[10px] font-semibold ${sort === value ? "bg-[var(--hanka-accent)] text-[var(--hanka-accent-text)]" : "text-[var(--hanka-muted)] hover:text-[var(--hanka-text)]"}`}>{value === "reward" ? "Highest reward" : value === "newest" ? "Newest" : "Ending soon"}</button>)}</div></div> : null}</div>
+      <section className="arc-market-intro relative overflow-hidden border-b border-[var(--hanka-line)]"><img src={OPERA_UNDERLAY_URL} alt="" aria-hidden="true" className="arc-market-intro-underlay" /><div className="market-shell relative flex flex-col justify-between gap-5 py-5 sm:flex-row sm:items-end sm:py-6"><div className="flex items-start gap-3"><span className="arc-mark-tile"><img src={ARC_MARK_URL} alt="Arc" /></span><div><p className="hanka-kicker text-[var(--hanka-accent)]">ARC TESTNET · ESCROW MARKET</p><h1 className="mt-1 font-display text-[clamp(2.2rem,4vw,3.5rem)] leading-[.84] tracking-[-.08em]">Fund proof. Settle onchain.</h1><p className="mt-2 max-w-2xl text-xs leading-5 text-[var(--hanka-muted)]">One contract path for social proof, Bounties, and point exchanges. Faucet tokens only.</p></div></div><div className="flex flex-wrap items-center gap-3"><button type="button" onClick={() => { setMode("bounties"); setCreateDialogOpen(true); }} className="hanka-primary-button">CREATE BOUNTY <ArrowUpRight className="size-4" /></button>{escrowAddress ? <a className="inline-flex min-h-10 items-center gap-2 border border-white/20 bg-[#07110c]/75 px-3 text-[10px] font-semibold uppercase tracking-[.11em] text-white hover:border-white/40" href={`https://testnet.arcscan.app/address/${escrowAddress}`} target="_blank" rel="noreferrer">CONTRACT <ExternalLink className="size-3" /></a> : null}{wallet ? <Link href="/arc/dashboard" className="inline-flex min-h-10 items-center gap-2 border border-white/20 bg-[#07110c]/75 px-3 text-[10px] font-semibold uppercase tracking-[.11em] text-white hover:border-white/40">MY ACTIVITY <ArrowUpRight className="size-3" /></Link> : null}</div></div></section>
+      <section id="bounty-board" className="market-shell py-6 sm:py-8"><div className="overflow-hidden border border-[var(--hanka-line)] bg-[#0c100e]"><div className="flex flex-col gap-4 border-b border-[var(--hanka-line)] px-4 py-4 sm:px-5"><div className="flex flex-col justify-between gap-3 md:flex-row md:items-center"><div className="flex min-w-0 gap-4 overflow-x-auto"><BoardTab active={mode === "bounties" && view === "open"} onClick={() => { setMode("bounties"); setView("open"); }} label="Bounties" count={bounties.length} /><BoardTab active={mode === "points"} onClick={() => setMode("points")} label="Point exchange" /><BoardTab active={mode === "bounties" && view === "mine"} onClick={() => { setMode("bounties"); setView("mine"); }} label="Mine" /></div><button type="button" onClick={() => { setMode("bounties"); setCreateDialogOpen(true); }} className="inline-flex min-h-9 items-center justify-center gap-2 bg-[var(--hanka-accent)] px-3 text-xs font-semibold text-[var(--hanka-accent-text)] hover:brightness-105"><span className="text-base leading-none">+</span>Create Bounty</button></div>{mode === "bounties" ? <div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]"><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[var(--hanka-muted)]" /><Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search Bounty ID, target, source, requester, or commitment" className="h-10 border-[var(--hanka-line)] bg-[#141a16] pl-9 text-xs" /></div><select value={instrumentFilter} onChange={event => setInstrumentFilter(event.target.value as ArcSocialInstrument | "all")} className="h-10 border border-[var(--hanka-line)] bg-[#141a16] px-3 text-xs text-[var(--hanka-text)]"><option value="all">All proof types</option>{socialInstruments.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select><div className="flex border border-[var(--hanka-line)] bg-[#141a16] p-1">{(["reward", "newest", "ending"] as const).map(value => <button key={value} type="button" onClick={() => setSort(value)} className={`px-3 py-1.5 text-[10px] font-semibold ${sort === value ? "bg-[var(--hanka-accent)] text-[var(--hanka-accent-text)]" : "text-[var(--hanka-muted)] hover:text-[var(--hanka-text)]"}`}>{value === "reward" ? "Highest reward" : value === "newest" ? "Newest" : "Ending soon"}</button>)}</div></div> : null}</div>
         {mode === "bounties" ? <BountyBoard records={visibleBounties} metadataByTask={metadataByTask} loading={bountyLoading} busy={busy} wallet={wallet} escrow={Boolean(escrowAddress)} onRefresh={() => void loadBounties()} onAccept={record => void acceptBounty(record)} /> : <PointExchangePanel token={pointToken} setToken={setPointToken} amount={pointAmount} setAmount={setPointAmount} counterparty={counterparty} setCounterparty={setCounterparty} terms={pointTerms} setTerms={setPointTerms} acceptBy={pointAcceptBy} setAcceptBy={setPointAcceptBy} settleBy={settleBy} setSettleBy={setSettleBy} wallet={wallet} busy={busy} escrow={Boolean(escrowAddress)} approve={approve} submit={createPointExchange} />}
       </div></section>
-      {mode === "bounties" ? <section id="create-bounty" className="market-shell grid gap-5 pb-8 xl:grid-cols-[minmax(0,1fr)_19rem]"><BountyCreatePanel kind={bountyKind} setKind={setBountyKind} token={bountyToken} setToken={setBountyToken} amount={bountyAmount} setAmount={setBountyAmount} projectSlug={projectSlug} setProjectSlug={setProjectSlug} instrument={bountyInstrument} setInstrument={setBountyInstrument} targetHandle={targetHandle} setTargetHandle={setTargetHandle} proofDetail={proofDetail} setProofDetail={setProofDetail} spaceMinutes={spaceMinutes} setSpaceMinutes={setSpaceMinutes} retentionDays={retentionDays} setRetentionDays={setRetentionDays} generalBrief={generalBrief} setGeneralBrief={setGeneralBrief} acceptBy={acceptBy} setAcceptBy={setAcceptBy} dueAt={dueAt} setDueAt={setDueAt} wallet={wallet} busy={busy} escrow={Boolean(escrowAddress)} approve={approve} submit={createBounty} /><BountySideRail featured={featuredBounty} metadata={featuredBounty ? metadataByTask.get(featuredBounty.id.toString()) : undefined} openCount={bounties.length} /></section> : null}
-      <section className="market-shell pb-12"><div className="border border-[var(--hanka-line)] bg-[#101713] p-5 sm:p-6"><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start"><div><p className="hanka-kicker">Existing Bounty actions</p><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--hanka-muted)]">The requester releases a submitted reward. The worker submits a delivery commitment. Either party can open a dispute; the configured resolver handles the onchain decision.</p></div><Link href="/arc/dashboard" className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--hanka-text)] underline underline-offset-4">Open my Arc activity <ArrowUpRight className="size-3" /></Link></div><div className="mt-5 grid gap-3 lg:grid-cols-[10rem_minmax(0,1fr)_auto]"><Input value={manageId} onChange={event => setManageId(event.target.value)} inputMode="numeric" placeholder="Bounty ID" className="border-[var(--hanka-line)] bg-[#0c100e]" /><Input value={deliveryReference} onChange={event => setDeliveryReference(event.target.value)} placeholder="Delivery evidence reference" className="border-[var(--hanka-line)] bg-[#0c100e]" /><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={!wallet || busy || !escrowAddress} onClick={() => void manage("submit")} className="border-[var(--hanka-line)] bg-transparent">Submit delivery</Button><Button size="sm" disabled={!wallet || busy || !escrowAddress} onClick={() => void manage("approve")} className="bg-[var(--hanka-accent)] text-[var(--hanka-accent-text)]">Release reward</Button><Button size="sm" variant="outline" disabled={!wallet || busy || !escrowAddress} onClick={() => void manage("dispute")} className="border-[var(--hanka-line)] bg-transparent">Dispute</Button></div></div></div></section>
+      {mode === "bounties" ? <section className="market-shell pb-8"><BountySideRail featured={featuredBounty} metadata={featuredBounty ? metadataByTask.get(featuredBounty.id.toString()) : undefined} openCount={bounties.length} /></section> : null}
+      <section className="market-shell pb-12"><div className="border border-[var(--hanka-line)] bg-[#101713] p-5 sm:p-6"><div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-start"><div><p className="hanka-kicker">Existing Bounty actions</p><p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--hanka-muted)]">The accepted worker opens a structured delivery submission. The requester releases a valid delivery; either party can open an onchain dispute, which the configured resolver decides.</p></div><Link href="/arc/dashboard" className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--hanka-text)] underline underline-offset-4">Open my Arc activity <ArrowUpRight className="size-3" /></Link></div><div className="mt-5 grid gap-3 lg:grid-cols-[12rem_auto]"><Input value={manageId} onChange={event => setManageId(event.target.value)} inputMode="numeric" placeholder="Accepted Bounty ID" className="border-[var(--hanka-line)] bg-[#0c100e]" /><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={!wallet || busy || !escrowAddress} onClick={() => void openSubmission()} className="border-[var(--hanka-line)] bg-transparent">Submit delivery</Button><Button size="sm" disabled={!wallet || busy || !escrowAddress} onClick={() => void manage("approve")} className="bg-[var(--hanka-accent)] text-[var(--hanka-accent-text)]">Release reward</Button><Button size="sm" variant="outline" disabled={!wallet || busy || !escrowAddress} onClick={() => void manage("dispute")} className="border-[var(--hanka-line)] bg-transparent">Dispute</Button></div></div></div></section>
     </main>
+    <BountyCreateDialog open={createDialogOpen} setOpen={setCreateDialogOpen} kind={bountyKind} setKind={setBountyKind} token={bountyToken} setToken={setBountyToken} amount={bountyAmount} setAmount={setBountyAmount} title={bountyTitle} setTitle={setBountyTitle} summary={bountySummary} setSummary={setBountySummary} deliverables={deliverables} setDeliverables={setDeliverables} projectSlug={projectSlug} setProjectSlug={setProjectSlug} instrument={bountyInstrument} setInstrument={setBountyInstrument} targetHandle={targetHandle} setTargetHandle={setTargetHandle} proofDetail={proofDetail} setProofDetail={setProofDetail} spaceMinutes={spaceMinutes} setSpaceMinutes={setSpaceMinutes} retentionDays={retentionDays} setRetentionDays={setRetentionDays} featuredToken={featuredToken} setFeaturedToken={setFeaturedToken} location={location} setLocation={setLocation} verificationMethod={verificationMethod} setVerificationMethod={setVerificationMethod} localAttachments={localAttachments} setLocalAttachments={setLocalAttachments} safeAttested={safeAttested} setSafeAttested={setSafeAttested} specificAttested={specificAttested} setSpecificAttested={setSpecificAttested} acceptBy={acceptBy} setAcceptBy={setAcceptBy} dueAt={dueAt} setDueAt={setDueAt} wallet={wallet} busy={busy} escrow={Boolean(escrowAddress)} approve={() => void approve(bountyToken, bountyAmount)} submit={createBounty} />
+    <BountySubmissionDialog open={Boolean(submissionBounty)} bountyId={submissionBounty?.id ?? null} bountyTitle={submissionBounty ? metadataByTask.get(submissionBounty.id.toString())?.title : null} deliverables={submissionBounty ? (metadataByTask.get(submissionBounty.id.toString())?.deliverables?.split("\n").filter(Boolean) ?? ["Submit evidence that matches the onchain Bounty terms commitment."]) : []} wallet={wallet} busy={busy} onOpenChange={open => !open && setSubmissionBounty(null)} onSubmit={submitBountyDelivery} />
     <SourceDialog record={sourceEditor} metadata={sourceEditor ? metadataByTask.get(sourceEditor.id.toString()) : undefined} close={() => setSourceEditor(null)} submit={confirmSocialClaim} busy={busy} sourceHandle={sourceHandle} setSourceHandle={setSourceHandle} pointsPerUnit={pointsPerUnit} setPointsPerUnit={setPointsPerUnit} followerCount={followerCount} setFollowerCount={setFollowerCount} ethosScore={ethosScore} setEthosScore={setEthosScore} kaitoScore={kaitoScore} setKaitoScore={setKaitoScore} kaitoAura={kaitoAura} setKaitoAura={setKaitoAura} />
   </div>;
 }

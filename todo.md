@@ -247,3 +247,13 @@
 - [x] Gate the My Activity menu entry to connected EVM wallets and use uppercase market navigation labels.
 - [x] Update landing copy and terminal sequence for the unified Arc Bounty offering while keeping every typed terminal line complete.
 - [x] Validate multi-wallet connection, network switching, responsive layouts, terminal completion, tests, and Vercel builds before publishing.
+- [x] Move the Bounty creation form out of the market listing page and into an accessible responsive modal.
+- [x] Add a clear HANKA Bounty brief, summary, and concrete verifiable-deliverables workflow mapped to the committed onchain terms.
+- [x] Add transparent content restrictions and confirmation controls without claiming that offchain moderation replaces the contract dispute process.
+- [x] Add a winner-cap reward explanation and optional token/location/verification discovery fields with honest current support states.
+- [x] Preserve the existing Arc Testnet approval and user-controlled wallet funding confirmation at the end of Bounty creation.
+- [x] Validate modal behavior, form constraints, accessibility, test coverage, responsive layouts, and production builds before publishing.
+- [x] Add a claimant-side Bounty submission modal that appears only for the accepted worker and preserves the existing Arc delivery transaction.
+- [x] Let claimants confirm each committed deliverable, add a required evidence description and optional links, and keep local file previews transparent about their storage limits.
+- [x] Add content restrictions and a claimant attestation without claiming HANKA selects winners or owns submitted rights.
+- [x] Validate claimant eligibility, delivery-hash generation, responsive layout, tests, and production builds before publishing.

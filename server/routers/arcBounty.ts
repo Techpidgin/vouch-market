@@ -8,12 +8,18 @@ const evmWallet = z.string().trim().refine(isAddress, "Connect a valid Arc EVM w
 const escrowAddress = z.string().trim().refine(isAddress, "Arc escrow address is invalid.");
 const taskId = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const socialTerms = z.object({
+  title: z.string().trim().min(3).max(50),
+  summary: z.string().trim().min(8).max(500),
+  deliverables: z.array(z.string().trim().min(3).max(100)).min(1).max(10),
   projectSlug: z.string().trim().min(2).max(64).default("commonsmade"),
   instrument: z.enum(ARC_SOCIAL_INSTRUMENTS),
   targetHandle: z.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle."),
   proofDetail: z.string().trim().max(240).optional(),
   spaceMinutes: z.number().int().positive().max(720).optional(),
   retentionDays: z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(60), z.literal(90)]),
+  featuredToken: z.string().trim().max(80).optional(),
+  location: z.string().trim().max(120).optional(),
+  verificationMethod: z.enum(["onchain_delivery_commitment", "manual_evidence_reference"]).optional(),
 });
 
 function assertConfiguredEscrow(input: string) {

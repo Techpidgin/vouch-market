@@ -37171,16 +37171,30 @@ function normalizeArcTermsText(value) {
   return value.trim().replace(/\s+/g, " ");
 }
 function buildArcSocialBountyTerms(input) {
+  const title = normalizeArcTermsText(input.title);
+  const summary = normalizeArcTermsText(input.summary);
+  const deliverables = input.deliverables.map(normalizeArcTermsText).filter(Boolean);
   const proofDetail = normalizeArcTermsText(input.proofDetail ?? "");
   const spaceMinutes = input.spaceMinutes ? `${input.spaceMinutes} minutes` : "n/a";
+  const featuredToken = normalizeArcTermsText(input.featuredToken ?? "") || "none";
+  const location = normalizeArcTermsText(input.location ?? "") || "not specified";
+  const verification = normalizeArcTermsText(input.verificationMethod ?? "") || "onchain delivery commitment";
   return [
     "HANKA Arc Testnet social-proof Bounty",
+    `Title: ${title}`,
+    `Summary: ${summary}`,
+    `Deliverables: ${deliverables.map((item, index3) => `${index3 + 1}. ${item}`).join(" | ")}`,
     `Project: ${normalizeArcTermsText(input.projectSlug).toLowerCase()}`,
     `Proof: ${input.instrument}`,
     `Target: @${normalizeArcHandle(input.targetHandle)}`,
     `Scope: ${proofDetail || "standard proof action"}`,
     `Space duration: ${spaceMinutes}`,
     `Retention: ${input.retentionDays} days`,
+    "Winners: 1 (current Arc Testnet contract limit)",
+    `Featured token: ${featuredToken}`,
+    `Location: ${location}`,
+    `Verification: ${verification}`,
+    "Safety attestation: no illegal, exploitative, prohibited, or misrepresented work is requested.",
     "One source completes one proof action for the named target.",
     "Reward is held by the HANKA Arc Testnet contract and releases only through its Bounty lifecycle."
   ].join("\n");
@@ -44228,12 +44242,18 @@ var arcSocialBounties = pgTable(
     contractAddress: varchar("contractAddress", { length: 42 }).notNull(),
     taskId: bigint4("taskId", { mode: "number" }).notNull(),
     requesterWallet: varchar("requesterWallet", { length: 42 }).notNull(),
+    title: varchar("title", { length: 50 }),
+    summary: varchar("summary", { length: 500 }),
+    deliverables: text("deliverables"),
     projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
     instrument: marketInstrument("instrument").notNull(),
     targetHandle: varchar("targetHandle", { length: 80 }).notNull(),
     proofDetail: varchar("proofDetail", { length: 240 }),
     spaceMinutes: integer2("spaceMinutes"),
     retentionDays: integer2("retentionDays").notNull().default(30),
+    featuredToken: varchar("featuredToken", { length: 80 }),
+    location: varchar("location", { length: 120 }),
+    verificationMethod: varchar("verificationMethod", { length: 80 }),
     termsHash: varchar("termsHash", { length: 66 }).notNull(),
     createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
     updatedAt: updatedTimestamp()
@@ -49962,12 +49982,18 @@ async function listArcSocialBountyMetadata(contractAddress) {
   const rows = await db.select({
     taskId: arcSocialBounties.taskId,
     requesterWallet: arcSocialBounties.requesterWallet,
+    title: arcSocialBounties.title,
+    summary: arcSocialBounties.summary,
+    deliverables: arcSocialBounties.deliverables,
     projectSlug: arcSocialBounties.projectSlug,
     instrument: arcSocialBounties.instrument,
     targetHandle: arcSocialBounties.targetHandle,
     proofDetail: arcSocialBounties.proofDetail,
     spaceMinutes: arcSocialBounties.spaceMinutes,
     retentionDays: arcSocialBounties.retentionDays,
+    featuredToken: arcSocialBounties.featuredToken,
+    location: arcSocialBounties.location,
+    verificationMethod: arcSocialBounties.verificationMethod,
     termsHash: arcSocialBounties.termsHash,
     sourceHandle: arcSocialBountySources.sourceHandle,
     takerWallet: arcSocialBountySources.takerWallet,
@@ -49991,12 +50017,18 @@ async function registerArcSocialBounty(input) {
     contractAddress,
     taskId: input.taskId,
     requesterWallet: input.requesterWallet.toLowerCase(),
+    title: normalizeArcTermsText(input.title),
+    summary: normalizeArcTermsText(input.summary),
+    deliverables: input.deliverables.map(normalizeArcTermsText).join("\n"),
     projectSlug: normalizeArcTermsText(input.projectSlug).toLowerCase(),
     instrument: input.instrument,
     targetHandle: normalizedTarget,
     proofDetail: normalizeArcTermsText(input.proofDetail ?? "") || null,
     spaceMinutes: input.spaceMinutes ?? null,
     retentionDays: input.retentionDays,
+    featuredToken: normalizeArcTermsText(input.featuredToken ?? "") || null,
+    location: normalizeArcTermsText(input.location ?? "") || null,
+    verificationMethod: input.verificationMethod ?? "onchain_delivery_commitment",
     termsHash: task[6].toLowerCase()
   }).onConflictDoNothing();
   return { taskId: input.taskId, termsHash: task[6] };
@@ -50045,12 +50077,18 @@ var evmWallet = external_exports.string().trim().refine(isAddress, "Connect a va
 var escrowAddress = external_exports.string().trim().refine(isAddress, "Arc escrow address is invalid.");
 var taskId = external_exports.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 var socialTerms = external_exports.object({
+  title: external_exports.string().trim().min(3).max(50),
+  summary: external_exports.string().trim().min(8).max(500),
+  deliverables: external_exports.array(external_exports.string().trim().min(3).max(100)).min(1).max(10),
   projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"),
   instrument: external_exports.enum(ARC_SOCIAL_INSTRUMENTS),
   targetHandle: external_exports.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle."),
   proofDetail: external_exports.string().trim().max(240).optional(),
   spaceMinutes: external_exports.number().int().positive().max(720).optional(),
-  retentionDays: external_exports.union([external_exports.literal(7), external_exports.literal(14), external_exports.literal(30), external_exports.literal(60), external_exports.literal(90)])
+  retentionDays: external_exports.union([external_exports.literal(7), external_exports.literal(14), external_exports.literal(30), external_exports.literal(60), external_exports.literal(90)]),
+  featuredToken: external_exports.string().trim().max(80).optional(),
+  location: external_exports.string().trim().max(120).optional(),
+  verificationMethod: external_exports.enum(["onchain_delivery_commitment", "manual_evidence_reference"]).optional()
 });
 function assertConfiguredEscrow(input) {
   const configured = process.env.VITE_ARC_TESTNET_ESCROW_ADDRESS?.trim();
