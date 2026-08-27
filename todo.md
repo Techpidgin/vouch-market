@@ -278,3 +278,5 @@
 - [x] Make the landing Arc attribution borderless and non-linking, and restrict Testnet wording to wallet connection controls.
 - [x] Ensure every animated hero-terminal command remains fully visible at desktop and mobile widths.
 - [x] Document current Bounty, Social Proof, and Airdrop Agreement workflows; assess gaps; and define a successor escrow-contract specification for future deployment.
+- [x] Implement a versioned HANKA Market V2 Solidity contract with fee snapshots, explicit timeouts, source attestations, social-proof retention bonds, and bilateral agreement settlement.
+- [x] Add focused V2 contract tests, compile the source, and document a safe Arc testnet deployment plan without storing signer secrets.
