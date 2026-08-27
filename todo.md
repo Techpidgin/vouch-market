@@ -268,3 +268,10 @@
 - [x] Simplify the Arc wallet connection control to show the Arc logo without the extra wallet icon.
 - [x] Replace the largest HANKA display-heading font with the supplied Geist family and remove the previous display font from active heading rules.
 - [x] Validate the updated Geist display-heading hierarchy across landing and Arc marketplace views before publishing.
+- [x] Separate Bounties, Airdrop Agreements, and Social Proof into clear market destinations with contextual navigation and no mixed-purpose form.
+- [x] Provide dedicated Bounty, airdrop-agreement, social-proof buyer, and social-proof seller forms with the right fields and contract disclaimers for each market.
+- [x] Make social-proof retention commitments explicit for follows and other proof types, with a defined commencement and expiry point after onchain delivery.
+- [x] Add signed early-removal reports with evidence references, an authorized review decision, and source-account restrictions when a violation is confirmed.
+- [x] Block a confirmed violating source X account from publishing or claiming new social-proof offers while keeping onchain dispute authority unchanged.
+- [x] Validate market routing, form separation, retention safeguards, mobile layouts, tests, and production builds before publishing.
+- [x] Keep Bounties, Airdrop Agreements, and Social Proof together in one Arc listing dashboard, using tabs and filters rather than separate market pages.

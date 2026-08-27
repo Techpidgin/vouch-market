@@ -323,6 +323,7 @@ export const arcSocialOffers = pgTable(
     kaitoScore: integer("kaitoScore").notNull().default(0),
     kaitoAura: integer("kaitoAura").notNull().default(0),
     isVerifiedClaim: boolean("isVerifiedClaim").notNull().default(false),
+    isActive: boolean("isActive").notNull().default(true),
     createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
     updatedAt: updatedTimestamp(),
   },
@@ -330,6 +331,57 @@ export const arcSocialOffers = pgTable(
     uniqueIndex("arcSocialOffers_wallet_source_instrument_unique").on(table.sellerWallet, table.sourceHandle, table.instrument),
     index("arcSocialOffers_instrument_idx").on(table.instrument),
     index("arcSocialOffers_seller_idx").on(table.sellerWallet),
+  ],
+);
+
+/**
+ * Retention begins only after the configured Arc escrow has paid a social-proof
+ * Bounty. A requester may report one active-window removal. The publicly
+ * configured contract resolver decides whether that report is confirmed.
+ */
+export const arcSocialProofRetentions = pgTable(
+  "arcSocialProofRetentions",
+  {
+    id: serial("id").primaryKey(),
+    contractAddress: varchar("contractAddress", { length: 42 }).notNull(),
+    taskId: bigint("taskId", { mode: "number" }).notNull(),
+    requesterWallet: varchar("requesterWallet", { length: 42 }).notNull(),
+    takerWallet: varchar("takerWallet", { length: 42 }).notNull(),
+    sourceHandle: varchar("sourceHandle", { length: 80 }).notNull(),
+    retentionStartsAt: utcTimestamp("retentionStartsAt").notNull(),
+    retentionEndsAt: utcTimestamp("retentionEndsAt").notNull(),
+    reportedAt: utcTimestamp("reportedAt"),
+    evidenceReference: text("evidenceReference"),
+    reviewStatus: varchar("reviewStatus", { length: 16 }).notNull().default("active"),
+    reviewedAt: utcTimestamp("reviewedAt"),
+    resolverWallet: varchar("resolverWallet", { length: 42 }),
+    reviewNote: text("reviewNote"),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp(),
+  },
+  table => [
+    uniqueIndex("arcSocialProofRetentions_contract_task_unique").on(table.contractAddress, table.taskId),
+    index("arcSocialProofRetentions_source_status_idx").on(table.sourceHandle, table.reviewStatus),
+    index("arcSocialProofRetentions_requester_idx").on(table.requesterWallet),
+  ],
+);
+
+/** A confirmed restriction applies only to Arc social-proof offers and claims. */
+export const arcSocialSourceBans = pgTable(
+  "arcSocialSourceBans",
+  {
+    id: serial("id").primaryKey(),
+    sourceHandle: varchar("sourceHandle", { length: 80 }).notNull(),
+    sellerWallet: varchar("sellerWallet", { length: 42 }).notNull(),
+    contractAddress: varchar("contractAddress", { length: 42 }).notNull(),
+    taskId: bigint("taskId", { mode: "number" }).notNull(),
+    reason: text("reason").notNull(),
+    resolverWallet: varchar("resolverWallet", { length: 42 }).notNull(),
+    bannedAt: utcTimestamp("bannedAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("arcSocialSourceBans_source_unique").on(table.sourceHandle),
+    index("arcSocialSourceBans_seller_idx").on(table.sellerWallet),
   ],
 );
 

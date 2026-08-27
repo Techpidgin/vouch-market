@@ -32,6 +32,6 @@ describe("Arc Testnet market page", () => {
     expect(page).toContain("SUBMIT DELIVERY");
     expect(page).toContain("RELEASE REWARD");
     expect(page).toContain("DISPUTE");
-    expect(page).toContain("configured resolver");
+    expect(page).toContain("configured onchain resolver");
   });
 });

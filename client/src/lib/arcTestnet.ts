@@ -283,5 +283,10 @@ export const disputeArcPointExchange = (id: bigint) => submitEscrowAction("dispu
 export const approveArcPointExchangeSettlement = (id: bigint, settlementTerms: string, makerPayout: bigint, takerPayout: bigint) => submitEscrowAction("approvePointExchangeSettlement", [id, hashArcTerms(settlementTerms), makerPayout, takerPayout]);
 export const acceptArcTask = (id: bigint) => submitEscrowAction("acceptTask", [id]);
 export const submitArcTask = (id: bigint, deliveryTerms: string) => submitEscrowAction("submitTask", [id, hashArcTerms(deliveryTerms)]);
-export const approveArcTask = (id: bigint) => submitEscrowAction("approveTask", [id]);
+export async function approveArcTask(id: bigint) {
+  const hash = await submitEscrowAction("approveTask", [id]);
+  const receipt = await createPublicClient({ chain: hankaArcTestnet, transport: http() }).waitForTransactionReceipt({ hash });
+  if (receipt.status !== "success") throw new Error("The Bounty reward transaction did not complete.");
+  return hash;
+}
 export const disputeArcTask = (id: bigint) => submitEscrowAction("disputeTask", [id]);

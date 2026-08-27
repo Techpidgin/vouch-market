@@ -44328,6 +44328,7 @@ var arcSocialOffers = pgTable(
     kaitoScore: integer2("kaitoScore").notNull().default(0),
     kaitoAura: integer2("kaitoAura").notNull().default(0),
     isVerifiedClaim: boolean4("isVerifiedClaim").notNull().default(false),
+    isActive: boolean4("isActive").notNull().default(true),
     createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
     updatedAt: updatedTimestamp()
   },
@@ -44335,6 +44336,49 @@ var arcSocialOffers = pgTable(
     uniqueIndex("arcSocialOffers_wallet_source_instrument_unique").on(table.sellerWallet, table.sourceHandle, table.instrument),
     index2("arcSocialOffers_instrument_idx").on(table.instrument),
     index2("arcSocialOffers_seller_idx").on(table.sellerWallet)
+  ]
+);
+var arcSocialProofRetentions = pgTable(
+  "arcSocialProofRetentions",
+  {
+    id: serial("id").primaryKey(),
+    contractAddress: varchar("contractAddress", { length: 42 }).notNull(),
+    taskId: bigint4("taskId", { mode: "number" }).notNull(),
+    requesterWallet: varchar("requesterWallet", { length: 42 }).notNull(),
+    takerWallet: varchar("takerWallet", { length: 42 }).notNull(),
+    sourceHandle: varchar("sourceHandle", { length: 80 }).notNull(),
+    retentionStartsAt: utcTimestamp("retentionStartsAt").notNull(),
+    retentionEndsAt: utcTimestamp("retentionEndsAt").notNull(),
+    reportedAt: utcTimestamp("reportedAt"),
+    evidenceReference: text("evidenceReference"),
+    reviewStatus: varchar("reviewStatus", { length: 16 }).notNull().default("active"),
+    reviewedAt: utcTimestamp("reviewedAt"),
+    resolverWallet: varchar("resolverWallet", { length: 42 }),
+    reviewNote: text("reviewNote"),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp()
+  },
+  (table) => [
+    uniqueIndex("arcSocialProofRetentions_contract_task_unique").on(table.contractAddress, table.taskId),
+    index2("arcSocialProofRetentions_source_status_idx").on(table.sourceHandle, table.reviewStatus),
+    index2("arcSocialProofRetentions_requester_idx").on(table.requesterWallet)
+  ]
+);
+var arcSocialSourceBans = pgTable(
+  "arcSocialSourceBans",
+  {
+    id: serial("id").primaryKey(),
+    sourceHandle: varchar("sourceHandle", { length: 80 }).notNull(),
+    sellerWallet: varchar("sellerWallet", { length: 42 }).notNull(),
+    contractAddress: varchar("contractAddress", { length: 42 }).notNull(),
+    taskId: bigint4("taskId", { mode: "number" }).notNull(),
+    reason: text("reason").notNull(),
+    resolverWallet: varchar("resolverWallet", { length: 42 }).notNull(),
+    bannedAt: utcTimestamp("bannedAt").defaultNow().notNull()
+  },
+  (table) => [
+    uniqueIndex("arcSocialSourceBans_source_unique").on(table.sourceHandle),
+    index2("arcSocialSourceBans_seller_idx").on(table.sellerWallet)
   ]
 );
 var activityLogs = pgTable(
@@ -49992,7 +50036,8 @@ async function getDb() {
 // server/market/arcBounties.ts
 var ARC_RPC_URL = "https://rpc.testnet.arc.io";
 var ESCROW_READ_ABI = parseAbi([
-  "function tasks(uint256 id) view returns (address requester, address taker, address token, uint128 reward, uint64 acceptDeadline, uint64 dueAt, bytes32 termsHash, bytes32 deliveryHash, uint8 state)"
+  "function tasks(uint256 id) view returns (address requester, address taker, address token, uint128 reward, uint64 acceptDeadline, uint64 dueAt, bytes32 termsHash, bytes32 deliveryHash, uint8 state)",
+  "function resolver() view returns (address)"
 ]);
 function dbOrThrow() {
   return getDb().then((db) => {
@@ -50015,6 +50060,26 @@ async function readTask(contractAddress, taskId2) {
     functionName: "tasks",
     args: [BigInt(taskId2)]
   });
+}
+async function readResolver(contractAddress) {
+  return createPublicClient({ transport: http(ARC_RPC_URL) }).readContract({
+    address: contractAddress,
+    abi: ESCROW_READ_ABI,
+    functionName: "resolver"
+  });
+}
+async function isArcSocialSourceRestricted(db, sourceHandle2, wallet) {
+  const [arcRestriction, legacyRestriction] = await Promise.all([
+    db.select({ id: arcSocialSourceBans.id }).from(arcSocialSourceBans).where(or(
+      eq(arcSocialSourceBans.sourceHandle, sourceHandle2),
+      eq(arcSocialSourceBans.sellerWallet, wallet.toLowerCase())
+    )).limit(1),
+    db.select({ id: sourceBans.id }).from(sourceBans).where(or(
+      eq(sourceBans.sourceHandle, sourceHandle2),
+      eq(sourceBans.sellerWallet, wallet.toLowerCase())
+    )).limit(1)
+  ]);
+  return Boolean(arcRestriction[0] || legacyRestriction[0]);
 }
 async function assertRequesterOwnsSocialBounty(input) {
   if (!isAddress(input.requesterWallet)) throw new Error("Connect a valid Arc EVM wallet.");
@@ -50101,11 +50166,7 @@ async function assertArcSocialSourceAvailable(input) {
   const task = await readTask(input.contractAddress, input.taskId);
   if (task[8] !== 1) throw new Error("This Bounty is no longer open for acceptance.");
   const sourceHandle2 = normalizeArcHandle(input.sourceHandle);
-  const restriction = (await db.select({ id: sourceBans.id }).from(sourceBans).where(or(
-    eq(sourceBans.sourceHandle, sourceHandle2),
-    eq(sourceBans.sellerWallet, input.takerWallet.toLowerCase())
-  )).limit(1))[0];
-  if (restriction) throw new Error("This source is restricted from new HANKA Bounties.");
+  if (await isArcSocialSourceRestricted(db, sourceHandle2, input.takerWallet)) throw new Error("This source is restricted from new HANKA social-proof Bounties.");
   const requirements = (await db.select({
     minimumFollowerCount: arcSocialBounties.minimumFollowerCount,
     minimumEthosScore: arcSocialBounties.minimumEthosScore,
@@ -50126,11 +50187,7 @@ async function registerArcSocialBountySource(input) {
   if (!sameAddress(task[1], input.takerWallet)) throw new Error("Only the onchain Bounty taker can attach a source profile.");
   if (![2, 3, 4, 5].includes(task[8])) throw new Error("The Bounty has not been accepted onchain.");
   const sourceHandle2 = normalizeArcHandle(input.sourceHandle);
-  const restriction = (await db.select({ id: sourceBans.id }).from(sourceBans).where(or(
-    eq(sourceBans.sourceHandle, sourceHandle2),
-    eq(sourceBans.sellerWallet, input.takerWallet.toLowerCase())
-  )).limit(1))[0];
-  if (restriction) throw new Error("This source is restricted from HANKA Bounties.");
+  if (await isArcSocialSourceRestricted(db, sourceHandle2, input.takerWallet)) throw new Error("This source is restricted from HANKA social-proof Bounties.");
   const requirements = (await db.select({
     minimumFollowerCount: arcSocialBounties.minimumFollowerCount,
     minimumEthosScore: arcSocialBounties.minimumEthosScore,
@@ -50159,11 +50216,14 @@ async function registerArcSocialBountySource(input) {
 async function listArcSocialOffers() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(arcSocialOffers).orderBy(arcSocialOffers.createdAt);
+  return db.select().from(arcSocialOffers).where(eq(arcSocialOffers.isActive, true)).orderBy(arcSocialOffers.createdAt);
 }
 async function createArcSocialOffer(input) {
   const db = await dbOrThrow();
   const sourceHandle2 = normalizeArcHandle(input.sourceHandle);
+  if (await isArcSocialSourceRestricted(db, sourceHandle2, input.sellerWallet)) {
+    throw new Error("This source is restricted from publishing HANKA social-proof offers.");
+  }
   await db.insert(arcSocialOffers).values({
     sellerWallet: input.sellerWallet.toLowerCase(),
     sourceHandle: sourceHandle2,
@@ -50185,10 +50245,67 @@ async function createArcSocialOffer(input) {
       kaitoScore: input.kaitoScore,
       kaitoAura: input.kaitoAura,
       isVerifiedClaim: input.isVerifiedClaim,
+      isActive: true,
       updatedAt: /* @__PURE__ */ new Date()
     }
   });
   return { sourceHandle: sourceHandle2 };
+}
+async function recordArcSocialProofRetention(input) {
+  const db = await dbOrThrow();
+  const task = await readTask(input.contractAddress, input.taskId);
+  if (!sameAddress(task[0], input.requesterWallet)) throw new Error("Only the onchain requester can start a social-proof retention record.");
+  if (task[8] !== 5) throw new Error("Retention begins only after this Bounty has paid onchain.");
+  const [bounty, source] = await Promise.all([
+    db.select().from(arcSocialBounties).where(and(eq(arcSocialBounties.contractAddress, input.contractAddress.toLowerCase()), eq(arcSocialBounties.taskId, input.taskId))).limit(1),
+    db.select().from(arcSocialBountySources).where(and(eq(arcSocialBountySources.contractAddress, input.contractAddress.toLowerCase()), eq(arcSocialBountySources.taskId, input.taskId))).limit(1)
+  ]);
+  if (!bounty[0] || !source[0]) throw new Error("This paid Bounty has no registered social-proof source.");
+  if (!sameAddress(source[0].takerWallet, task[1])) throw new Error("The registered source does not match the paid onchain claimant.");
+  const retentionStartsAt = /* @__PURE__ */ new Date();
+  const retentionEndsAt = new Date(retentionStartsAt.getTime() + bounty[0].retentionDays * 864e5);
+  await db.insert(arcSocialProofRetentions).values({
+    contractAddress: input.contractAddress.toLowerCase(),
+    taskId: input.taskId,
+    requesterWallet: input.requesterWallet.toLowerCase(),
+    takerWallet: source[0].takerWallet,
+    sourceHandle: source[0].sourceHandle,
+    retentionStartsAt,
+    retentionEndsAt
+  }).onConflictDoNothing();
+  return { taskId: input.taskId, sourceHandle: source[0].sourceHandle, retentionStartsAt, retentionEndsAt };
+}
+async function reportArcSocialProofEarlyRemoval(input) {
+  const db = await dbOrThrow();
+  const retention = (await db.select().from(arcSocialProofRetentions).where(and(
+    eq(arcSocialProofRetentions.contractAddress, input.contractAddress.toLowerCase()),
+    eq(arcSocialProofRetentions.taskId, input.taskId)
+  )).limit(1))[0];
+  if (!retention || !sameAddress(retention.requesterWallet, input.requesterWallet)) throw new Error("Only the requester for a paid social-proof Bounty can report early removal.");
+  if (retention.retentionEndsAt <= /* @__PURE__ */ new Date()) throw new Error("The retention window has ended; no early-removal report can be opened.");
+  if (retention.reviewStatus !== "active") throw new Error("This Bounty already has a retention report under review or resolved.");
+  const reportedAt = /* @__PURE__ */ new Date();
+  await db.update(arcSocialProofRetentions).set({ reviewStatus: "reported", reportedAt, evidenceReference: normalizeArcTermsText(input.evidenceReference) }).where(eq(arcSocialProofRetentions.id, retention.id));
+  return { taskId: input.taskId, sourceHandle: retention.sourceHandle, reportedAt };
+}
+async function reviewArcSocialProofEarlyRemoval(input) {
+  const db = await dbOrThrow();
+  const resolver = await readResolver(input.contractAddress);
+  if (!sameAddress(resolver, input.resolverWallet)) throw new Error("Only the configured onchain resolver can review a social-proof retention report.");
+  const retention = (await db.select().from(arcSocialProofRetentions).where(and(
+    eq(arcSocialProofRetentions.contractAddress, input.contractAddress.toLowerCase()),
+    eq(arcSocialProofRetentions.taskId, input.taskId)
+  )).limit(1))[0];
+  if (!retention || retention.reviewStatus !== "reported") throw new Error("No pending social-proof retention report exists for this Bounty.");
+  const reviewedAt = /* @__PURE__ */ new Date();
+  await db.transaction(async (tx) => {
+    await tx.update(arcSocialProofRetentions).set({ reviewStatus: input.confirmed ? "confirmed" : "dismissed", reviewedAt, resolverWallet: input.resolverWallet.toLowerCase(), reviewNote: normalizeArcTermsText(input.reviewNote) }).where(eq(arcSocialProofRetentions.id, retention.id));
+    if (input.confirmed) {
+      await tx.insert(arcSocialSourceBans).values({ sourceHandle: retention.sourceHandle, sellerWallet: retention.takerWallet, contractAddress: retention.contractAddress, taskId: retention.taskId, reason: normalizeArcTermsText(input.reviewNote), resolverWallet: input.resolverWallet.toLowerCase(), bannedAt: reviewedAt }).onConflictDoNothing();
+      await tx.update(arcSocialOffers).set({ isActive: false, updatedAt: reviewedAt }).where(eq(arcSocialOffers.sourceHandle, retention.sourceHandle));
+    }
+  });
+  return { taskId: input.taskId, sourceHandle: retention.sourceHandle, status: input.confirmed ? "confirmed" : "dismissed", reviewedAt };
 }
 
 // node_modules/.pnpm/nanoid@5.1.16/node_modules/nanoid/index.js
@@ -50332,6 +50449,24 @@ var arcBountyRouter = router({
   registerSource: rateLimitedPublicProcedure.input(external_exports.object({ contractAddress: escrowAddress, taskId, takerWallet: evmWallet, sourceHandle, pointsPerUnit: external_exports.number().int().positive().max(1e9) }).merge(sourceMetrics)).mutation(({ input }) => {
     assertConfiguredEscrow(input.contractAddress);
     return registerArcSocialBountySource(input);
+  }),
+  retentionStartChallenge: rateLimitedPublicProcedure.input(external_exports.object({ wallet: evmWallet })).mutation(({ input }) => createWalletChallenge(input.wallet.toLowerCase(), "arc_social_retention_start")),
+  startRetention: rateLimitedPublicProcedure.input(external_exports.object({ contractAddress: escrowAddress, taskId, requesterWallet: evmWallet, challengeId: external_exports.string().min(1), signature: external_exports.string().min(1) })).mutation(async ({ input }) => {
+    assertConfiguredEscrow(input.contractAddress);
+    await verifyWalletChallenge({ challengeId: input.challengeId, wallet: input.requesterWallet.toLowerCase(), signature: input.signature, action: "arc_social_retention_start" });
+    return recordArcSocialProofRetention(input);
+  }),
+  retentionReportChallenge: rateLimitedPublicProcedure.input(external_exports.object({ wallet: evmWallet })).mutation(({ input }) => createWalletChallenge(input.wallet.toLowerCase(), "arc_social_retention_report")),
+  reportEarlyRemoval: rateLimitedPublicProcedure.input(external_exports.object({ contractAddress: escrowAddress, taskId, requesterWallet: evmWallet, evidenceReference: external_exports.string().trim().min(8).max(2e3), challengeId: external_exports.string().min(1), signature: external_exports.string().min(1) })).mutation(async ({ input }) => {
+    assertConfiguredEscrow(input.contractAddress);
+    await verifyWalletChallenge({ challengeId: input.challengeId, wallet: input.requesterWallet.toLowerCase(), signature: input.signature, action: "arc_social_retention_report" });
+    return reportArcSocialProofEarlyRemoval(input);
+  }),
+  retentionReviewChallenge: rateLimitedPublicProcedure.input(external_exports.object({ wallet: evmWallet })).mutation(({ input }) => createWalletChallenge(input.wallet.toLowerCase(), "arc_social_retention_review")),
+  reviewEarlyRemoval: rateLimitedPublicProcedure.input(external_exports.object({ contractAddress: escrowAddress, taskId, resolverWallet: evmWallet, confirmed: external_exports.boolean(), reviewNote: external_exports.string().trim().min(8).max(1e3), challengeId: external_exports.string().min(1), signature: external_exports.string().min(1) })).mutation(async ({ input }) => {
+    assertConfiguredEscrow(input.contractAddress);
+    await verifyWalletChallenge({ challengeId: input.challengeId, wallet: input.resolverWallet.toLowerCase(), signature: input.signature, action: "arc_social_retention_review" });
+    return reviewArcSocialProofEarlyRemoval(input);
   })
 });
 

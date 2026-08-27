@@ -1,7 +1,7 @@
 import { isAddress } from "viem";
 import { z } from "zod";
 import { ARC_SOCIAL_INSTRUMENTS } from "../../shared/arcBountyTerms";
-import { assertArcSocialSourceAvailable, createArcSocialOffer, listArcSocialBountyMetadata, listArcSocialOffers, registerArcSocialBounty, registerArcSocialBountySource } from "../market/arcBounties";
+import { assertArcSocialSourceAvailable, createArcSocialOffer, listArcSocialBountyMetadata, listArcSocialOffers, recordArcSocialProofRetention, registerArcSocialBounty, registerArcSocialBountySource, reportArcSocialProofEarlyRemoval, reviewArcSocialProofEarlyRemoval } from "../market/arcBounties";
 import { publicProcedure, rateLimitedPublicProcedure, router } from "../_core/trpc";
 import { createWalletChallenge, verifyWalletChallenge } from "../market/walletProof";
 
@@ -43,4 +43,22 @@ export const arcBountyRouter = router({
   register: rateLimitedPublicProcedure.input(z.object({ contractAddress: escrowAddress, taskId, requesterWallet: evmWallet }).merge(socialTerms)).mutation(({ input }) => { assertConfiguredEscrow(input.contractAddress); return registerArcSocialBounty(input); }),
   canClaim: rateLimitedPublicProcedure.input(z.object({ contractAddress: escrowAddress, taskId, takerWallet: evmWallet, sourceHandle }).merge(sourceMetrics)).mutation(({ input }) => { assertConfiguredEscrow(input.contractAddress); return assertArcSocialSourceAvailable(input); }),
   registerSource: rateLimitedPublicProcedure.input(z.object({ contractAddress: escrowAddress, taskId, takerWallet: evmWallet, sourceHandle, pointsPerUnit: z.number().int().positive().max(1_000_000_000) }).merge(sourceMetrics)).mutation(({ input }) => { assertConfiguredEscrow(input.contractAddress); return registerArcSocialBountySource(input); }),
+  retentionStartChallenge: rateLimitedPublicProcedure.input(z.object({ wallet: evmWallet })).mutation(({ input }) => createWalletChallenge(input.wallet.toLowerCase(), "arc_social_retention_start")),
+  startRetention: rateLimitedPublicProcedure.input(z.object({ contractAddress: escrowAddress, taskId, requesterWallet: evmWallet, challengeId: z.string().min(1), signature: z.string().min(1) })).mutation(async ({ input }) => {
+    assertConfiguredEscrow(input.contractAddress);
+    await verifyWalletChallenge({ challengeId: input.challengeId, wallet: input.requesterWallet.toLowerCase(), signature: input.signature, action: "arc_social_retention_start" });
+    return recordArcSocialProofRetention(input);
+  }),
+  retentionReportChallenge: rateLimitedPublicProcedure.input(z.object({ wallet: evmWallet })).mutation(({ input }) => createWalletChallenge(input.wallet.toLowerCase(), "arc_social_retention_report")),
+  reportEarlyRemoval: rateLimitedPublicProcedure.input(z.object({ contractAddress: escrowAddress, taskId, requesterWallet: evmWallet, evidenceReference: z.string().trim().min(8).max(2000), challengeId: z.string().min(1), signature: z.string().min(1) })).mutation(async ({ input }) => {
+    assertConfiguredEscrow(input.contractAddress);
+    await verifyWalletChallenge({ challengeId: input.challengeId, wallet: input.requesterWallet.toLowerCase(), signature: input.signature, action: "arc_social_retention_report" });
+    return reportArcSocialProofEarlyRemoval(input);
+  }),
+  retentionReviewChallenge: rateLimitedPublicProcedure.input(z.object({ wallet: evmWallet })).mutation(({ input }) => createWalletChallenge(input.wallet.toLowerCase(), "arc_social_retention_review")),
+  reviewEarlyRemoval: rateLimitedPublicProcedure.input(z.object({ contractAddress: escrowAddress, taskId, resolverWallet: evmWallet, confirmed: z.boolean(), reviewNote: z.string().trim().min(8).max(1000), challengeId: z.string().min(1), signature: z.string().min(1) })).mutation(async ({ input }) => {
+    assertConfiguredEscrow(input.contractAddress);
+    await verifyWalletChallenge({ challengeId: input.challengeId, wallet: input.resolverWallet.toLowerCase(), signature: input.signature, action: "arc_social_retention_review" });
+    return reviewArcSocialProofEarlyRemoval(input);
+  }),
 });
