@@ -25,6 +25,11 @@ export type ArcSocialBountyTermsInput = {
   featuredToken?: string | null;
   location?: string | null;
   verificationMethod?: string | null;
+  minimumFollowerCount?: number | null;
+  minimumEthosScore?: number | null;
+  minimumKaitoScore?: number | null;
+  minimumKaitoAura?: number | null;
+  requireVerifiedSource?: boolean;
 };
 
 export function normalizeArcHandle(value: string) {
@@ -49,6 +54,10 @@ export function buildArcSocialBountyTerms(input: ArcSocialBountyTermsInput) {
   const featuredToken = normalizeArcTermsText(input.featuredToken ?? "") || "none";
   const location = normalizeArcTermsText(input.location ?? "") || "not specified";
   const verification = normalizeArcTermsText(input.verificationMethod ?? "") || "onchain delivery commitment";
+  const minFollowers = input.minimumFollowerCount ?? 0;
+  const minEthos = input.minimumEthosScore ?? 0;
+  const minKaito = input.minimumKaitoScore ?? 0;
+  const minAura = input.minimumKaitoAura ?? 0;
   return [
     "HANKA Arc Testnet social-proof Bounty",
     `Title: ${title}`,
@@ -64,8 +73,14 @@ export function buildArcSocialBountyTerms(input: ArcSocialBountyTermsInput) {
     `Featured token: ${featuredToken}`,
     `Location: ${location}`,
     `Verification: ${verification}`,
+    `Minimum followers: ${minFollowers}`,
+    `Minimum Ethos score: ${minEthos}`,
+    `Minimum Kaito score: ${minKaito}`,
+    `Minimum Kaito Aura: ${minAura}`,
+    `Source verification required: ${input.requireVerifiedSource ? "self-attested" : "not required"}`,
     "Safety attestation: no illegal, exploitative, prohibited, or misrepresented work is requested.",
     "One source completes one proof action for the named target.",
+    "Metric requirements are claimant-provided and checked by HANKA before its app flow submits acceptance; the current generic task contract itself does not designate a source wallet.",
     "Reward is held by the HANKA Arc Testnet contract and releases only through its Bounty lifecycle.",
   ].join("\n");
 }

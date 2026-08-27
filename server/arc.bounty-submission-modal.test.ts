@@ -8,8 +8,8 @@ const market = readFileSync(resolve(process.cwd(), "client/src/pages/ArcMarket.t
 describe("HANKA Bounty claimant submission", () => {
   it("requires an accepted Bounty worker before opening the delivery modal", () => {
     expect(market).toContain("getArcWalletDashboard(wallet)");
-    expect(market).toContain("sameAddress(record.taker, wallet)");
-    expect(market).toContain("record.state !== 2");
+    expect(market).toContain("sameAddress(item.taker, wallet)");
+    expect(market).toContain("item.state !== 2");
     expect(market).toContain("<BountySubmissionDialog");
   });
 
@@ -27,6 +27,6 @@ describe("HANKA Bounty claimant submission", () => {
     expect(source).toContain("!allComplete || !description.trim() || !attested");
     expect(market).toContain("HANKA Arc Testnet Bounty delivery submission");
     expect(market).toContain("Local attachment previews:");
-    expect(market).toContain("submitArcTask(submissionBounty.id, terms)");
+    expect(market).toContain("submitArcTask(submissionTask.id, terms)");
   });
 });

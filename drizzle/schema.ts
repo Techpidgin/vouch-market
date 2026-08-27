@@ -252,7 +252,7 @@ export const arcSocialBounties = pgTable(
     title: varchar("title", { length: 50 }),
     summary: varchar("summary", { length: 500 }),
     deliverables: text("deliverables"),
-    projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
+    projectSlug: varchar("projectSlug", { length: 64 }).notNull(),
     instrument: marketInstrument("instrument").notNull(),
     targetHandle: varchar("targetHandle", { length: 80 }).notNull(),
     proofDetail: varchar("proofDetail", { length: 240 }),
@@ -261,6 +261,11 @@ export const arcSocialBounties = pgTable(
     featuredToken: varchar("featuredToken", { length: 80 }),
     location: varchar("location", { length: 120 }),
     verificationMethod: varchar("verificationMethod", { length: 80 }),
+    minimumFollowerCount: integer("minimumFollowerCount").notNull().default(0),
+    minimumEthosScore: integer("minimumEthosScore").notNull().default(0),
+    minimumKaitoScore: integer("minimumKaitoScore").notNull().default(0),
+    minimumKaitoAura: integer("minimumKaitoAura").notNull().default(0),
+    requireVerifiedSource: boolean("requireVerifiedSource").notNull().default(false),
     termsHash: varchar("termsHash", { length: 66 }).notNull(),
     createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
     updatedAt: updatedTimestamp(),
@@ -289,6 +294,7 @@ export const arcSocialBountySources = pgTable(
     ethosScore: integer("ethosScore"),
     kaitoScore: integer("kaitoScore"),
     kaitoAura: integer("kaitoAura"),
+    isVerifiedClaim: boolean("isVerifiedClaim").notNull().default(false),
     createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
     updatedAt: updatedTimestamp(),
   },
@@ -296,6 +302,34 @@ export const arcSocialBountySources = pgTable(
     uniqueIndex("arcSocialBountySources_contract_task_unique").on(table.contractAddress, table.taskId),
     index("arcSocialBountySources_source_idx").on(table.sourceHandle),
     index("arcSocialBountySources_taker_idx").on(table.takerWallet),
+  ],
+);
+
+/**
+ * Seller-declared social-proof availability. Values are attached to the seller's
+ * EVM wallet; HANKA does not fabricate or independently attest to the metrics.
+ */
+export const arcSocialOffers = pgTable(
+  "arcSocialOffers",
+  {
+    id: serial("id").primaryKey(),
+    sellerWallet: varchar("sellerWallet", { length: 42 }).notNull(),
+    sourceHandle: varchar("sourceHandle", { length: 80 }).notNull(),
+    subject: varchar("subject", { length: 64 }).notNull(),
+    instrument: marketInstrument("instrument").notNull(),
+    availability: integer("availability").notNull().default(1),
+    followerCount: integer("followerCount").notNull().default(0),
+    ethosScore: integer("ethosScore").notNull().default(0),
+    kaitoScore: integer("kaitoScore").notNull().default(0),
+    kaitoAura: integer("kaitoAura").notNull().default(0),
+    isVerifiedClaim: boolean("isVerifiedClaim").notNull().default(false),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp(),
+  },
+  table => [
+    uniqueIndex("arcSocialOffers_wallet_source_instrument_unique").on(table.sellerWallet, table.sourceHandle, table.instrument),
+    index("arcSocialOffers_instrument_idx").on(table.instrument),
+    index("arcSocialOffers_seller_idx").on(table.sellerWallet),
   ],
 );
 

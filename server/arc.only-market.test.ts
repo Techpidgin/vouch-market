@@ -18,10 +18,12 @@ describe("Arc-only marketplace", () => {
     const walletControl = read("client/src/components/ArcWalletConnect.tsx");
     expect(market).toContain("Fund proof. Settle onchain.");
     expect(market).toContain("trpc.arcBounty.metadata");
-    expect(market).toContain("registerBounty.mutateAsync");
+    expect(market).toContain("register.mutateAsync");
     expect(market).toContain("ArcWalletConnect");
     expect(walletControl).toContain("Connect EVM wallet");
-    expect(market).toContain("no sample Bounties are invented.");
+    expect(market).toContain("No sample Bounties are invented.");
+    expect(market).toContain("SELL SOCIAL PROOF");
+    expect(market).toContain("Airdrop outcome agreement");
     expect(market).not.toContain("Solana");
     expect(market).not.toContain("manual OTC");
     expect(wallet).not.toContain("sendArcManualOtcUsdc");

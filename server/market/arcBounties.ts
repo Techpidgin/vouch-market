@@ -1,6 +1,6 @@
 import { and, eq, inArray, or } from "drizzle-orm";
 import { createPublicClient, http, isAddress, keccak256, parseAbi, stringToHex, type Address, type Hex } from "viem";
-import { arcSocialBounties, arcSocialBountySources, sourceBans } from "../../drizzle/schema";
+import { arcSocialBounties, arcSocialBountySources, arcSocialOffers, sourceBans } from "../../drizzle/schema";
 import { buildArcSocialBountyTerms, normalizeArcHandle, normalizeArcTermsText, type ArcSocialBountyTermsInput } from "../../shared/arcBountyTerms";
 import { getDb } from "../db";
 
@@ -73,6 +73,11 @@ export async function listArcSocialBountyMetadata(contractAddress: string) {
       featuredToken: arcSocialBounties.featuredToken,
       location: arcSocialBounties.location,
       verificationMethod: arcSocialBounties.verificationMethod,
+      minimumFollowerCount: arcSocialBounties.minimumFollowerCount,
+      minimumEthosScore: arcSocialBounties.minimumEthosScore,
+      minimumKaitoScore: arcSocialBounties.minimumKaitoScore,
+      minimumKaitoAura: arcSocialBounties.minimumKaitoAura,
+      requireVerifiedSource: arcSocialBounties.requireVerifiedSource,
       termsHash: arcSocialBounties.termsHash,
       sourceHandle: arcSocialBountySources.sourceHandle,
       takerWallet: arcSocialBountySources.takerWallet,
@@ -81,6 +86,7 @@ export async function listArcSocialBountyMetadata(contractAddress: string) {
       ethosScore: arcSocialBountySources.ethosScore,
       kaitoScore: arcSocialBountySources.kaitoScore,
       kaitoAura: arcSocialBountySources.kaitoAura,
+      isVerifiedClaim: arcSocialBountySources.isVerifiedClaim,
     })
     .from(arcSocialBounties)
     .leftJoin(arcSocialBountySources, and(
@@ -112,12 +118,17 @@ export async function registerArcSocialBounty(input: SocialBountyRegistration) {
     featuredToken: normalizeArcTermsText(input.featuredToken ?? "") || null,
     location: normalizeArcTermsText(input.location ?? "") || null,
     verificationMethod: input.verificationMethod ?? "onchain_delivery_commitment",
+    minimumFollowerCount: input.minimumFollowerCount ?? 0,
+    minimumEthosScore: input.minimumEthosScore ?? 0,
+    minimumKaitoScore: input.minimumKaitoScore ?? 0,
+    minimumKaitoAura: input.minimumKaitoAura ?? 0,
+    requireVerifiedSource: input.requireVerifiedSource ?? false,
     termsHash: task[6].toLowerCase(),
   }).onConflictDoNothing();
   return { taskId: input.taskId, termsHash: task[6] };
 }
 
-export async function assertArcSocialSourceAvailable(input: { contractAddress: string; taskId: number; takerWallet: string; sourceHandle: string }) {
+export async function assertArcSocialSourceAvailable(input: { contractAddress: string; taskId: number; takerWallet: string; sourceHandle: string; followerCount?: number; ethosScore?: number; kaitoScore?: number; kaitoAura?: number; isVerifiedClaim?: boolean }) {
   if (!isAddress(input.takerWallet)) throw new Error("Connect a valid Arc EVM wallet.");
   const db = await dbOrThrow();
   const task = await readTask(input.contractAddress, input.taskId);
@@ -128,7 +139,24 @@ export async function assertArcSocialSourceAvailable(input: { contractAddress: s
     eq(sourceBans.sellerWallet, input.takerWallet.toLowerCase()),
   )).limit(1))[0];
   if (restriction) throw new Error("This source is restricted from new HANKA Bounties.");
-  return { sourceHandle };
+  const requirements = (await db.select({
+    minimumFollowerCount: arcSocialBounties.minimumFollowerCount,
+    minimumEthosScore: arcSocialBounties.minimumEthosScore,
+    minimumKaitoScore: arcSocialBounties.minimumKaitoScore,
+    minimumKaitoAura: arcSocialBounties.minimumKaitoAura,
+    requireVerifiedSource: arcSocialBounties.requireVerifiedSource,
+  }).from(arcSocialBounties).where(and(
+    eq(arcSocialBounties.contractAddress, input.contractAddress.toLowerCase()),
+    eq(arcSocialBounties.taskId, input.taskId),
+  )).limit(1))[0];
+  if (requirements && (
+    (input.followerCount ?? 0) < requirements.minimumFollowerCount ||
+    (input.ethosScore ?? 0) < requirements.minimumEthosScore ||
+    (input.kaitoScore ?? 0) < requirements.minimumKaitoScore ||
+    (input.kaitoAura ?? 0) < requirements.minimumKaitoAura ||
+    (requirements.requireVerifiedSource && !input.isVerifiedClaim)
+  )) throw new Error("This source profile does not meet the buyer's committed minimum requirements.");
+  return { sourceHandle, requirements: requirements ?? null };
 }
 
 export async function registerArcSocialBountySource(input: {
@@ -141,6 +169,7 @@ export async function registerArcSocialBountySource(input: {
   ethosScore?: number;
   kaitoScore?: number;
   kaitoAura?: number;
+  isVerifiedClaim?: boolean;
 }) {
   const db = await dbOrThrow();
   if (!isAddress(input.takerWallet)) throw new Error("Connect a valid Arc EVM wallet.");
@@ -153,6 +182,23 @@ export async function registerArcSocialBountySource(input: {
     eq(sourceBans.sellerWallet, input.takerWallet.toLowerCase()),
   )).limit(1))[0];
   if (restriction) throw new Error("This source is restricted from HANKA Bounties.");
+  const requirements = (await db.select({
+    minimumFollowerCount: arcSocialBounties.minimumFollowerCount,
+    minimumEthosScore: arcSocialBounties.minimumEthosScore,
+    minimumKaitoScore: arcSocialBounties.minimumKaitoScore,
+    minimumKaitoAura: arcSocialBounties.minimumKaitoAura,
+    requireVerifiedSource: arcSocialBounties.requireVerifiedSource,
+  }).from(arcSocialBounties).where(and(
+    eq(arcSocialBounties.contractAddress, input.contractAddress.toLowerCase()),
+    eq(arcSocialBounties.taskId, input.taskId),
+  )).limit(1))[0];
+  if (requirements && (
+    (input.followerCount ?? 0) < requirements.minimumFollowerCount ||
+    (input.ethosScore ?? 0) < requirements.minimumEthosScore ||
+    (input.kaitoScore ?? 0) < requirements.minimumKaitoScore ||
+    (input.kaitoAura ?? 0) < requirements.minimumKaitoAura ||
+    (requirements.requireVerifiedSource && !input.isVerifiedClaim)
+  )) throw new Error("This source profile does not meet the buyer's committed minimum requirements.");
   await db.insert(arcSocialBountySources).values({
     contractAddress: input.contractAddress.toLowerCase(),
     taskId: input.taskId,
@@ -163,6 +209,7 @@ export async function registerArcSocialBountySource(input: {
     ethosScore: input.ethosScore,
     kaitoScore: input.kaitoScore,
     kaitoAura: input.kaitoAura,
+    isVerifiedClaim: input.isVerifiedClaim ?? false,
   }).onConflictDoNothing();
   return { taskId: input.taskId, sourceHandle };
 }
@@ -174,4 +221,47 @@ export async function getArcSocialBountiesForTasks(contractAddress: string, task
     eq(arcSocialBounties.contractAddress, contractAddress.toLowerCase()),
     inArray(arcSocialBounties.taskId, taskIds),
   ));
+}
+
+export async function listArcSocialOffers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(arcSocialOffers).orderBy(arcSocialOffers.createdAt);
+}
+
+export async function createArcSocialOffer(input: {
+  sellerWallet: string;
+  sourceHandle: string;
+  subject: string;
+  instrument: ArcSocialBountyTermsInput["instrument"];
+  availability: number;
+  followerCount: number;
+  ethosScore: number;
+  kaitoScore: number;
+  kaitoAura: number;
+  isVerifiedClaim: boolean;
+}) {
+  const db = await dbOrThrow();
+  const sourceHandle = normalizeArcHandle(input.sourceHandle);
+  await db.insert(arcSocialOffers).values({
+    sellerWallet: input.sellerWallet.toLowerCase(),
+    sourceHandle,
+    subject: normalizeArcTermsText(input.subject),
+    instrument: input.instrument,
+    availability: input.availability,
+    followerCount: input.followerCount,
+    ethosScore: input.ethosScore,
+    kaitoScore: input.kaitoScore,
+    kaitoAura: input.kaitoAura,
+    isVerifiedClaim: input.isVerifiedClaim,
+  }).onConflictDoUpdate({
+    target: [arcSocialOffers.sellerWallet, arcSocialOffers.sourceHandle, arcSocialOffers.instrument],
+    set: {
+      subject: normalizeArcTermsText(input.subject), availability: input.availability,
+      followerCount: input.followerCount, ethosScore: input.ethosScore,
+      kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura,
+      isVerifiedClaim: input.isVerifiedClaim, updatedAt: new Date(),
+    },
+  });
+  return { sourceHandle };
 }

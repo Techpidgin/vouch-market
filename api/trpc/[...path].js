@@ -35100,6 +35100,18 @@ var InvalidWrappedSignatureError = class extends BaseError3 {
   }
 };
 
+// node_modules/.pnpm/viem@2.44.0_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@4.1.12/node_modules/viem/_esm/utils/signature/recoverMessageAddress.js
+async function recoverMessageAddress({ message, signature }) {
+  return recoverAddress({ hash: hashMessage(message), signature });
+}
+
+// node_modules/.pnpm/viem@2.44.0_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@4.1.12/node_modules/viem/_esm/utils/signature/verifyMessage.js
+init_getAddress();
+init_isAddressEqual();
+async function verifyMessage({ address, message, signature }) {
+  return isAddressEqual(getAddress(address), await recoverMessageAddress({ message, signature }));
+}
+
 // node_modules/.pnpm/viem@2.44.0_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@4.1.12/node_modules/viem/_esm/utils/formatters/proof.js
 function formatStorageProof(storageProof) {
   return storageProof.map((proof) => ({
@@ -36269,7 +36281,7 @@ var VerificationError = class extends Error {
 };
 
 // node_modules/.pnpm/viem@2.44.0_bufferutil@4.1.0_typescript@5.9.3_utf-8-validate@6.0.6_zod@4.1.12/node_modules/viem/_esm/actions/public/verifyMessage.js
-async function verifyMessage(client, { address, message, factory, factoryData, signature, ...callRequest }) {
+async function verifyMessage2(client, { address, message, factory, factoryData, signature, ...callRequest }) {
   const hash4 = hashMessage(message);
   return getAction(client, verifyHash, "verifyHash")({
     address,
@@ -37027,7 +37039,7 @@ function publicActions(client) {
     simulateCalls: (args) => simulateCalls(client, args),
     simulateContract: (args) => simulateContract(client, args),
     verifyHash: (args) => verifyHash(client, args),
-    verifyMessage: (args) => verifyMessage(client, args),
+    verifyMessage: (args) => verifyMessage2(client, args),
     verifySiweMessage: (args) => verifySiweMessage(client, args),
     verifyTypedData: (args) => verifyTypedData(client, args),
     uninstallFilter: (args) => uninstallFilter(client, args),
@@ -37179,6 +37191,10 @@ function buildArcSocialBountyTerms(input) {
   const featuredToken = normalizeArcTermsText(input.featuredToken ?? "") || "none";
   const location = normalizeArcTermsText(input.location ?? "") || "not specified";
   const verification = normalizeArcTermsText(input.verificationMethod ?? "") || "onchain delivery commitment";
+  const minFollowers = input.minimumFollowerCount ?? 0;
+  const minEthos = input.minimumEthosScore ?? 0;
+  const minKaito = input.minimumKaitoScore ?? 0;
+  const minAura = input.minimumKaitoAura ?? 0;
   return [
     "HANKA Arc Testnet social-proof Bounty",
     `Title: ${title}`,
@@ -37194,8 +37210,14 @@ function buildArcSocialBountyTerms(input) {
     `Featured token: ${featuredToken}`,
     `Location: ${location}`,
     `Verification: ${verification}`,
+    `Minimum followers: ${minFollowers}`,
+    `Minimum Ethos score: ${minEthos}`,
+    `Minimum Kaito score: ${minKaito}`,
+    `Minimum Kaito Aura: ${minAura}`,
+    `Source verification required: ${input.requireVerifiedSource ? "self-attested" : "not required"}`,
     "Safety attestation: no illegal, exploitative, prohibited, or misrepresented work is requested.",
     "One source completes one proof action for the named target.",
+    "Metric requirements are claimant-provided and checked by HANKA before its app flow submits acceptance; the current generic task contract itself does not designate a source wallet.",
     "Reward is held by the HANKA Arc Testnet contract and releases only through its Bounty lifecycle."
   ].join("\n");
 }
@@ -44245,7 +44267,7 @@ var arcSocialBounties = pgTable(
     title: varchar("title", { length: 50 }),
     summary: varchar("summary", { length: 500 }),
     deliverables: text("deliverables"),
-    projectSlug: varchar("projectSlug", { length: 64 }).notNull().default("commonsmade"),
+    projectSlug: varchar("projectSlug", { length: 64 }).notNull(),
     instrument: marketInstrument("instrument").notNull(),
     targetHandle: varchar("targetHandle", { length: 80 }).notNull(),
     proofDetail: varchar("proofDetail", { length: 240 }),
@@ -44254,6 +44276,11 @@ var arcSocialBounties = pgTable(
     featuredToken: varchar("featuredToken", { length: 80 }),
     location: varchar("location", { length: 120 }),
     verificationMethod: varchar("verificationMethod", { length: 80 }),
+    minimumFollowerCount: integer2("minimumFollowerCount").notNull().default(0),
+    minimumEthosScore: integer2("minimumEthosScore").notNull().default(0),
+    minimumKaitoScore: integer2("minimumKaitoScore").notNull().default(0),
+    minimumKaitoAura: integer2("minimumKaitoAura").notNull().default(0),
+    requireVerifiedSource: boolean4("requireVerifiedSource").notNull().default(false),
     termsHash: varchar("termsHash", { length: 66 }).notNull(),
     createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
     updatedAt: updatedTimestamp()
@@ -44277,6 +44304,7 @@ var arcSocialBountySources = pgTable(
     ethosScore: integer2("ethosScore"),
     kaitoScore: integer2("kaitoScore"),
     kaitoAura: integer2("kaitoAura"),
+    isVerifiedClaim: boolean4("isVerifiedClaim").notNull().default(false),
     createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
     updatedAt: updatedTimestamp()
   },
@@ -44284,6 +44312,29 @@ var arcSocialBountySources = pgTable(
     uniqueIndex("arcSocialBountySources_contract_task_unique").on(table.contractAddress, table.taskId),
     index2("arcSocialBountySources_source_idx").on(table.sourceHandle),
     index2("arcSocialBountySources_taker_idx").on(table.takerWallet)
+  ]
+);
+var arcSocialOffers = pgTable(
+  "arcSocialOffers",
+  {
+    id: serial("id").primaryKey(),
+    sellerWallet: varchar("sellerWallet", { length: 42 }).notNull(),
+    sourceHandle: varchar("sourceHandle", { length: 80 }).notNull(),
+    subject: varchar("subject", { length: 64 }).notNull(),
+    instrument: marketInstrument("instrument").notNull(),
+    availability: integer2("availability").notNull().default(1),
+    followerCount: integer2("followerCount").notNull().default(0),
+    ethosScore: integer2("ethosScore").notNull().default(0),
+    kaitoScore: integer2("kaitoScore").notNull().default(0),
+    kaitoAura: integer2("kaitoAura").notNull().default(0),
+    isVerifiedClaim: boolean4("isVerifiedClaim").notNull().default(false),
+    createdAt: utcTimestamp("createdAt").defaultNow().notNull(),
+    updatedAt: updatedTimestamp()
+  },
+  (table) => [
+    uniqueIndex("arcSocialOffers_wallet_source_instrument_unique").on(table.sellerWallet, table.sourceHandle, table.instrument),
+    index2("arcSocialOffers_instrument_idx").on(table.instrument),
+    index2("arcSocialOffers_seller_idx").on(table.sellerWallet)
   ]
 );
 var activityLogs = pgTable(
@@ -49929,8 +49980,8 @@ async function getDb() {
   }
   ce.webSocketConstructor = wrapper_default;
   ce.poolQueryViaFetch = true;
-  const pool = new Mn({ connectionString: url2 });
-  database = drizzle({ client: pool });
+  const pool2 = new Mn({ connectionString: url2 });
+  database = drizzle({ client: pool2 });
   migrationPromise ??= migrate(database, {
     migrationsFolder: (0, import_node_path.resolve)(process.cwd(), "drizzle/neon")
   });
@@ -49994,6 +50045,11 @@ async function listArcSocialBountyMetadata(contractAddress) {
     featuredToken: arcSocialBounties.featuredToken,
     location: arcSocialBounties.location,
     verificationMethod: arcSocialBounties.verificationMethod,
+    minimumFollowerCount: arcSocialBounties.minimumFollowerCount,
+    minimumEthosScore: arcSocialBounties.minimumEthosScore,
+    minimumKaitoScore: arcSocialBounties.minimumKaitoScore,
+    minimumKaitoAura: arcSocialBounties.minimumKaitoAura,
+    requireVerifiedSource: arcSocialBounties.requireVerifiedSource,
     termsHash: arcSocialBounties.termsHash,
     sourceHandle: arcSocialBountySources.sourceHandle,
     takerWallet: arcSocialBountySources.takerWallet,
@@ -50001,7 +50057,8 @@ async function listArcSocialBountyMetadata(contractAddress) {
     followerCount: arcSocialBountySources.followerCount,
     ethosScore: arcSocialBountySources.ethosScore,
     kaitoScore: arcSocialBountySources.kaitoScore,
-    kaitoAura: arcSocialBountySources.kaitoAura
+    kaitoAura: arcSocialBountySources.kaitoAura,
+    isVerifiedClaim: arcSocialBountySources.isVerifiedClaim
   }).from(arcSocialBounties).leftJoin(arcSocialBountySources, and(
     eq(arcSocialBounties.contractAddress, arcSocialBountySources.contractAddress),
     eq(arcSocialBounties.taskId, arcSocialBountySources.taskId)
@@ -50029,6 +50086,11 @@ async function registerArcSocialBounty(input) {
     featuredToken: normalizeArcTermsText(input.featuredToken ?? "") || null,
     location: normalizeArcTermsText(input.location ?? "") || null,
     verificationMethod: input.verificationMethod ?? "onchain_delivery_commitment",
+    minimumFollowerCount: input.minimumFollowerCount ?? 0,
+    minimumEthosScore: input.minimumEthosScore ?? 0,
+    minimumKaitoScore: input.minimumKaitoScore ?? 0,
+    minimumKaitoAura: input.minimumKaitoAura ?? 0,
+    requireVerifiedSource: input.requireVerifiedSource ?? false,
     termsHash: task[6].toLowerCase()
   }).onConflictDoNothing();
   return { taskId: input.taskId, termsHash: task[6] };
@@ -50038,13 +50100,24 @@ async function assertArcSocialSourceAvailable(input) {
   const db = await dbOrThrow();
   const task = await readTask(input.contractAddress, input.taskId);
   if (task[8] !== 1) throw new Error("This Bounty is no longer open for acceptance.");
-  const sourceHandle = normalizeArcHandle(input.sourceHandle);
+  const sourceHandle2 = normalizeArcHandle(input.sourceHandle);
   const restriction = (await db.select({ id: sourceBans.id }).from(sourceBans).where(or(
-    eq(sourceBans.sourceHandle, sourceHandle),
+    eq(sourceBans.sourceHandle, sourceHandle2),
     eq(sourceBans.sellerWallet, input.takerWallet.toLowerCase())
   )).limit(1))[0];
   if (restriction) throw new Error("This source is restricted from new HANKA Bounties.");
-  return { sourceHandle };
+  const requirements = (await db.select({
+    minimumFollowerCount: arcSocialBounties.minimumFollowerCount,
+    minimumEthosScore: arcSocialBounties.minimumEthosScore,
+    minimumKaitoScore: arcSocialBounties.minimumKaitoScore,
+    minimumKaitoAura: arcSocialBounties.minimumKaitoAura,
+    requireVerifiedSource: arcSocialBounties.requireVerifiedSource
+  }).from(arcSocialBounties).where(and(
+    eq(arcSocialBounties.contractAddress, input.contractAddress.toLowerCase()),
+    eq(arcSocialBounties.taskId, input.taskId)
+  )).limit(1))[0];
+  if (requirements && ((input.followerCount ?? 0) < requirements.minimumFollowerCount || (input.ethosScore ?? 0) < requirements.minimumEthosScore || (input.kaitoScore ?? 0) < requirements.minimumKaitoScore || (input.kaitoAura ?? 0) < requirements.minimumKaitoAura || requirements.requireVerifiedSource && !input.isVerifiedClaim)) throw new Error("This source profile does not meet the buyer's committed minimum requirements.");
+  return { sourceHandle: sourceHandle2, requirements: requirements ?? null };
 }
 async function registerArcSocialBountySource(input) {
   const db = await dbOrThrow();
@@ -50052,74 +50125,211 @@ async function registerArcSocialBountySource(input) {
   const task = await readTask(input.contractAddress, input.taskId);
   if (!sameAddress(task[1], input.takerWallet)) throw new Error("Only the onchain Bounty taker can attach a source profile.");
   if (![2, 3, 4, 5].includes(task[8])) throw new Error("The Bounty has not been accepted onchain.");
-  const sourceHandle = normalizeArcHandle(input.sourceHandle);
+  const sourceHandle2 = normalizeArcHandle(input.sourceHandle);
   const restriction = (await db.select({ id: sourceBans.id }).from(sourceBans).where(or(
-    eq(sourceBans.sourceHandle, sourceHandle),
+    eq(sourceBans.sourceHandle, sourceHandle2),
     eq(sourceBans.sellerWallet, input.takerWallet.toLowerCase())
   )).limit(1))[0];
   if (restriction) throw new Error("This source is restricted from HANKA Bounties.");
+  const requirements = (await db.select({
+    minimumFollowerCount: arcSocialBounties.minimumFollowerCount,
+    minimumEthosScore: arcSocialBounties.minimumEthosScore,
+    minimumKaitoScore: arcSocialBounties.minimumKaitoScore,
+    minimumKaitoAura: arcSocialBounties.minimumKaitoAura,
+    requireVerifiedSource: arcSocialBounties.requireVerifiedSource
+  }).from(arcSocialBounties).where(and(
+    eq(arcSocialBounties.contractAddress, input.contractAddress.toLowerCase()),
+    eq(arcSocialBounties.taskId, input.taskId)
+  )).limit(1))[0];
+  if (requirements && ((input.followerCount ?? 0) < requirements.minimumFollowerCount || (input.ethosScore ?? 0) < requirements.minimumEthosScore || (input.kaitoScore ?? 0) < requirements.minimumKaitoScore || (input.kaitoAura ?? 0) < requirements.minimumKaitoAura || requirements.requireVerifiedSource && !input.isVerifiedClaim)) throw new Error("This source profile does not meet the buyer's committed minimum requirements.");
   await db.insert(arcSocialBountySources).values({
     contractAddress: input.contractAddress.toLowerCase(),
     taskId: input.taskId,
     takerWallet: input.takerWallet.toLowerCase(),
-    sourceHandle,
+    sourceHandle: sourceHandle2,
     pointsPerUnit: input.pointsPerUnit,
     followerCount: input.followerCount,
     ethosScore: input.ethosScore,
     kaitoScore: input.kaitoScore,
-    kaitoAura: input.kaitoAura
+    kaitoAura: input.kaitoAura,
+    isVerifiedClaim: input.isVerifiedClaim ?? false
   }).onConflictDoNothing();
-  return { taskId: input.taskId, sourceHandle };
+  return { taskId: input.taskId, sourceHandle: sourceHandle2 };
+}
+async function listArcSocialOffers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(arcSocialOffers).orderBy(arcSocialOffers.createdAt);
+}
+async function createArcSocialOffer(input) {
+  const db = await dbOrThrow();
+  const sourceHandle2 = normalizeArcHandle(input.sourceHandle);
+  await db.insert(arcSocialOffers).values({
+    sellerWallet: input.sellerWallet.toLowerCase(),
+    sourceHandle: sourceHandle2,
+    subject: normalizeArcTermsText(input.subject),
+    instrument: input.instrument,
+    availability: input.availability,
+    followerCount: input.followerCount,
+    ethosScore: input.ethosScore,
+    kaitoScore: input.kaitoScore,
+    kaitoAura: input.kaitoAura,
+    isVerifiedClaim: input.isVerifiedClaim
+  }).onConflictDoUpdate({
+    target: [arcSocialOffers.sellerWallet, arcSocialOffers.sourceHandle, arcSocialOffers.instrument],
+    set: {
+      subject: normalizeArcTermsText(input.subject),
+      availability: input.availability,
+      followerCount: input.followerCount,
+      ethosScore: input.ethosScore,
+      kaitoScore: input.kaitoScore,
+      kaitoAura: input.kaitoAura,
+      isVerifiedClaim: input.isVerifiedClaim,
+      updatedAt: /* @__PURE__ */ new Date()
+    }
+  });
+  return { sourceHandle: sourceHandle2 };
+}
+
+// node_modules/.pnpm/nanoid@5.1.16/node_modules/nanoid/index.js
+var import_node_crypto2 = require("node:crypto");
+
+// node_modules/.pnpm/nanoid@5.1.16/node_modules/nanoid/url-alphabet/index.js
+var urlAlphabet = "useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict";
+
+// node_modules/.pnpm/nanoid@5.1.16/node_modules/nanoid/index.js
+var POOL_SIZE_MULTIPLIER = 128;
+var pool;
+var poolOffset;
+function fillPool(bytes) {
+  if (bytes < 0) throw new RangeError("Wrong ID size");
+  try {
+    if (!pool || pool.length < bytes) {
+      pool = Buffer.allocUnsafe(bytes * POOL_SIZE_MULTIPLIER);
+      import_node_crypto2.webcrypto.getRandomValues(pool);
+      poolOffset = 0;
+    } else if (poolOffset + bytes > pool.length) {
+      import_node_crypto2.webcrypto.getRandomValues(pool);
+      poolOffset = 0;
+    }
+  } catch (e) {
+    pool = void 0;
+    throw e;
+  }
+  poolOffset += bytes;
+}
+function nanoid3(size5 = 21) {
+  fillPool(size5 |= 0);
+  let id = "";
+  for (let i = poolOffset - size5; i < poolOffset; i++) {
+    id += urlAlphabet[pool[i] & 63];
+  }
+  return id;
+}
+
+// server/market/walletProof.ts
+var CHALLENGE_TTL_MS = 10 * 60 * 1e3;
+function walletNetwork(wallet) {
+  if (!isAddress(wallet)) throw new Error("Enter a valid Arc EVM wallet address");
+  return "arc";
+}
+async function createWalletChallenge(wallet, action) {
+  const network = walletNetwork(wallet);
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  const id = nanoid3(20);
+  const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MS);
+  const message = [
+    "HANKA wallet confirmation",
+    `Network: ${network === "arc" ? "Arc Testnet" : "Arc Testnet"}`,
+    `Action: ${action}`,
+    `Wallet: ${wallet}`,
+    `Nonce: ${id}`,
+    `Expires: ${expiresAt.toISOString()}`
+  ].join("\n");
+  await db.insert(walletChallenges).values({ id, wallet, action, message, expiresAt });
+  return { id, message, expiresAt };
+}
+async function verifyWalletChallenge(input) {
+  const db = await getDb();
+  if (!db) throw new Error("Database is unavailable");
+  const challenge2 = (await db.select().from(walletChallenges).where(eq(walletChallenges.id, input.challengeId)).limit(1))[0];
+  if (!challenge2 || challenge2.wallet !== input.wallet || challenge2.action !== input.action) {
+    throw new Error("Wallet confirmation is invalid");
+  }
+  if (challenge2.usedAt || challenge2.expiresAt.getTime() < Date.now()) {
+    throw new Error("Wallet confirmation has expired; request a new one");
+  }
+  const network = walletNetwork(input.wallet);
+  const verified = await verifyMessage({ address: input.wallet, message: challenge2.message, signature: input.signature });
+  if (!verified) throw new Error("Wallet signature could not be verified");
+  await db.update(walletChallenges).set({ usedAt: /* @__PURE__ */ new Date() }).where(eq(walletChallenges.id, input.challengeId));
 }
 
 // server/routers/arcBounty.ts
 var evmWallet = external_exports.string().trim().refine(isAddress, "Connect a valid Arc EVM wallet.");
 var escrowAddress = external_exports.string().trim().refine(isAddress, "Arc escrow address is invalid.");
 var taskId = external_exports.number().int().positive().max(Number.MAX_SAFE_INTEGER);
+var metric = external_exports.number().int().nonnegative().max(1e10);
+var sourceHandle = external_exports.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle.");
+var sourceMetrics = external_exports.object({
+  followerCount: metric.default(0),
+  ethosScore: metric.default(0),
+  kaitoScore: metric.default(0),
+  kaitoAura: metric.default(0),
+  isVerifiedClaim: external_exports.boolean().default(false)
+});
 var socialTerms = external_exports.object({
   title: external_exports.string().trim().min(3).max(50),
   summary: external_exports.string().trim().min(8).max(500),
   deliverables: external_exports.array(external_exports.string().trim().min(3).max(100)).min(1).max(10),
-  projectSlug: external_exports.string().trim().min(2).max(64).default("commonsmade"),
+  projectSlug: external_exports.string().trim().min(2).max(64),
   instrument: external_exports.enum(ARC_SOCIAL_INSTRUMENTS),
-  targetHandle: external_exports.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle."),
+  targetHandle: sourceHandle,
   proofDetail: external_exports.string().trim().max(240).optional(),
   spaceMinutes: external_exports.number().int().positive().max(720).optional(),
   retentionDays: external_exports.union([external_exports.literal(7), external_exports.literal(14), external_exports.literal(30), external_exports.literal(60), external_exports.literal(90)]),
   featuredToken: external_exports.string().trim().max(80).optional(),
   location: external_exports.string().trim().max(120).optional(),
-  verificationMethod: external_exports.enum(["onchain_delivery_commitment", "manual_evidence_reference"]).optional()
+  verificationMethod: external_exports.enum(["onchain_delivery_commitment", "manual_evidence_reference"]).optional(),
+  minimumFollowerCount: metric.optional(),
+  minimumEthosScore: metric.optional(),
+  minimumKaitoScore: metric.optional(),
+  minimumKaitoAura: metric.optional(),
+  requireVerifiedSource: external_exports.boolean().optional()
 });
 function assertConfiguredEscrow(input) {
   const configured = process.env.VITE_ARC_TESTNET_ESCROW_ADDRESS?.trim();
-  if (!configured || !isAddress(configured) || configured.toLowerCase() !== input.toLowerCase()) {
-    throw new Error("This Arc Bounty contract is not the configured HANKA Testnet escrow.");
-  }
+  if (!configured || !isAddress(configured) || configured.toLowerCase() !== input.toLowerCase()) throw new Error("This Arc Bounty contract is not the configured HANKA Testnet escrow.");
 }
 var arcBountyRouter = router({
-  metadata: publicProcedure.input(external_exports.object({ contractAddress: escrowAddress })).query(async ({ input }) => {
+  metadata: publicProcedure.input(external_exports.object({ contractAddress: escrowAddress })).query(({ input }) => {
     assertConfiguredEscrow(input.contractAddress);
     return listArcSocialBountyMetadata(input.contractAddress);
   }),
-  register: rateLimitedPublicProcedure.input(external_exports.object({ contractAddress: escrowAddress, taskId, requesterWallet: evmWallet }).merge(socialTerms)).mutation(async ({ input }) => {
+  offers: publicProcedure.query(() => listArcSocialOffers()),
+  offerChallenge: rateLimitedPublicProcedure.input(external_exports.object({ wallet: evmWallet })).mutation(({ input }) => createWalletChallenge(input.wallet.toLowerCase(), "arc_social_offer")),
+  createOffer: rateLimitedPublicProcedure.input(external_exports.object({
+    wallet: evmWallet,
+    challengeId: external_exports.string().min(1),
+    signature: external_exports.string().min(1),
+    sourceHandle,
+    subject: external_exports.string().trim().min(2).max(64),
+    instrument: external_exports.enum(ARC_SOCIAL_INSTRUMENTS),
+    availability: external_exports.number().int().min(1).max(100)
+  }).merge(sourceMetrics)).mutation(async ({ input }) => {
+    await verifyWalletChallenge({ challengeId: input.challengeId, wallet: input.wallet.toLowerCase(), signature: input.signature, action: "arc_social_offer" });
+    return createArcSocialOffer({ sellerWallet: input.wallet, sourceHandle: input.sourceHandle, subject: input.subject, instrument: input.instrument, availability: input.availability, followerCount: input.followerCount, ethosScore: input.ethosScore, kaitoScore: input.kaitoScore, kaitoAura: input.kaitoAura, isVerifiedClaim: input.isVerifiedClaim });
+  }),
+  register: rateLimitedPublicProcedure.input(external_exports.object({ contractAddress: escrowAddress, taskId, requesterWallet: evmWallet }).merge(socialTerms)).mutation(({ input }) => {
     assertConfiguredEscrow(input.contractAddress);
     return registerArcSocialBounty(input);
   }),
-  canClaim: rateLimitedPublicProcedure.input(external_exports.object({ contractAddress: escrowAddress, taskId, takerWallet: evmWallet, sourceHandle: external_exports.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle.") })).mutation(async ({ input }) => {
+  canClaim: rateLimitedPublicProcedure.input(external_exports.object({ contractAddress: escrowAddress, taskId, takerWallet: evmWallet, sourceHandle }).merge(sourceMetrics)).mutation(({ input }) => {
     assertConfiguredEscrow(input.contractAddress);
     return assertArcSocialSourceAvailable(input);
   }),
-  registerSource: rateLimitedPublicProcedure.input(external_exports.object({
-    contractAddress: escrowAddress,
-    taskId,
-    takerWallet: evmWallet,
-    sourceHandle: external_exports.string().trim().min(1).max(16).regex(/^@?[A-Za-z0-9_]+$/, "Enter a valid X handle."),
-    pointsPerUnit: external_exports.number().int().positive().max(1e9),
-    followerCount: external_exports.number().int().nonnegative().max(1e10).optional(),
-    ethosScore: external_exports.number().int().nonnegative().max(1e10).optional(),
-    kaitoScore: external_exports.number().int().nonnegative().max(1e10).optional(),
-    kaitoAura: external_exports.number().int().nonnegative().max(1e10).optional()
-  })).mutation(async ({ input }) => {
+  registerSource: rateLimitedPublicProcedure.input(external_exports.object({ contractAddress: escrowAddress, taskId, takerWallet: evmWallet, sourceHandle, pointsPerUnit: external_exports.number().int().positive().max(1e9) }).merge(sourceMetrics)).mutation(({ input }) => {
     assertConfiguredEscrow(input.contractAddress);
     return registerArcSocialBountySource(input);
   })

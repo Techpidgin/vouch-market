@@ -8,7 +8,7 @@ const market = readFileSync(resolve(process.cwd(), "client/src/pages/ArcMarket.t
 describe("HANKA Bounty creation modal", () => {
   it("keeps the form in a responsive dialog rather than the Bounty board", () => {
     expect(source).toContain("<Dialog open={props.open}");
-    expect(market).toContain("setCreateDialogOpen(true)");
+    expect(market).toContain("setCreateOpen(true)");
     expect(market).toContain("<BountyCreateDialog");
     expect(market).toContain("CREATE BOUNTY");
   });

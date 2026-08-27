@@ -257,3 +257,12 @@
 - [x] Let claimants confirm each committed deliverable, add a required evidence description and optional links, and keep local file previews transparent about their storage limits.
 - [x] Add content restrictions and a claimant attestation without claiming HANKA selects winners or owns submitted rights.
 - [x] Validate claimant eligibility, delivery-hash generation, responsive layout, tests, and production builds before publishing.
+- [x] Separate social-proof Buy and Sell offers from the requester-funded Bounty creation workflow.
+- [x] Let a social-proof seller declare a named source account, available proof type, public follower count, Kaito score, Kaito Aura, and self-declared verification status without fabricating credentials.
+- [x] Let a social-proof buyer define minimum source metrics and the target social action they want to buy before funding an Arc Bounty.
+- [x] Make social-proof acceptance validate stated source metrics against the buyer’s committed minimums before the claimant can take the Bounty.
+- [x] Reframe point exchanges as airdrop-outcome agreements with equal collateral, uncertain timing/value disclosures, and explicit settlement or resolver-dispute terms.
+- [x] Validate separated flows, metric requirements, airdrop-risk copy, responsive interface, tests, and production builds before publishing.
+- [x] Remove CommonsMade as the default project from active Arc social-proof forms, metadata, and public copy.
+- [x] Let social-proof sellers and buyers describe any project, creator, brand, or individual scope with clear neutral labels.
+- [x] Simplify the Arc wallet connection control to show the Arc logo without the extra wallet icon.
