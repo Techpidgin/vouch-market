@@ -4,6 +4,7 @@ export type ArcEip1193Provider = Parameters<typeof custom>[0] & {
   isMetaMask?: boolean;
   isRabby?: boolean;
   isCoinbaseWallet?: boolean;
+  isPhantom?: boolean;
   providers?: ArcEip1193Provider[];
 };
 
@@ -79,6 +80,7 @@ const providerName = (provider: ArcEip1193Provider) => {
   if (provider.isRabby) return "Rabby";
   if (provider.isCoinbaseWallet) return "Coinbase Wallet";
   if (provider.isMetaMask) return "MetaMask";
+  if (provider.isPhantom) return "Phantom";
   return "Browser wallet";
 };
 
