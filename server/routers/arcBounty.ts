@@ -25,7 +25,7 @@ const socialTerms = z.object({
 });
 
 function assertConfiguredEscrow(input: string) {
-  const configured = process.env.VITE_ARC_TESTNET_ESCROW_ADDRESS?.trim();
+  const configured = (process.env.HANKA_MARKET_V2_TESTNET_ADDRESS_2 ?? process.env.VITE_ARC_TESTNET_ESCROW_ADDRESS)?.trim();
   if (!configured || !isAddress(configured) || configured.toLowerCase() !== input.toLowerCase()) throw new Error("This Arc Bounty contract is not the configured HANKA Testnet escrow.");
 }
 

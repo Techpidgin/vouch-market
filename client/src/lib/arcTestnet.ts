@@ -70,7 +70,7 @@ export type ArcWalletDashboard = { pointExchanges: ArcPointExchangeRecord[]; tas
 export const ARC_POINT_EXCHANGE_STATES = ["Unknown", "Open", "Funded", "Disputed", "Settled", "Declined", "Cancelled"] as const;
 export const ARC_TASK_STATES = ["Unknown", "Open", "Accepted", "Submitted", "Disputed", "Paid", "Cancelled"] as const;
 export const getArcEscrowAddress = (): Address | null => {
-  const value = import.meta.env.VITE_ARC_TESTNET_ESCROW_ADDRESS?.trim();
+  const value = (import.meta.env.VITE_HANKA_MARKET_V2_TESTNET_ADDRESS_2 ?? import.meta.env.VITE_ARC_TESTNET_ESCROW_ADDRESS)?.trim();
   return value && isAddress(value) ? value : null;
 };
 export const arcExplorerTx = (hash: Hex) => `https://testnet.arcscan.app/tx/${hash}`;
