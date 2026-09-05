@@ -9,9 +9,6 @@ import { lazy, Suspense } from "react";
 
 const ArcMarket = lazy(() => import("./pages/ArcMarket"));
 const ArcMarketRoute = () => <Suspense fallback={<div className="hanka-app min-h-screen" />}><ArcMarket /></Suspense>;
-const ArcDashboard = lazy(() => import("./pages/ArcDashboard"));
-const ArcDashboardRoute = () => <Suspense fallback={<div className="hanka-app min-h-screen" />}><ArcDashboard /></Suspense>;
-
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
@@ -19,8 +16,6 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/market"}><Redirect to="/arc" replace /></Route>
       <Route path={"/arc"} component={ArcMarketRoute} />
-      <Route path={"/arc/dashboard"} component={ArcDashboardRoute} />
-      <Route path={"/ops"}><Redirect to="/arc/dashboard" replace /></Route>
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
