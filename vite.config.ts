@@ -155,7 +155,7 @@ const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(
 export default defineConfig({
   plugins,
   define: {
-    "import.meta.env.VITE_HANKA_MARKET_V2_TESTNET_ADDRESS_2": JSON.stringify(process.env.HANKA_MARKET_V2_TESTNET_ADDRESS_2),
+    "import.meta.env.VITE_HANKA_MARKET_V2_TESTNET_ADDRESS": JSON.stringify(process.env.HANKA_MARKET_V2_TESTNET_ADDRESS ?? process.env.HANKA_MARKET_V2_TESTNET_ADDRESS_2),
   },
   resolve: {
     alias: {
