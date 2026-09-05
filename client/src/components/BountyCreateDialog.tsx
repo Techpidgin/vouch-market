@@ -57,7 +57,7 @@ export function BountyCreateDialog(props: Props) {
         <DialogTitle className="font-display text-4xl tracking-[-.065em]">{isSocial ? "Buy social proof" : "Bounty details"}</DialogTitle>
         <DialogDescription className="mt-2 max-w-xl text-sm leading-6 text-[var(--hanka-muted)]">{isSocial ? "Describe the social proof you want to buy, the source requirements, and how long it must remain active. Then fund the request in your EVM wallet." : "Describe what you want done. Next, choose a fixed reward and confirm funding in your EVM wallet."} HANKA commits the specification as an Arc terms hash.</DialogDescription>
       </DialogHeader>
-      <form onSubmit={props.submit} className="grid gap-7 px-5 py-6 sm:px-7 sm:py-7">
+      <form onSubmit={props.submit} className="pointer-events-auto grid gap-7 px-5 py-6 sm:px-7 sm:py-7">
         <section>
           <SectionHead index="01" title={isSocial ? "Your social-proof request" : "The brief"} note={isSocial ? "Set the action, target, source requirements, and retention period. Your funded request becomes a single onchain Bounty." : "Specific, verifiable work helps a claimant decide quickly and gives the requester a clear release standard."} />
           <div className="mt-4 grid gap-4">

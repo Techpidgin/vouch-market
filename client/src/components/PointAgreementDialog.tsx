@@ -34,7 +34,7 @@ export function PointAgreementDialog(props: Props) {
         <DialogTitle className="font-display text-4xl tracking-[-.065em]">Airdrop agreement</DialogTitle>
         <DialogDescription className="mt-2 max-w-xl text-sm leading-6 text-[var(--hanka-muted)]">Create a named agreement for an uncertain future airdrop outcome. This is not a guaranteed token sale, price prediction, or promise of eligibility.</DialogDescription>
       </DialogHeader>
-      <form onSubmit={props.submit} className="grid gap-7 px-5 py-6 sm:px-7 sm:py-7">
+      <form onSubmit={props.submit} className="pointer-events-auto grid gap-7 px-5 py-6 sm:px-7 sm:py-7">
         <section>
           <p className="hanka-kicker">01 · Parties & collateral</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">

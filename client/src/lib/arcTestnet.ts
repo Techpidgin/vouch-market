@@ -43,23 +43,18 @@ const erc20Abi = parseAbi([
 ]);
 
 const escrowAbi = parseAbi([
-  "function createPointExchange(address token, address taker, uint128 collateral, uint64 acceptDeadline, uint64 settlementDeadline, bytes32 termsHash) returns (uint256)",
-  "function acceptPointExchange(uint256 id)",
-  "function approvePointExchangeSettlement(uint256 id, bytes32 settlementHash, uint128 makerPayout, uint128 takerPayout)",
-  "function declinePointExchange(uint256 id)",
-  "function disputePointExchange(uint256 id)",
-  "function createTask(address token, uint128 reward, uint64 acceptDeadline, uint64 dueAt, bytes32 termsHash) returns (uint256)",
-  "function acceptTask(uint256 id)",
-  "function submitTask(uint256 id, bytes32 deliveryHash)",
-  "function approveTask(uint256 id)",
-  "function disputeTask(uint256 id)",
-  "function pointExchangeToken(uint256 id) view returns (address)",
-  "function taskToken(uint256 id) view returns (address)",
-  "function pointExchangeCount() view returns (uint256)",
-  "function taskCount() view returns (uint256)",
-  "function pointExchanges(uint256 id) view returns (address maker, address taker, address token, uint128 collateral, uint64 acceptDeadline, uint64 settlementDeadline, bytes32 termsHash, bytes32 makerApprovalHash, bytes32 takerApprovalHash, uint8 state)",
-  "function tasks(uint256 id) view returns (address requester, address taker, address token, uint128 reward, uint64 acceptDeadline, uint64 dueAt, bytes32 termsHash, bytes32 deliveryHash, uint8 state)",
-  "event TaskCreated(uint256 indexed id, address indexed requester, address token, uint256 reward, uint64 acceptDeadline, uint64 dueAt, bytes32 termsHash)",
+  "function createBounty(address token, uint128 reward, uint64 acceptBy, uint64 dueAt, uint64 reviewBy, bytes32 termsHash, bytes32 metadataHash) returns (uint256)",
+  "function createSocialBounty(address token, uint128 reward, uint128 retentionBond, uint64 acceptBy, uint64 dueAt, uint64 reviewBy, uint64 retentionPeriod, uint64 caseReviewPeriod, bool caseDefaultToRequester, uint64 minimumFollowerCount, uint64 minimumEthosScore, uint64 minimumKaitoScore, uint64 minimumKaitoAura, bool requireVerifiedSource, uint256 offerId, uint8 proofType, bytes32 termsHash, bytes32 metadataHash, bytes32 targetActionHash) returns (uint256)",
+  "function acceptBounty(uint256 id)",
+  "function submitBounty(uint256 id, bytes32 deliveryHash)",
+  "function approveBounty(uint256 id)",
+  "function disputeBounty(uint256 id)",
+  "function bountyCount() view returns (uint256)",
+  "function bounties(uint256 id) view returns (address requester, address taker, address token, address feeRecipient, uint128 reward, uint128 retentionBond, uint64 acceptBy, uint64 dueAt, uint64 reviewBy, uint64 retentionPeriod, uint64 retentionEndsAt, uint64 caseReviewPeriod, uint64 caseResolveBy, uint64 minimumFollowerCount, uint64 minimumEthosScore, uint64 minimumKaitoScore, uint64 minimumKaitoAura, uint16 feeBpsSnapshot, uint8 proofType, uint8 kind, uint8 state, bool caseDefaultToRequester, bool requireVerifiedSource, uint256 offerId, bytes32 termsHash, bytes32 metadataHash, bytes32 targetActionHash, bytes32 sourceIdentityHash, bytes32 deliveryHash, bytes32 evidenceHash)",
+  "event BountyCreated(uint256 indexed id, uint8 indexed kind, address indexed requester, address token, uint256 reward, uint256 retentionBond, uint64 acceptBy, uint64 dueAt, uint64 reviewBy, bytes32 termsHash, bytes32 metadataHash, bytes32 targetActionHash, uint256 offerId, uint16 feeBps, address feeRecipient)",
+  "function createAgreement(address token, address taker, uint128 collateral, uint64 acceptBy, uint64 settlementBy, uint16 makerDeclinePayoutBps, uint16 makerTimeoutPayoutBps, bytes32 termsHash, bytes32 metadataHash) returns (uint256)",
+  "function agreementCount() view returns (uint256)",
+  "function agreements(uint256 id) view returns (address maker, address taker, address token, address feeRecipient, uint128 collateral, uint64 acceptBy, uint64 settlementBy, uint16 feeBpsSnapshot, uint16 makerDeclinePayoutBps, uint16 makerTimeoutPayoutBps, uint8 state, bytes32 termsHash, bytes32 metadataHash)",
 ]);
 
 export type ArcTokenSymbol = (typeof ARC_TESTNET_TOKENS)[number]["symbol"];
@@ -193,14 +188,14 @@ export async function approveArcEscrow(token: Address, amount: bigint): Promise<
 }
 
 type PointExchangeInput = { token: Address; taker: Address; collateral: bigint; acceptDeadline: number; settlementDeadline: number; terms: string };
-type TaskInput = { token: Address; reward: bigint; acceptDeadline: number; dueAt: number; terms: string };
+type TaskInput = { token: Address; reward: bigint; acceptDeadline: number; dueAt: number; reviewBy?: number; terms: string; metadata?: string; social?: { retentionBond: bigint; retentionPeriod: number; caseReviewPeriod: number; proofType: number; targetAction: string; minimumFollowerCount?: number; minimumEthosScore?: number; minimumKaitoScore?: number; minimumKaitoAura?: number; requireVerifiedSource?: boolean } };
 
 export async function createArcPointExchange(input: PointExchangeInput): Promise<Hex> {
   const escrow = getArcEscrowAddress();
   if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet.");
   if (!isAddress(input.taker)) throw new Error("Enter a valid counterparty EVM address.");
   const { walletClient, account } = await walletAndAccount();
-  return walletClient.writeContract({ address: escrow, abi: escrowAbi, functionName: "createPointExchange", args: [input.token, input.taker, input.collateral, BigInt(input.acceptDeadline), BigInt(input.settlementDeadline), hashArcTerms(input.terms)], account });
+  return walletClient.writeContract({ address: escrow, abi: escrowAbi, functionName: "createAgreement", args: [input.token, input.taker, input.collateral, BigInt(input.acceptDeadline), BigInt(input.settlementDeadline), 5000, 5000, hashArcTerms(input.terms), keccak256(stringToHex(input.terms))], account } as never);
 }
 
 export async function createArcTask(input: TaskInput): Promise<ArcCreatedBounty> {
@@ -208,10 +203,14 @@ export async function createArcTask(input: TaskInput): Promise<ArcCreatedBounty>
   if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet.");
   const { walletClient, account } = await walletAndAccount();
   const termsHash = hashArcTerms(input.terms);
-  const hash = await walletClient.writeContract({ address: escrow, abi: escrowAbi, functionName: "createTask", args: [input.token, input.reward, BigInt(input.acceptDeadline), BigInt(input.dueAt), termsHash], account });
+  const metadataHash = keccak256(stringToHex(input.metadata?.trim() || input.terms));
+  const reviewBy = BigInt(input.reviewBy ?? input.dueAt);
+  const functionName = input.social ? "createSocialBounty" : "createBounty";
+  const args = input.social ? [input.token, input.reward, input.social.retentionBond, BigInt(input.acceptDeadline), BigInt(input.dueAt), reviewBy, BigInt(input.social.retentionPeriod), BigInt(input.social.caseReviewPeriod), false, BigInt(input.social.minimumFollowerCount ?? 0), BigInt(input.social.minimumEthosScore ?? 0), BigInt(input.social.minimumKaitoScore ?? 0), BigInt(input.social.minimumKaitoAura ?? 0), input.social.requireVerifiedSource ?? false, BigInt(0), input.social.proofType, termsHash, metadataHash, keccak256(stringToHex(input.social.targetAction))] as const : [input.token, input.reward, BigInt(input.acceptDeadline), BigInt(input.dueAt), reviewBy, termsHash, metadataHash] as const;
+  const hash = await walletClient.writeContract({ address: escrow, abi: escrowAbi, functionName, args: args as never, account });
   const receipt = await createPublicClient({ chain: hankaArcTestnet, transport: http() }).waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new Error("The Bounty funding transaction did not complete.");
-  const created = parseEventLogs({ abi: escrowAbi, logs: receipt.logs, eventName: "TaskCreated", strict: false })
+  const created = parseEventLogs({ abi: escrowAbi, logs: receipt.logs, eventName: "BountyCreated", strict: false })
     .find(event => event.address.toLowerCase() === escrow.toLowerCase());
   const taskId = created?.args.id;
   if (typeof taskId !== "bigint") throw new Error("The Bounty was funded but its onchain ID could not be confirmed.");
@@ -221,7 +220,7 @@ export async function createArcTask(input: TaskInput): Promise<ArcCreatedBounty>
 export async function getArcPointExchangeToken(id: bigint): Promise<Address> {
   const escrow = getArcEscrowAddress();
   if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet.");
-  return createPublicClient({ chain: hankaArcTestnet, transport: http() }).readContract({ address: escrow, abi: escrowAbi, functionName: "pointExchangeToken", args: [id] });
+  return (createPublicClient({ chain: hankaArcTestnet, transport: http() }) as any).readContract({ address: escrow, abi: escrowAbi, functionName: "bounties", args: [id] });
 }
 
 const walletMatches = (left: Address, right: Address) => left.toLowerCase() === right.toLowerCase();
@@ -234,19 +233,19 @@ const allRecordIds = (count: bigint) => Array.from({ length: Math.min(Number(cou
 export async function getArcWalletDashboard(wallet: Address): Promise<ArcWalletDashboard> {
   const escrow = getArcEscrowAddress();
   if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet.");
-  const publicClient = createPublicClient({ chain: hankaArcTestnet, transport: http() });
+  const publicClient = createPublicClient({ chain: hankaArcTestnet, transport: http() }) as any;
   const [pointCount, taskCount] = await Promise.all([
     publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "pointExchangeCount" }),
-    publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "taskCount" }),
+    publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "bountyCount" }),
   ]);
   const [pointValues, taskValues] = await Promise.all([
     Promise.all(allRecordIds(pointCount).map(async id => ({ id, value: await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "pointExchanges", args: [id] }) }))),
-    Promise.all(allRecordIds(taskCount).map(async id => ({ id, value: await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "tasks", args: [id] }) }))),
+    Promise.all(allRecordIds(taskCount).map(async id => ({ id, value: await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "bounties", args: [id] }) }))),
   ]);
   const tokenAddresses = Array.from(new Set([...pointValues.map(item => item.value[2]), ...taskValues.map(item => item.value[2])].map(token => token.toLowerCase())));
   const tokenDecimals = new Map(await Promise.all(tokenAddresses.map(async token => [token, await getArcTokenDecimals(token as Address)] as const)));
   const pointExchanges = pointValues.map(({ id, value }) => ({ id, maker: value[0], taker: value[1], token: value[2], tokenDecimals: tokenDecimals.get(value[2].toLowerCase()) ?? 6, collateral: value[3], acceptDeadline: value[4], settlementDeadline: value[5], termsHash: value[6], state: Number(value[9]) })).filter(record => walletMatches(record.maker, wallet) || walletMatches(record.taker, wallet));
-  const tasks = taskValues.map(({ id, value }) => ({ id, requester: value[0], taker: value[1], token: value[2], tokenDecimals: tokenDecimals.get(value[2].toLowerCase()) ?? 6, reward: value[3], acceptDeadline: value[4], dueAt: value[5], termsHash: value[6], deliveryHash: value[7], state: Number(value[8]) })).filter(record => walletMatches(record.requester, wallet) || walletMatches(record.taker, wallet));
+  const tasks = taskValues.map(({ id, value }) => ({ id, requester: value[0], taker: value[1], token: value[2], tokenDecimals: tokenDecimals.get(value[2].toLowerCase()) ?? 6, reward: value[4], acceptDeadline: value[6], dueAt: value[7], termsHash: value[24], deliveryHash: value[28], state: Number(value[20]) })).filter(record => walletMatches(record.requester, wallet) || walletMatches(record.taker, wallet));
   return { pointExchanges: pointExchanges.sort((a, b) => Number(b.id - a.id)), tasks: tasks.sort((a, b) => Number(b.id - a.id)) };
 }
 
@@ -258,11 +257,11 @@ export async function getArcWalletDashboard(wallet: Address): Promise<ArcWalletD
 export async function getArcOpenBounties(): Promise<ArcTaskRecord[]> {
   const escrow = getArcEscrowAddress();
   if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet.");
-  const publicClient = createPublicClient({ chain: hankaArcTestnet, transport: http() });
-  const taskCount = await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "taskCount" });
+  const publicClient = createPublicClient({ chain: hankaArcTestnet, transport: http() }) as any;
+  const taskCount = await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "bountyCount" });
   const values = await Promise.all(allRecordIds(taskCount).map(async id => ({
     id,
-    value: await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "tasks", args: [id] }),
+    value: await publicClient.readContract({ address: escrow, abi: escrowAbi, functionName: "bounties", args: [id] }),
   })));
   const tokenAddresses = Array.from(new Set(values.map(item => item.value[2].toLowerCase())));
   const decimals = new Map(await Promise.all(tokenAddresses.map(async token => [token, await getArcTokenDecimals(token as Address)] as const)));
@@ -272,23 +271,23 @@ export async function getArcOpenBounties(): Promise<ArcTaskRecord[]> {
     .sort((left, right) => Number(right.id - left.id));
 }
 
-async function submitEscrowAction(functionName: "acceptPointExchange" | "approvePointExchangeSettlement" | "declinePointExchange" | "disputePointExchange" | "acceptTask" | "submitTask" | "approveTask" | "disputeTask", args: readonly unknown[]): Promise<Hex> {
+async function submitEscrowAction(functionName: "acceptBounty" | "submitBounty" | "approveBounty" | "disputeBounty", args: readonly unknown[]): Promise<Hex> {
   const escrow = getArcEscrowAddress();
   if (!escrow) throw new Error("HANKA Arc Testnet escrow is not deployed yet.");
   const { walletClient, account } = await walletAndAccount();
   return walletClient.writeContract({ address: escrow, abi: escrowAbi, functionName, args: args as never, account });
 }
 
-export const acceptArcPointExchange = (id: bigint) => submitEscrowAction("acceptPointExchange", [id]);
-export const declineArcPointExchange = (id: bigint) => submitEscrowAction("declinePointExchange", [id]);
-export const disputeArcPointExchange = (id: bigint) => submitEscrowAction("disputePointExchange", [id]);
-export const approveArcPointExchangeSettlement = (id: bigint, settlementTerms: string, makerPayout: bigint, takerPayout: bigint) => submitEscrowAction("approvePointExchangeSettlement", [id, hashArcTerms(settlementTerms), makerPayout, takerPayout]);
-export const acceptArcTask = (id: bigint) => submitEscrowAction("acceptTask", [id]);
-export const submitArcTask = (id: bigint, deliveryTerms: string) => submitEscrowAction("submitTask", [id, hashArcTerms(deliveryTerms)]);
+export const acceptArcPointExchange = (id: bigint) => { throw new Error("Agreement acceptance uses the HankaMarketV2 agreement flow."); };
+export const declineArcPointExchange = (id: bigint) => { throw new Error("Agreement decline is not exposed in the current frontend."); };
+export const disputeArcPointExchange = (id: bigint) => { throw new Error("Agreement dispute wiring is not exposed in the current frontend."); };
+export const approveArcPointExchangeSettlement = (_id: bigint, _settlementTerms: string, _makerPayout: bigint, _takerPayout: bigint) => { throw new Error("Agreement settlement requires the HankaMarketV2 typed authorization flow."); };
+export const acceptArcTask = (id: bigint) => submitEscrowAction("acceptBounty", [id]);
+export const submitArcTask = (id: bigint, deliveryTerms: string) => submitEscrowAction("submitBounty", [id, hashArcTerms(deliveryTerms)]);
 export async function approveArcTask(id: bigint) {
-  const hash = await submitEscrowAction("approveTask", [id]);
+  const hash = await submitEscrowAction("approveBounty", [id]);
   const receipt = await createPublicClient({ chain: hankaArcTestnet, transport: http() }).waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new Error("The Bounty reward transaction did not complete.");
   return hash;
 }
-export const disputeArcTask = (id: bigint) => submitEscrowAction("disputeTask", [id]);
+export const disputeArcTask = (id: bigint) => submitEscrowAction("disputeBounty", [id]);
