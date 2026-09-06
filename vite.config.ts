@@ -3,7 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
-import { defineConfig, type Plugin, type ViteDevServer } from "vite";
+import { defineConfig, loadEnv, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 
 // =============================================================================
@@ -152,10 +152,13 @@ function vitePluginManusDebugCollector(): Plugin {
 
 const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, path.resolve(import.meta.dirname), "");
+  const contractAddress = env.HANKA_MARKET_V2_TESTNET_ADDRESS ?? env.HANKA_MARKET_V2_TESTNET_ADDRESS_2 ?? env.VITE_ARC_TESTNET_ESCROW_ADDRESS;
+  return {
   plugins,
   define: {
-    "import.meta.env.VITE_HANKA_MARKET_V2_TESTNET_ADDRESS": JSON.stringify(process.env.HANKA_MARKET_V2_TESTNET_ADDRESS ?? process.env.HANKA_MARKET_V2_TESTNET_ADDRESS_2),
+    "import.meta.env.VITE_HANKA_MARKET_V2_TESTNET_ADDRESS": JSON.stringify(contractAddress),
   },
   resolve: {
     alias: {
@@ -187,4 +190,5 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
+  };
 });
